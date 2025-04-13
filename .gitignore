@@ -1,0 +1,16 @@
+# Python virtual environment
+.venv/
+venv/
+
+# Compiled files
+__pycache__/
+*.py[cod]
+
+# Flask session files
+flask_session/
+
+# Environment variables
+.env
+
+# OS files
+.DS_Store
