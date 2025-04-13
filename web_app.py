@@ -18,7 +18,7 @@ Session(app)
 # Load the system prompt safely
 prompt_path = "prompt_template.txt"
 if os.path.exists(prompt_path):
-    with open(prompt_path, "r") as f:
+    with open(prompt_path, "r", encoding="utf-8") as f:
         SYSTEM_PROMPT = f.read()
 else:
     SYSTEM_PROMPT = "You are a dehumidifier assistant."
