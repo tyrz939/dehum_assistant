@@ -33,7 +33,8 @@ HTML_PAGE = """
     <style>
         html, body { height: 100%; margin: 0; font-family: Arial, sans-serif; background: #e9f1f7; color: #003366; display: flex; flex-direction: column; }
         #chat-wrapper { flex: 1; display: flex; flex-direction: column; max-width: 800px; margin: 0 auto; width: 100%; }
-        #chat { flex: 1; background: white; padding: 1rem 1.5rem; border-radius: 10px 10px 0 0; box-shadow: 0 0 15px rgba(0,0,0,0.1); overflow-y: auto; scroll-behavior: smooth; display: flex; flex-direction: column; }
+        #chat { flex: 1; background: white; padding: 1rem 1.5rem; border-radius: 10px 10px 0 0; box-shadow: 0 0 15px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; }
+        #messages { flex: 1; overflow-y: auto; scroll-behavior: smooth; display: flex; flex-direction: column; }
         .msg { margin: 0.5rem 0; }
         .user { font-weight: bold; color: #004080; margin-bottom: 0.2rem; }
         .assistant { background: #f0f8ff; padding: 0.6rem; border-radius: 6px; white-space: pre-wrap; color: #002244; }
