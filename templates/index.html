@@ -43,7 +43,7 @@
     }
     .msg {
       margin: 0.5rem 0;
-      /* Allow text selection */
+      /* Enable text selection */
       -webkit-user-select: text;
       -moz-user-select: text;
       -ms-user-select: text;
@@ -61,7 +61,7 @@
       white-space: pre-wrap;
       color: #002244;
     }
-    /* Input Area Updates */
+    /* Input Area */
     #input-area {
       background: white;
       padding: 1rem 1.5rem;
@@ -105,6 +105,8 @@
     }
     .char-counter svg {
       transform: rotate(-90deg);
+      width: 100%;
+      height: 100%;
     }
     .char-counter circle {
       fill: none;
@@ -124,6 +126,32 @@
       font-size: 12px;
       color: #333;
     }
+    /* Mobile-friendly adjustments */
+    @media (max-width: 600px) {
+      #chat-wrapper {
+        height: 100%;
+      }
+      #chat {
+        padding: 0.8rem 1rem 3.5rem 1rem;
+      }
+      #input-area {
+        padding: 0.8rem 1rem;
+      }
+      textarea {
+        font-size: 0.95rem;
+      }
+      button {
+        padding: 0.5rem 1rem;
+        font-size: 0.95rem;
+      }
+      .char-counter {
+        width: 30px;
+        height: 30px;
+      }
+      .char-count {
+        font-size: 10px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -140,7 +168,7 @@
       <textarea id="user_input" rows="3" placeholder="Enter your question..." maxlength="400"></textarea>
       <div class="input-controls">
         <div class="char-counter">
-          <svg viewBox="0 0 36 36" width="36" height="36">
+          <svg viewBox="0 0 36 36">
             <circle class="char-bg" cx="18" cy="18" r="16" />
             <circle class="char-progress" id="progress-ring" cx="18" cy="18" r="16" stroke-dasharray="100" stroke-dashoffset="100" />
           </svg>
