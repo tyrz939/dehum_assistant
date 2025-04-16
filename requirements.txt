@@ -1,5 +1,5 @@
-Flask
+flask
 python-dotenv
-Flask-Session
 openai
 requests
+gunicorn
