@@ -4,30 +4,48 @@
   <title>Dehumidifier Sizing Assistant</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
+    /* Base Styles */
     html, body {
       height: 100%;
       margin: 0;
+      padding: 0;
       font-family: Arial, sans-serif;
       background: #e9f1f7;
       color: #003366;
-      display: flex;
-      flex-direction: column;
       overflow: hidden;
     }
+    /* Sticky Mini Header with Home Button */
+    #mini-header {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: #0074d9;
+      padding: 0.5rem;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    #mini-header a {
+      text-decoration: none;
+      display: inline-block;
+    }
+    #home-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid white;
+    }
+    /* Main Container (Mini Header + Chat Area) */
     #chat-wrapper {
-      flex: 1;
       display: flex;
       flex-direction: column;
-      max-width: 800px;
-      margin: 0 auto;
-      width: 100%;
-      height: 100vh;
+      height: 100%;
     }
+    /* Chat Container */
     #chat {
       flex: 1;
       background: white;
       padding: 1rem 1.5rem 2.5rem 1.5rem;
-      border-radius: 10px 10px 0 0;
       box-shadow: 0 0 15px rgba(0,0,0,0.1);
       display: flex;
       flex-direction: column;
@@ -43,10 +61,6 @@
     }
     .msg {
       margin: 0.5rem 0;
-      /* Enable text selection */
-      -webkit-user-select: text;
-      -moz-user-select: text;
-      -ms-user-select: text;
       user-select: text;
     }
     .user {
@@ -64,10 +78,8 @@
     /* Input Area */
     #input-area {
       background: white;
-      padding: 1rem 1.5rem;
+      padding: 1rem;
       box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
-      display: flex;
-      flex-direction: column;
     }
     textarea {
       width: 100%;
@@ -126,22 +138,19 @@
       font-size: 12px;
       color: #333;
     }
-    /* Mobile-friendly adjustments */
+    /* Responsive Adjustments */
     @media (max-width: 600px) {
-      #chat-wrapper {
-        height: 100%;
+      #mini-header {
+        padding: 0.4rem;
       }
       #chat {
-        padding: 0.8rem 1rem 3.5rem 1rem;
-      }
-      #input-area {
-        padding: 0.8rem 1rem;
+        padding: 0.8rem 1rem 2rem 1rem;
       }
       textarea {
         font-size: 0.95rem;
       }
       button {
-        padding: 0.5rem 1rem;
+        padding: 0.4rem 1rem;
         font-size: 0.95rem;
       }
       .char-counter {
@@ -156,6 +165,13 @@
 </head>
 <body>
   <div id="chat-wrapper">
+    <!-- Sticky Mini Header with Home Button -->
+    <div id="mini-header">
+      <a href="https://www.dehumsaust.com.au" target="_blank">
+        <img src="https://www.dehumsaust.com.au/wp-content/uploads/2020/02/logo-v3.png" alt="Home" id="home-icon">
+      </a>
+    </div>
+    <!-- Chat Area -->
     <div id="chat">
       <div id="messages">
         <div class="msg assistant">
@@ -163,29 +179,31 @@
         </div>
         <div id="bottom-scroll-anchor"></div>
       </div>
-    </div>
-    <div id="input-area">
-      <textarea id="user_input" rows="3" placeholder="Enter your question..." maxlength="400"></textarea>
-      <div class="input-controls">
-        <div class="char-counter">
-          <svg viewBox="0 0 36 36">
-            <circle class="char-bg" cx="18" cy="18" r="16" />
-            <circle class="char-progress" id="progress-ring" cx="18" cy="18" r="16" stroke-dasharray="100" stroke-dashoffset="100" />
-          </svg>
-          <div class="char-count" id="char_count">400</div>
+      <!-- Input Area -->
+      <div id="input-area">
+        <textarea id="user_input" rows="3" placeholder="Enter your question..." maxlength="400"></textarea>
+        <div class="input-controls">
+          <div class="char-counter">
+            <svg viewBox="0 0 36 36">
+              <circle class="char-bg" cx="18" cy="18" r="16"></circle>
+              <circle class="char-progress" id="progress-ring" cx="18" cy="18" r="16" stroke-dasharray="100" stroke-dashoffset="100"></circle>
+            </svg>
+            <div class="char-count" id="char_count">400</div>
+          </div>
+          <button onclick="sendMessage()">Send</button>
         </div>
-        <button onclick="sendMessage()">Send</button>
       </div>
     </div>
   </div>
 
   <script>
+    // Element references
     const inputBox = document.getElementById("user_input");
     const messagesDiv = document.getElementById("messages");
-    const scrollAnchor = document.getElementById("bottom-scroll-anchor");
     const charCount = document.getElementById("char_count");
     const progressRing = document.getElementById("progress-ring");
 
+    // Submit message on "Enter" (without Shift)
     inputBox.addEventListener("keydown", function(e) {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
@@ -193,6 +211,7 @@
       }
     });
 
+    // Update character counter and progress circle
     inputBox.addEventListener("input", () => {
       const max = 400;
       const current = inputBox.value.length;
@@ -206,11 +225,12 @@
       progressRing.setAttribute("stroke-dashoffset", circumference - (percentage / 100 * circumference));
     });
 
+    // Send Message function to perform API call and stream response
     async function sendMessage() {
       const userInput = inputBox.value.trim();
       if (!userInput) return;
 
-      // Append the user's message
+      // Append user's message to chat
       const userMsg = document.createElement("div");
       userMsg.classList.add("msg", "user");
       userMsg.textContent = "You: " + userInput;
@@ -220,13 +240,14 @@
       inputBox.dispatchEvent(new Event("input"));
       autoScroll();
 
-      // Send the request
+      // Send the request to your API endpoint
       const response = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ input: userInput })
       });
 
+      // Process the streaming response
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let result = "";
@@ -241,7 +262,6 @@
           el.innerHTML = result;
           return;
         }
-        // Append the cursor as a block character (█)
         if (!el.innerHTML.endsWith("&#9608;")) {
           el.innerHTML = result + "&#9608;";
         } else {
@@ -261,12 +281,13 @@
         autoScroll();
       }
 
-      // Stop blinking and remove the cursor once the reply is complete
+      // Stop blinking and remove cursor when done
       stopBlinking = true;
       el.innerHTML = result;
       autoScroll();
     }
 
+    // Auto-scroll messages container to the bottom
     function autoScroll() {
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
