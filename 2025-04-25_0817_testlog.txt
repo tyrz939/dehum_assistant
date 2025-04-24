@@ -1,0 +1,105 @@
+Q1: 1. “I’ve got a 7 m × 4 m swim-spa (water temp 34 °C) inside a 12 m × 10 m room with a 3.2 m ceiling—what single ducted or wall units will cover the extra heat load?”
+A1: Recommendation
+
+Because the 34 °C water doubles the evaporation load, your 28 m² swim-spa must be treated as ~56 m². That exceeds the capacity of any single catalogue unit, so the most practical solutions are two identical pool-rated units:
+
+• Ducted: 2 × LUKO FD-XX140L (fresh-air ducted). Together they comfortably handle up to 80 m² of equivalent pool surface and 520 m² / 1 040 m³ of room volume, while providing extra ventilation to clear warm-water fumes.
+
+• Wall-mount: 2 × Suntec SP1500C PRO fixed on opposing walls. Same moisture duty without ductwork and each costs ≈ A$ 5 500.
+
+Coverage …… 56 m² spa load + 384 m³ room  
+Install …… twin ducted units / twin wall units (choose format)  
+Unit cost …… SP1500C PRO ≈ A$ 5 500 each
+
+Let me know which configuration you’d like quoted in detail.
+------------------------------------------------------------
+Q2: 2. “My basement is L-shaped: 5 m × 8 m plus a 3 m × 6 m alcove, both 2.4 m high—can one portable handle it or do I need a wall-mount?”
+A2: Recommendation  
+
+For a 58 m² L-shaped basement (≈ 157 m³ by our design standard), a single Fairland IDHR60 wall-mounted inverter dehumidifier is the right size. It comfortably covers rooms up to 120 m², runs quietly and far more efficiently than construction-grade portables, so you’ll avoid the bulk, noise and frequent emptying that come with a wheeled unit.  
+• Coverage …… up to 120 m² / 324 m³  
+• Install …… one wall-mounted IDHR60, wired to a permanent drain  
+• Unit cost …… approx. A$ 3 900  
+
+A portable can work after floods, but for day-to-day humidity control and mould prevention the wall-mount will give you better results and lower running costs. Let me know if you’d like an alternative configuration.
+------------------------------------------------------------
+Q3: 3. “Indoor pool is 9 m long, 4 m wide (≈36 m² water at 27 °C) but the room has a raised central ceiling—2.4 m on the sides, 4 m in the middle; what’s the safest inverter option?”
+A3: Recommendation  
+
+Your 36 m² pool (water 27 °C) sits just under the 40 m² capacity tier, so the safest inverter choices are:  
+
+1. Fairland IDHR120 wall-mounted inverter  
+• Coverage …… pools ≤ 40 m² / rooms ≤ 240 m² (648 m³)  
+• Install …… one wall unit, no ductwork  
+• Unit cost …… ≈ A$ 5 400  
+
+2. LUKO FD-XX140L ducted inverter with ⅓ fresh-air intake  
+• Coverage …… pools ≤ 40 m² / rooms ≤ 260 m²  
+• Install …… one ceiling or plant-room ducted unit with supply/return grilles; fresh-air damper helps manage condensation in the raised 4 m centre ceiling.  
+
+Both give full inverter efficiency; choose wall-mount for easiest retrofit, or the ducted FD-XX if you want hidden installation and extra ventilation. Let me know if you’d like further detail.
+------------------------------------------------------------
+Q4: 4. “Two adjoining studios, each 30 m² with a large archway between them, share one heated spa (10 m², water 32 °C); what combo keeps RH under 55 % without oversizing?”
+A4: Recommendation
+
+The 10 m² spa at 32 °C is treated as a 15 m² design load, and the two studios together total 60 m² / ≈162 m³. One appropriately-sized unit is enough; choose the style that best suits the fit-out:
+
+1) Suntec SP500C PRO wall-mount  
+• Coverage …… pools ≤15 m² ; rooms ≤111 m² / 300 m³ – ample for your 60 m² space  
+• Install …… single wall unit centred near the archway, direct return-air from both studios  
+• Unit cost …… ≈ A$ 2 999  
+
+2) LUKO FD-SS60L ducted inverter  
+• Coverage …… pools ≤15 m² ; rooms ≤120 m² – matches the same load  
+• Install …… one ceiling-void unit with short supply/return ducts into each studio for quieter, hidden operation  
+
+Both options hold indoor RH at 50–55 % without oversizing; select wall-mount for the simplest installation or ducted for a concealed finish. Let me know if you’d like further details.
+------------------------------------------------------------
+Q5: 5. “Warehouse mezzanine (180 m², 5 m high) plus ground floor (180 m², 3 m high) open to each other—how many units and which family balances noise and coverage?”
+A5: Recommendation
+
+To handle the combined 1 440 m³ (≈533 m² @ 2.7 m) air volume, use 2 × LUKO FD-XX140L ducted dehumidifiers. Each unit is rated for up to 260 m² / 702 m³, so the pair delivers 1 404 m³ total—virtually a full match with excellent redundancy. Locating the FD-XX units in a service bay keeps compressor noise away from staff, while duct runs can split supply and return grilles between the mezzanine and ground floor for balanced drying. The “XX” fresh-air damper also brings in about one-third outside air, improving odour and dust control without extra fans.
+
+• Coverage …… 520 m² / 1 404 m³  
+• Install …… 2 × ducted LUKO FD-XX140L, one system serving each level via shared ductwork  
+
+Let me know if you’d like a cost-lean alternative using three FD-S140L units instead.
+------------------------------------------------------------
+Q6: 6. “I’m drying flood-soaked gyprock in a 60 m² room that’s currently 35 °C / 85 % RH—would an ST1001 PRO alone be enough?”
+A6: Recommendation
+
+A single Suntec ST1001 PRO heavy-duty dryer will comfortably handle a 60 m² flood-soaked room. The unit is sized for roughly twice that floor area (≈120 m² / 320 m³) at high temperature and humidity, so in your 162 m³ space it will deliver the high air-throughput and moisture removal rate needed to pull RH down quickly without over-stressing the compressor.  
+
+• Coverage …… up to ~120 m² / 320 m³ (your room: 60 m² / 162 m³)  
+• Install …… 1 × portable Suntec ST1001 PRO  
+
+Run it continuously with doors closed, empty or pump-out the condensate frequently, and you should see RH drop below 60 % within 24–36 hours. Let me know if you’d like an alternative configuration.
+------------------------------------------------------------
+Q7: 7. “Hydrotherapy room, 15 m² pool surface at 33.5 °C, air kept around 26 °C, needs some fresh air—wall vs ducted recommendation?”
+A7: Recommendation
+
+With 33.5 °C water your 15 m² hydrotherapy pool must be sized as a 30 m² load.  
+• Wall-mount – Fairland IDHR96 inverter. Handles pools up to 32 m², mounts directly on the wall above the return channel; simplest install and very quiet. Unit cost ≈ A$ 4 600.  
+• Ducted – LUKO FD-XX140L. Serves pools up to 40 m² and brings in about one-third fresh air via its damper, letting you meet the “some fresh air” brief without extra fans. Fits in a nearby plant room with supply/return grilles to the pool hall.
+
+Both will hold the room around 50 % RH at 26 °C; choose wall-mount for lowest capital work or the ducted version if integrated fresh-air and hidden equipment are priorities. Let me know if you’d like further details.
+------------------------------------------------------------
+Q8: 8. “Tiny wine cellar 3 m × 4 m but kept at 12 °C—do any inverter wall units work that cold or must I duct something?”
+A8: Recommendation  
+
+Our wall-mounted inverter ranges are optimised for 18 °C + rooms, so at 12 °C they risk coil-freeze. A better fit is one small ducted LUKO FD-S30L dehumidifier:  
+• Coverage …… up to 36 m² / 97 m³ (your cellar is 12 m² / 32 m³)  
+• Install …… 1 × FD-S30L mounted in an adjacent space with two short 150 mm supply/return ducts into the cellar; built-in hot-gas defrost keeps it effective down to 10 °C.  
+
+This keeps the cellar tidy and quiet while reliably holding 55 % RH at 12 °C. Let me know if you’d like the next size up (FD-S40L) for extra margin.
+------------------------------------------------------------
+Q9: 10. “I need 45 % RH in a 20 m² server room that runs 24/7; power is limited to a regular 10 A outlet—cheapest compliant model?”
+A9: Recommendation
+
+The Suntec SP500C PRO wall-mounted unit is the smallest and least-cost model in our range that still comfortably covers your 20 m² (≈ 54 m³) server room and can be dialled down to 45 % RH. It draws well under 10 A on a standard 240 V outlet, runs quietly 24/7, and leaves floor space free for racks and cabling.  
+• Coverage …… up to 111 m² / 300 m³ (your room is 20 m²)  
+• Install …… single wall-mount unit, plug-in 10 A supply  
+• Unit cost …… ≈ A$ 2 999
+
+Let me know if you’d like an alternative configuration.
+------------------------------------------------------------
