@@ -16,7 +16,7 @@ OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 def stream_completion(messages):
     if USE_OPENAI:
         for chunk in openai_client.chat.completions.create(
-            model="gpt-4o",
+            model="o3",
             messages=messages,
             stream=True
         ):

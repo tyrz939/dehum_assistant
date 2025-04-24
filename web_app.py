@@ -13,7 +13,7 @@ app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "supersecret")
 
 # Load the system prompt safely using UTF-8
-prompt_path = "prompt_template.txt"
+prompt_path = "prompt_template_test.txt"
 if os.path.exists(prompt_path):
     with open(prompt_path, "r", encoding="utf-8") as f:
         SYSTEM_PROMPT = f.read()
