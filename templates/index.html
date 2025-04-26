@@ -193,14 +193,11 @@
 </head>
 <body>
   <div id="chat-wrapper">
-    <!-- Sticky Mini Header with Home Button -->
     <div id="mini-header">
       <a href="https://www.dehumsaust.com.au" target="_blank">
         <img src="https://www.dehumsaust.com.au/wp-content/uploads/2020/02/logo-v3.png" alt="Home" id="home-icon">
       </a>
     </div>
-
-    <!-- Chat Area -->
     <div id="chat">
       <div id="messages">
         <div class="msg assistant">
@@ -208,8 +205,6 @@
         </div>
         <div id="bottom-scroll-anchor"></div>
       </div>
-
-      <!-- Input Area -->
       <div id="input-area">
         <textarea id="user_input" rows="3" placeholder="Enter your question..." maxlength="400"></textarea>
         <div class="input-controls">
@@ -227,12 +222,20 @@
   </div>
 
   <script>
-    // === CHAR COUNTER & ENTER KEY ===
+    // === CORE REFERENCES & MEMORY ===
     const inputBox    = document.getElementById("user_input");
+    const messagesDiv = document.getElementById("messages");
     const charCount   = document.getElementById("char_count");
     const progressRing= document.getElementById("progress-ring");
-    const messagesDiv = document.getElementById("messages");
 
+    let conversation = [
+      {
+        role: "assistant",
+        content: "Hello! I'm your Dehumidifier Assistant. Ask me anything about sizing or model selection. Give me a minute to think!"
+      }
+    ];
+
+    // === CHAR COUNTER & ENTER KEY ===
     inputBox.addEventListener("input", () => {
       const max = 400, curr = inputBox.value.length;
       charCount.textContent = max - curr;
@@ -258,18 +261,22 @@
       const userInput = inputBox.value.trim();
       if (!userInput) return;
 
-      // Render user bubble
+      // 1. Track & log
+      conversation.push({ role: "user", content: userInput });
+      console.log("🔶 Sending history to server:", conversation);
+
+      // 2. Render user bubble
       const userMsg = document.createElement("div");
       userMsg.classList.add("msg", "user");
       userMsg.textContent = "You: " + userInput;
       messagesDiv.appendChild(userMsg);
 
-      // Reset input
+      // 3. Reset input & scroll
       inputBox.value = "";
       inputBox.dispatchEvent(new Event("input"));
       autoScroll();
 
-      // Show typing dots
+      // 4. Show typing dots
       const thinking = document.createElement("div");
       thinking.classList.add("msg", "assistant", "typing");
       thinking.innerHTML = `
@@ -279,20 +286,21 @@
       messagesDiv.appendChild(thinking);
       autoScroll();
 
-      // Call your API
+      // 5. Call your API, including full history
       const resp = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ input: userInput })
+        body: JSON.stringify({
+          input: userInput,
+          history: conversation
+        })
       });
-
       if (!resp.ok) {
-        // show error
-        thinking.textContent = `Error: ${resp.statusText}`;
+        thinking.textContent = `Error: ${resp.status} ${resp.statusText}`;
         return;
       }
 
-      // Stream the reply
+      // 6. Stream the reply
       const reader  = resp.body.getReader();
       const decoder = new TextDecoder();
       let result = "";
@@ -309,6 +317,9 @@
       }
       el.innerHTML = result;
       autoScroll();
+
+      // 7. Append assistant turn to conversation
+      conversation.push({ role: "assistant", content: result });
     }
   </script>
 </body>
