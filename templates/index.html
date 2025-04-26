@@ -227,13 +227,21 @@
   </div>
 
   <script>
-    // Element references
-    const inputBox   = document.getElementById("user_input");
+    // === CHAR COUNTER & ENTER KEY ===
+    const inputBox    = document.getElementById("user_input");
+    const charCount   = document.getElementById("char_count");
+    const progressRing= document.getElementById("progress-ring");
     const messagesDiv = document.getElementById("messages");
-    const charCount  = document.getElementById("char_count");
-    const progressRing = document.getElementById("progress-ring");
 
-    /* Submit on Enter (without Shift) */
+    inputBox.addEventListener("input", () => {
+      const max = 400, curr = inputBox.value.length;
+      charCount.textContent = max - curr;
+      const pct = curr / max;
+      const circ = 2 * Math.PI * 16;
+      progressRing.setAttribute("stroke-dasharray", circ);
+      progressRing.setAttribute("stroke-dashoffset", circ * (1 - pct));
+    });
+
     inputBox.addEventListener("keydown", e => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
@@ -241,35 +249,27 @@
       }
     });
 
-    /* Character counter & circle progress */
-    inputBox.addEventListener("input", () => {
-      const max = 400;
-      const current = inputBox.value.length;
-      const remaining = max - current;
-      charCount.textContent = remaining;
+    function autoScroll() {
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
 
-      const percentage = (current / max) * 100;
-      const radius = 16;
-      const circumference = 2 * Math.PI * radius;
-      progressRing.setAttribute("stroke-dasharray", circumference);
-      progressRing.setAttribute("stroke-dashoffset", circumference - (percentage / 100 * circumference));
-    });
-
-    /* Send message + stream response */
+    // === MAIN SEND/FETCH/STREAM LOGIC ===
     async function sendMessage() {
       const userInput = inputBox.value.trim();
       if (!userInput) return;
 
-      /* append user's bubble */
+      // Render user bubble
       const userMsg = document.createElement("div");
       userMsg.classList.add("msg", "user");
       userMsg.textContent = "You: " + userInput;
       messagesDiv.appendChild(userMsg);
+
+      // Reset input
       inputBox.value = "";
       inputBox.dispatchEvent(new Event("input"));
       autoScroll();
 
-      /* show typing dots immediately */
+      // Show typing dots
       const thinking = document.createElement("div");
       thinking.classList.add("msg", "assistant", "typing");
       thinking.innerHTML = `
@@ -279,60 +279,36 @@
       messagesDiv.appendChild(thinking);
       autoScroll();
 
-      /* fire request */
-      const response = await fetch("/api/assistant", {
+      // Call your API
+      const resp = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ input: userInput })
       });
 
-      /* prep reader & container for streamed text */
-      const reader  = response.body.getReader();
+      if (!resp.ok) {
+        // show error
+        thinking.textContent = `Error: ${resp.statusText}`;
+        return;
+      }
+
+      // Stream the reply
+      const reader  = resp.body.getReader();
       const decoder = new TextDecoder();
       let result = "";
-
-      /* replace dots with real answer container */
       const el = document.createElement("div");
       el.classList.add("msg", "assistant");
-      thinking.replaceWith(el);   // swap nodes
+      thinking.replaceWith(el);
 
-      /* optional blinking ▮ cursor */
-      let stopBlinking = false;
-      let cursorVisible = true;
-      function blink() {
-        if (stopBlinking) {
-          el.innerHTML = result;
-          return;
-        }
-        if (!el.innerHTML.endsWith("&#9608;")) {
-          el.innerHTML = result + " &#9608;";
-        } else {
-          el.innerHTML = result + (cursorVisible ? " " : " &#9608;");
-          cursorVisible = !cursorVisible;
-        }
-        requestAnimationFrame(blink);
-      }
-      blink();
-
-      /* read stream */
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-        const chunk = decoder.decode(value, { stream: true });
-        result += chunk;
-        el.innerHTML = result + " &#9608;";
+        result += decoder.decode(value, { stream: true });
+        el.innerHTML = result + "&#9608;";
         autoScroll();
       }
-
-      /* cleanup cursor */
-      stopBlinking = true;
       el.innerHTML = result;
       autoScroll();
-    }
-
-    /* scroll to bottom helper */
-    function autoScroll() {
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
   </script>
 </body>
