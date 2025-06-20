@@ -48,19 +48,29 @@ app.secret_key = os.getenv("FLASK_SECRET_KEY", "supersecret")
 # Redis session configuration
 redis_client = None
 if os.getenv("REDIS_URL"):
-    redis_client = redis.from_url(os.getenv("REDIS_URL"))
-    app.config['SESSION_TYPE'] = 'redis'
-    app.config['SESSION_REDIS'] = redis_client
-    app.config['SESSION_PERMANENT'] = False
-    app.config['SESSION_USE_SIGNER'] = True
-    app.config['SESSION_KEY_PREFIX'] = 'dehum:'
-    app.config['SESSION_COOKIE_HTTPONLY'] = True
-    app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
-    Session(app)
-    logger.info("Redis session storage configured")
-else:
+    try:
+        redis_client = redis.from_url(os.getenv("REDIS_URL"))
+        # Test the connection
+        redis_client.ping()
+        app.config['SESSION_TYPE'] = 'redis'
+        app.config['SESSION_REDIS'] = redis_client
+        app.config['SESSION_PERMANENT'] = False
+        app.config['SESSION_USE_SIGNER'] = True
+        app.config['SESSION_KEY_PREFIX'] = 'dehum:'
+        app.config['SESSION_COOKIE_HTTPONLY'] = True
+        # Set secure cookies in production (when HTTPS is available)
+        app.config['SESSION_COOKIE_SECURE'] = os.getenv('FLASK_ENV') == 'production' or bool(os.getenv('REDIS_URL'))
+        app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+        Session(app)
+        logger.info("Redis session storage configured successfully")
+    except Exception as e:
+        logger.error("Failed to connect to Redis, falling back to filesystem sessions", error=str(e))
+        redis_client = None
+
+if not redis_client:
     # Fallback to filesystem sessions for local development
     app.config['SESSION_TYPE'] = 'filesystem'
+    app.config['SESSION_COOKIE_SECURE'] = False
     Session(app)
     logger.warning("Using filesystem sessions - not recommended for production")
 
@@ -325,16 +335,40 @@ def assistant():
 def health():
     """Health check endpoint"""
     try:
+        redis_status = "not_configured"
+        redis_error = None
+        
         # Test Redis connection
-        if redis_client:
-            redis_client.ping()
-            redis_status = "connected"
-        else:
-            redis_status = "not_configured"
+        if os.getenv("REDIS_URL"):
+            try:
+                if redis_client:
+                    redis_client.ping()
+                    redis_status = "connected"
+                else:
+                    redis_status = "failed_to_initialize"
+            except Exception as e:
+                redis_status = "connection_failed"
+                redis_error = str(e)
+        
+        # Check session configuration
+        session_type = app.config.get('SESSION_TYPE', 'unknown')
+        session_secure = app.config.get('SESSION_COOKIE_SECURE', False)
         
         return {
             "status": "healthy",
-            "redis": redis_status,
+            "redis": {
+                "status": redis_status,
+                "error": redis_error,
+                "url_configured": bool(os.getenv("REDIS_URL"))
+            },
+            "session": {
+                "type": session_type,
+                "secure_cookies": session_secure
+            },
+            "environment": {
+                "flask_env": os.getenv("FLASK_ENV", "not_set"),
+                "has_redis_url": bool(os.getenv("REDIS_URL"))
+            },
             "timestamp": datetime.utcnow().isoformat()
         }
     except Exception as e:
