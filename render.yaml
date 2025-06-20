@@ -2,17 +2,23 @@ services:
   - type: web
     name: dehum-assistant
     env: python
-    plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: python web_app.py
+    plan: starter
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn --bind 0.0.0.0:$PORT --workers 2 --timeout 120 web_app:app"
     envVars:
       - key: FLASK_SECRET_KEY
-        value: supersecret
+        generateValue: true
       - key: OPENAI_API_KEY
-        sync: false  # add this manually
+        sync: false
       - key: USE_OPENAI
-        value: true
-      - key: OLLAMA_HOST
-        value: http://localhost:11434
-      - key: OLLAMA_MODEL
-        value: llama2
+        value: "true"
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: dehum-redis
+          property: connectionString
+  
+  - type: redis
+    name: dehum-redis
+    plan: starter
+    maxmemoryPolicy: allkeys-lru

@@ -22,7 +22,9 @@
       z-index: 1000;
       background: #0074d9;
       padding: 0.5rem;
-      text-align: center;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       flex-shrink: 0;
     }
     #mini-header a {
@@ -35,6 +37,47 @@
       border-radius: 50%;
       object-fit: cover;
       border: 2px solid white;
+    }
+
+    /* Header Actions */
+    .header-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .header-btn {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: white;
+      padding: 0.3rem 0.8rem;
+      border-radius: 15px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .header-btn:hover {
+      background: rgba(255,255,255,0.3);
+    }
+
+    /* Status Indicator */
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.9);
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4CAF50;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.5; }
+      100% { opacity: 1; }
     }
 
     /* Main Container (Mini Header + Chat Area) */
@@ -65,6 +108,7 @@
     .msg {
       margin: 0.5rem 0;
       user-select: text;
+      position: relative;
     }
     .user {
       font-weight: bold;
@@ -77,6 +121,79 @@
       border-radius: 6px;
       white-space: pre-wrap;
       color: #002244;
+      position: relative;
+    }
+
+    /* Message Actions */
+    .msg-actions {
+      position: absolute;
+      top: 0.3rem;
+      right: 0.3rem;
+      opacity: 0;
+      transition: opacity 0.2s;
+      display: flex;
+      gap: 0.2rem;
+    }
+    .assistant:hover .msg-actions {
+      opacity: 1;
+    }
+    .msg-btn {
+      background: rgba(255,255,255,0.9);
+      border: 1px solid #ddd;
+      border-radius: 3px;
+      padding: 0.2rem 0.4rem;
+      font-size: 0.7rem;
+      cursor: pointer;
+      color: #666;
+    }
+    .msg-btn:hover {
+      background: white;
+      color: #333;
+    }
+
+    /* Enhanced Loading States */
+    .thinking-enhanced {
+      background: #f0f8ff;
+      padding: 0.6rem;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .thinking-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid #e3e3e3;
+      border-top: 2px solid #0074d9;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .thinking-text {
+      color: #666;
+      font-style: italic;
+    }
+
+    /* Error States */
+    .error-msg {
+      background: #ffe6e6;
+      border-left: 4px solid #ff4444;
+      padding: 0.6rem;
+      border-radius: 6px;
+      color: #cc0000;
+    }
+    .retry-btn {
+      background: #ff4444;
+      color: white;
+      border: none;
+      padding: 0.3rem 0.8rem;
+      border-radius: 4px;
+      margin-top: 0.5rem;
+      cursor: pointer;
+      font-size: 0.8rem;
     }
 
     /* Typing indicator (three bouncing dots) */
@@ -117,12 +234,22 @@
       resize: none;
       box-sizing: border-box;
       max-height: 150px;
+      transition: border-color 0.2s;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: #0074d9;
     }
     .input-controls {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-top: 0.5rem;
+    }
+    .input-left {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
     }
     button {
       padding: 0.5rem 1.5rem;
@@ -132,10 +259,27 @@
       border-radius: 5px;
       cursor: pointer;
       font-size: 1rem;
+      transition: all 0.2s;
     }
-    button:hover {
+    button:hover:not(:disabled) {
       background: #005fa3;
     }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .secondary-btn {
+      background: #f8f9fa;
+      color: #666;
+      border: 1px solid #ddd;
+      padding: 0.4rem 1rem;
+      font-size: 0.9rem;
+    }
+    .secondary-btn:hover {
+      background: #e9ecef;
+    }
+
+    /* Character Counter */
     .char-counter {
       position: relative;
       width: 36px;
@@ -156,6 +300,7 @@
     }
     .char-progress {
       stroke: #0074d9;
+      transition: stroke-dashoffset 0.2s;
     }
     .char-count {
       position: absolute;
@@ -166,10 +311,40 @@
       color: #333;
     }
 
+    /* Toast Notifications */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #333;
+      color: white;
+      padding: 0.8rem 1.2rem;
+      border-radius: 6px;
+      transform: translateX(400px);
+      transition: transform 0.3s;
+      z-index: 1001;
+    }
+    .toast.show {
+      transform: translateX(0);
+    }
+    .toast.success {
+      background: #4CAF50;
+    }
+    .toast.error {
+      background: #f44336;
+    }
+
     /* Responsive Adjustments */
     @media (max-width: 600px) {
       #mini-header {
         padding: 0.4rem;
+      }
+      .header-actions {
+        gap: 0.3rem;
+      }
+      .header-btn {
+        padding: 0.2rem 0.6rem;
+        font-size: 0.7rem;
       }
       #chat {
         padding: 0.8rem 1rem 2rem 1rem;
@@ -188,6 +363,12 @@
       .char-count {
         font-size: 10px;
       }
+      .msg-actions {
+        position: static;
+        opacity: 1;
+        margin-top: 0.5rem;
+        justify-content: flex-end;
+      }
     }
   </style>
 </head>
@@ -197,25 +378,44 @@
       <a href="https://www.dehumsaust.com.au" target="_blank">
         <img src="https://www.dehumsaust.com.au/wp-content/uploads/2020/02/logo-v3.png" alt="Home" id="home-icon">
       </a>
+      <div class="header-actions">
+        <div class="status-indicator">
+          <div class="status-dot"></div>
+          <span id="status-text">Ready</span>
+        </div>
+        <button class="header-btn" onclick="clearConversation()">Clear</button>
+        <button class="header-btn" onclick="exportConversation()">Export</button>
+      </div>
     </div>
     <div id="chat">
       <div id="messages">
         <div class="msg assistant">
-          Hello! I'm your Dehumidifier Assistant. Ask me anything about sizing or model selection. Give me a minute to think!
+          Hello! I'm your Dehumidifier Assistant. Ask me anything about sizing or model selection.
+          <div class="msg-actions">
+            <button class="msg-btn" onclick="copyMessage(this)">Copy</button>
+          </div>
         </div>
         <div id="bottom-scroll-anchor"></div>
       </div>
       <div id="input-area">
         <textarea id="user_input" rows="3" placeholder="Enter your question..." maxlength="400"></textarea>
         <div class="input-controls">
-          <div class="char-counter">
-            <svg viewBox="0 0 36 36">
-              <circle class="char-bg" cx="18" cy="18" r="16"></circle>
-              <circle class="char-progress" id="progress-ring" cx="18" cy="18" r="16" stroke-dasharray="100" stroke-dashoffset="100"></circle>
-            </svg>
-            <div class="char-count" id="char_count">400</div>
+          <div class="input-left">
+            <button class="secondary-btn" onclick="showStats()">Stats</button>
+            <span id="typing-indicator" style="display: none; font-size: 0.8rem; color: #666;">
+              ⌨️ Thinking...
+            </span>
           </div>
-          <button onclick="sendMessage()">Send</button>
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <div class="char-counter">
+              <svg viewBox="0 0 36 36">
+                <circle class="char-bg" cx="18" cy="18" r="16"></circle>
+                <circle class="char-progress" id="progress-ring" cx="18" cy="18" r="16" stroke-dasharray="100" stroke-dashoffset="100"></circle>
+              </svg>
+              <div class="char-count" id="char_count">400</div>
+            </div>
+            <button id="send-btn" onclick="sendMessage()">Send</button>
+          </div>
         </div>
       </div>
     </div>
@@ -223,17 +423,92 @@
 
   <script>
     // === CORE REFERENCES & MEMORY ===
-    const inputBox    = document.getElementById("user_input");
+    const inputBox = document.getElementById("user_input");
     const messagesDiv = document.getElementById("messages");
-    const charCount   = document.getElementById("char_count");
-    const progressRing= document.getElementById("progress-ring");
+    const charCount = document.getElementById("char_count");
+    const progressRing = document.getElementById("progress-ring");
+    const sendBtn = document.getElementById("send-btn");
+    const statusText = document.getElementById("status-text");
+    const typingIndicator = document.getElementById("typing-indicator");
 
     let conversation = [
       {
         role: "assistant",
-        content: "Hello! I'm your Dehumidifier Assistant. Ask me anything about sizing or model selection. Give me a minute to think!"
+        content: "Hello! I'm your Dehumidifier Assistant. Ask me anything about sizing or model selection."
       }
     ];
+    let isProcessing = false;
+
+    // === UTILITY FUNCTIONS ===
+    function showToast(message, type = 'info') {
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      
+      setTimeout(() => toast.classList.add('show'), 100);
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => document.body.removeChild(toast), 300);
+      }, 3000);
+    }
+
+    function updateStatus(status, type = 'ready') {
+      statusText.textContent = status;
+      const dot = document.querySelector('.status-dot');
+      dot.style.background = type === 'processing' ? '#ff9800' : 
+                            type === 'error' ? '#f44336' : '#4CAF50';
+    }
+
+    function copyMessage(btn) {
+      const messageText = btn.closest('.assistant').textContent.replace('Copy', '').trim();
+      navigator.clipboard.writeText(messageText).then(() => {
+        showToast('Response copied to clipboard!', 'success');
+      }).catch(() => {
+        showToast('Failed to copy text', 'error');
+      });
+    }
+
+    function clearConversation() {
+      if (confirm('Clear conversation history?')) {
+        conversation = [conversation[0]]; // Keep welcome message
+        messagesDiv.innerHTML = `
+          <div class="msg assistant">
+            Hello! I'm your Dehumidifier Assistant. Ask me anything about sizing or model selection.
+            <div class="msg-actions">
+              <button class="msg-btn" onclick="copyMessage(this)">Copy</button>
+            </div>
+          </div>
+          <div id="bottom-scroll-anchor"></div>
+        `;
+        showToast('Conversation cleared', 'success');
+      }
+    }
+
+    function exportConversation() {
+      const text = conversation.map(msg => 
+        `${msg.role.toUpperCase()}: ${msg.content}`
+      ).join('\n\n');
+      
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `dehumidifier-consultation-${new Date().toISOString().split('T')[0]}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Conversation exported!', 'success');
+    }
+
+    async function showStats() {
+      try {
+        const response = await fetch('/api/stats');
+        const stats = await response.json();
+        alert(`Usage Stats:\n\nDaily Questions: ${stats.daily_questions}\nQuestions Remaining: ${stats.questions_remaining}\nConversation Length: ${stats.conversation_length} messages\nDaily Tokens Used: ${stats.daily_tokens}`);
+      } catch (error) {
+        showToast('Failed to load stats', 'error');
+      }
+    }
 
     // === CHAR COUNTER & ENTER KEY ===
     inputBox.addEventListener("input", () => {
@@ -243,6 +518,15 @@
       const circ = 2 * Math.PI * 16;
       progressRing.setAttribute("stroke-dasharray", circ);
       progressRing.setAttribute("stroke-dashoffset", circ * (1 - pct));
+      
+      // Visual feedback for limits
+      if (curr > max * 0.9) {
+        progressRing.style.stroke = '#ff9800';
+      } else if (curr > max * 0.8) {
+        progressRing.style.stroke = '#ffc107';
+      } else {
+        progressRing.style.stroke = '#0074d9';
+      }
     });
 
     inputBox.addEventListener("keydown", e => {
@@ -256,71 +540,155 @@
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
-    // === MAIN SEND/FETCH/STREAM LOGIC ===
+    // === ENHANCED SEND MESSAGE ===
     async function sendMessage() {
+      if (isProcessing) return;
+      
       const userInput = inputBox.value.trim();
       if (!userInput) return;
 
-      // 1. Track & log
-      conversation.push({ role: "user", content: userInput });
-      console.log("🔶 Sending history to server:", conversation);
+      isProcessing = true;
+      sendBtn.disabled = true;
+      sendBtn.textContent = "Sending...";
+      updateStatus("Processing...", "processing");
 
-      // 2. Render user bubble
-      const userMsg = document.createElement("div");
-      userMsg.classList.add("msg", "user");
-      userMsg.textContent = "You: " + userInput;
-      messagesDiv.appendChild(userMsg);
+      try {
+        // 1. Track & log
+        conversation.push({ role: "user", content: userInput });
 
-      // 3. Reset input & scroll
-      inputBox.value = "";
-      inputBox.dispatchEvent(new Event("input"));
-      autoScroll();
+        // 2. Render user bubble
+        const userMsg = document.createElement("div");
+        userMsg.classList.add("msg", "user");
+        userMsg.textContent = "You: " + userInput;
+        messagesDiv.appendChild(userMsg);
 
-      // 4. Show typing dots
-      const thinking = document.createElement("div");
-      thinking.classList.add("msg", "assistant", "typing");
-      thinking.innerHTML = `
-        <span class="typing-dot"></span>
-        <span class="typing-dot"></span>
-        <span class="typing-dot"></span>`;
-      messagesDiv.appendChild(thinking);
-      autoScroll();
-
-      // 5. Call your API, including full history
-      const resp = await fetch("/api/assistant", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          input: userInput,
-          history: conversation
-        })
-      });
-      if (!resp.ok) {
-        thinking.textContent = `Error: ${resp.status} ${resp.statusText}`;
-        return;
-      }
-
-      // 6. Stream the reply
-      const reader  = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let result = "";
-      const el = document.createElement("div");
-      el.classList.add("msg", "assistant");
-      thinking.replaceWith(el);
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        result += decoder.decode(value, { stream: true });
-        el.innerHTML = result + "&#9608;";
+        // 3. Reset input & scroll
+        inputBox.value = "";
+        inputBox.dispatchEvent(new Event("input"));
         autoScroll();
-      }
-      el.innerHTML = result;
-      autoScroll();
 
-      // 7. Append assistant turn to conversation
-      conversation.push({ role: "assistant", content: result });
+        // 4. Enhanced thinking indicator
+        const thinking = document.createElement("div");
+        thinking.classList.add("msg", "thinking-enhanced");
+        thinking.innerHTML = `
+          <div class="thinking-spinner"></div>
+          <div class="thinking-text">Analyzing your question...</div>
+        `;
+        messagesDiv.appendChild(thinking);
+        autoScroll();
+
+        // 5. Call API
+        const resp = await fetch("/api/assistant", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            input: userInput,
+            history: conversation
+          })
+        });
+
+        if (!resp.ok) {
+          throw new Error(`${resp.status}: ${resp.statusText}`);
+        }
+
+        // 6. Update thinking state
+        thinking.querySelector('.thinking-text').textContent = 'Generating response...';
+
+        // 7. Stream the reply
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let result = "";
+        const el = document.createElement("div");
+        el.classList.add("msg", "assistant");
+        el.innerHTML = `<div class="msg-actions">
+          <button class="msg-btn" onclick="copyMessage(this)">Copy</button>
+        </div>`;
+        thinking.replaceWith(el);
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          result += decoder.decode(value, { stream: true });
+          el.innerHTML = result + "&#9608;" + `<div class="msg-actions">
+            <button class="msg-btn" onclick="copyMessage(this)">Copy</button>
+          </div>`;
+          autoScroll();
+        }
+        
+        el.innerHTML = result + `<div class="msg-actions">
+          <button class="msg-btn" onclick="copyMessage(this)">Copy</button>
+        </div>`;
+        autoScroll();
+
+        // 8. Update conversation
+        conversation.push({ role: "assistant", content: result });
+        showToast("Response received!", "success");
+        updateStatus("Ready", "ready");
+
+      } catch (error) {
+        console.error("Error:", error);
+        
+        // Remove thinking indicator and show error
+        const thinking = document.querySelector(".thinking-enhanced");
+        if (thinking) {
+          const errorMsg = document.createElement("div");
+          errorMsg.classList.add("msg", "error-msg");
+          errorMsg.innerHTML = `
+            <strong>Error:</strong> ${error.message}<br>
+            <button class="retry-btn" onclick="retryLastMessage()">Retry</button>
+          `;
+          thinking.replaceWith(errorMsg);
+        }
+        
+        showToast("Failed to get response", "error");
+        updateStatus("Error", "error");
+      } finally {
+        isProcessing = false;
+        sendBtn.disabled = false;
+        sendBtn.textContent = "Send";
+      }
     }
+
+    function retryLastMessage() {
+      // Remove the error message and retry
+      const errorMsg = document.querySelector(".error-msg");
+      if (errorMsg) {
+        errorMsg.remove();
+      }
+      
+      // Remove last user message from conversation and re-add to input
+      if (conversation.length > 1 && conversation[conversation.length - 1].role === "user") {
+        const lastUserMsg = conversation.pop();
+        inputBox.value = lastUserMsg.content;
+        inputBox.dispatchEvent(new Event("input"));
+        
+        // Remove last user message from display
+        const userMsgs = document.querySelectorAll(".msg.user");
+        if (userMsgs.length > 0) {
+          userMsgs[userMsgs.length - 1].remove();
+        }
+      }
+    }
+
+    // === INITIALIZATION ===
+    document.addEventListener('DOMContentLoaded', () => {
+      inputBox.focus();
+      updateStatus("Ready", "ready");
+      
+      // Check initial status
+      fetch('/api/health')
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'healthy') {
+            updateStatus("Ready", "ready");
+          } else {
+            updateStatus("Service Issues", "error");
+          }
+        })
+        .catch(() => {
+          updateStatus("Offline", "error");
+        });
+    });
   </script>
 </body>
 </html>
