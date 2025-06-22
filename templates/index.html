@@ -2,35 +2,54 @@
 <html>
 <head>
   <title>Dehumidifier Sizing Assistant</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <style>
-    /* Base Styles */
+    /* === CSS CUSTOM PROPERTIES === */
+    :root {
+      --primary-blue: #0074d9;
+      --primary-dark: #005fa3;
+      --light-blue: #f0f8ff;
+      --text-dark: #003366;
+      --text-medium: #002244;
+      --success-green: #4CAF50;
+      --warning-orange: #ff9800;
+      --error-red: #f44336;
+      --border-light: #ddd;
+      --bg-light: #e9f1f7;
+      --shadow-light: rgba(0,0,0,0.1);
+      --shadow-medium: rgba(0,0,0,0.15);
+      --header-height: 60px;
+    }
+
+    /* === BASE STYLES === */
+    * { box-sizing: border-box; }
     html, body {
-      height: 100%;
+      height: 100vh;
+      height: 100dvh; /* Dynamic viewport height for mobile */
       margin: 0;
       padding: 0;
       font-family: Arial, sans-serif;
-      background: #e9f1f7;
-      color: #003366;
+      background: var(--bg-light);
+      color: var(--text-dark);
       overflow: hidden;
     }
 
-    /* Sticky Mini Header with Home Button */
+    /* === FIXED HEADER (Mobile Keyboard Safe) === */
     #mini-header {
-      position: sticky;
+      position: fixed;
       top: 0;
+      left: 0;
+      right: 0;
       z-index: 1000;
-      background: #0074d9;
-      padding: 0.5rem;
+      background: var(--primary-blue);
+      padding: 0.8rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      flex-shrink: 0;
+      height: var(--header-height);
+      box-shadow: 0 2px 8px var(--shadow-light);
     }
-    #mini-header a {
-      text-decoration: none;
-      display: inline-block;
-    }
+    #mini-header a { text-decoration: none; }
     #home-icon {
       width: 32px;
       height: 32px;
@@ -39,27 +58,35 @@
       border: 2px solid white;
     }
 
-    /* Header Actions */
+    /* === HEADER CONTROLS === */
     .header-actions {
       display: flex;
       gap: 0.5rem;
       align-items: center;
     }
-    .header-btn {
-      background: rgba(255,255,255,0.2);
-      border: 1px solid rgba(255,255,255,0.3);
-      color: white;
-      padding: 0.3rem 0.8rem;
+    .header-btn, .secondary-btn {
+      border: 1px solid var(--border-light);
       border-radius: 15px;
-      font-size: 0.8rem;
       cursor: pointer;
       transition: all 0.2s;
+      font-size: 0.8rem;
     }
-    .header-btn:hover {
-      background: rgba(255,255,255,0.3);
+    .header-btn {
+      background: rgba(255,255,255,0.2);
+      border-color: rgba(255,255,255,0.3);
+      color: white;
+      padding: 0.3rem 0.8rem;
     }
+    .header-btn:hover { background: rgba(255,255,255,0.3); }
+    .secondary-btn {
+      background: #f8f9fa;
+      color: #666;
+      padding: 0.4rem 1rem;
+      font-size: 0.9rem;
+    }
+    .secondary-btn:hover { background: #e9ecef; }
 
-    /* Status Indicator */
+    /* === STATUS INDICATOR === */
     .status-indicator {
       display: flex;
       align-items: center;
@@ -71,28 +98,23 @@
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: #4CAF50;
+      background: var(--success-green);
       animation: pulse 2s infinite;
     }
-    @keyframes pulse {
-      0% { opacity: 1; }
-      50% { opacity: 0.5; }
-      100% { opacity: 1; }
-    }
 
-    /* Main Container (Mini Header + Chat Area) */
+    /* === MAIN CHAT CONTAINER === */
     #chat-wrapper {
       display: flex;
       flex-direction: column;
-      height: 100%;
+      height: 100vh;
+      height: 100dvh;
+      padding-top: var(--header-height);
     }
-
-    /* Chat Container */
     #chat {
       flex: 1;
       background: white;
-      padding: 1rem 1.5rem 2.5rem 1.5rem;
-      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      padding: 1rem 1.5rem 0;
+      box-shadow: 0 0 15px var(--shadow-light);
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -105,6 +127,8 @@
       flex-direction: column;
       padding-bottom: 1rem;
     }
+
+    /* === MESSAGE STYLES === */
     .msg {
       margin: 0.5rem 0;
       user-select: text;
@@ -115,16 +139,29 @@
       color: #004080;
       margin-bottom: 0.2rem;
     }
-    .assistant {
-      background: #f0f8ff;
+    .assistant, .thinking-enhanced, .error-msg {
       padding: 0.6rem;
       border-radius: 6px;
       white-space: pre-wrap;
-      color: #002244;
       position: relative;
     }
+    .assistant {
+      background: var(--light-blue);
+      color: var(--text-medium);
+    }
+    .thinking-enhanced {
+      background: var(--light-blue);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .error-msg {
+      background: #ffe6e6;
+      border-left: 4px solid var(--error-red);
+      color: #cc0000;
+    }
 
-    /* Message Actions */
+    /* === MESSAGE ACTIONS === */
     .msg-actions {
       position: absolute;
       top: 0.3rem;
@@ -134,96 +171,68 @@
       display: flex;
       gap: 0.2rem;
     }
-    .assistant:hover .msg-actions {
-      opacity: 1;
+    .assistant:hover .msg-actions { opacity: 1; }
+    .msg-btn, .retry-btn {
+      border: 1px solid var(--border-light);
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 0.7rem;
     }
     .msg-btn {
       background: rgba(255,255,255,0.9);
-      border: 1px solid #ddd;
-      border-radius: 3px;
       padding: 0.2rem 0.4rem;
-      font-size: 0.7rem;
-      cursor: pointer;
       color: #666;
     }
     .msg-btn:hover {
       background: white;
       color: #333;
     }
-
-    /* Enhanced Loading States */
-    .thinking-enhanced {
-      background: #f0f8ff;
-      padding: 0.6rem;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
+    .retry-btn {
+      background: var(--error-red);
+      color: white;
+      border: none;
+      padding: 0.3rem 0.8rem;
+      margin-top: 0.5rem;
+      font-size: 0.8rem;
     }
+
+    /* === LOADING & TYPING STATES === */
     .thinking-spinner {
       width: 16px;
       height: 16px;
       border: 2px solid #e3e3e3;
-      border-top: 2px solid #0074d9;
+      border-top: 2px solid var(--primary-blue);
       border-radius: 50%;
       animation: spin 1s linear infinite;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
     }
     .thinking-text {
       color: #666;
       font-style: italic;
     }
-
-    /* Error States */
-    .error-msg {
-      background: #ffe6e6;
-      border-left: 4px solid #ff4444;
-      padding: 0.6rem;
-      border-radius: 6px;
-      color: #cc0000;
-    }
-    .retry-btn {
-      background: #ff4444;
-      color: white;
-      border: none;
-      padding: 0.3rem 0.8rem;
-      border-radius: 4px;
-      margin-top: 0.5rem;
-      cursor: pointer;
-      font-size: 0.8rem;
-    }
-
-    /* Typing indicator (three bouncing dots) */
     .typing {
-      background: #f0f8ff;
+      background: var(--light-blue);
       padding: 0.6rem;
       border-radius: 6px;
       display: inline-block;
     }
     .typing-dot {
       display: inline-block;
-      width: .4rem;
-      height: .4rem;
+      width: 0.4rem;
+      height: 0.4rem;
       margin: 0 2px;
       border-radius: 50%;
-      background: #0074d9;
+      background: var(--primary-blue);
       animation: blink 1.4s infinite both;
     }
-    .typing-dot:nth-child(2) { animation-delay: .2s; }
-    .typing-dot:nth-child(3) { animation-delay: .4s; }
-    @keyframes blink {
-      0%, 80%, 100% { opacity: 0; }
-      40%          { opacity: 1; }
-    }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
 
-    /* Input Area */
+    /* === INPUT AREA === */
     #input-area {
       background: white;
       padding: 1rem;
       box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+      border-top: 1px solid #eee;
     }
     textarea {
       width: 100%;
@@ -232,13 +241,12 @@
       border: 1px solid #ccc;
       font-size: 1rem;
       resize: none;
-      box-sizing: border-box;
       max-height: 150px;
       transition: border-color 0.2s;
     }
     textarea:focus {
       outline: none;
-      border-color: #0074d9;
+      border-color: var(--primary-blue);
     }
     .input-controls {
       display: flex;
@@ -253,7 +261,7 @@
     }
     button {
       padding: 0.5rem 1.5rem;
-      background: #0074d9;
+      background: var(--primary-blue);
       color: white;
       border: none;
       border-radius: 5px;
@@ -261,25 +269,13 @@
       font-size: 1rem;
       transition: all 0.2s;
     }
-    button:hover:not(:disabled) {
-      background: #005fa3;
-    }
+    button:hover:not(:disabled) { background: var(--primary-dark); }
     button:disabled {
       background: #ccc;
       cursor: not-allowed;
     }
-    .secondary-btn {
-      background: #f8f9fa;
-      color: #666;
-      border: 1px solid #ddd;
-      padding: 0.4rem 1rem;
-      font-size: 0.9rem;
-    }
-    .secondary-btn:hover {
-      background: #e9ecef;
-    }
 
-    /* Character Counter */
+    /* === CHARACTER COUNTER === */
     .char-counter {
       position: relative;
       width: 36px;
@@ -295,11 +291,9 @@
       fill: none;
       stroke-width: 3;
     }
-    .char-bg {
-      stroke: #ccc;
-    }
+    .char-bg { stroke: #ccc; }
     .char-progress {
-      stroke: #0074d9;
+      stroke: var(--primary-blue);
       transition: stroke-dashoffset 0.2s;
     }
     .char-count {
@@ -311,7 +305,7 @@
       color: #333;
     }
 
-    /* Toast Notifications */
+    /* === TOAST NOTIFICATIONS === */
     .toast {
       position: fixed;
       bottom: 20px;
@@ -324,50 +318,51 @@
       transition: transform 0.3s;
       z-index: 1001;
     }
-    .toast.show {
-      transform: translateX(0);
+    .toast.show { transform: translateX(0); }
+    .toast.success { background: var(--success-green); }
+    .toast.error { background: var(--error-red); }
+
+    /* === ANIMATIONS === */
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
     }
-    .toast.success {
-      background: #4CAF50;
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
-    .toast.error {
-      background: #f44336;
+    @keyframes blink {
+      0%, 80%, 100% { opacity: 0; }
+      40% { opacity: 1; }
     }
 
-    /* Responsive Adjustments */
+    /* === MOBILE OPTIMIZATIONS === */
     @media (max-width: 600px) {
-      #mini-header {
-        padding: 0.4rem;
-      }
-      .header-actions {
-        gap: 0.3rem;
-      }
-      .header-btn {
+      :root { --header-height: 50px; }
+      #mini-header { padding: 0.4rem; }
+      .header-actions { gap: 0.3rem; }
+      .header-btn { 
         padding: 0.2rem 0.6rem;
         font-size: 0.7rem;
       }
-      #chat {
-        padding: 0.8rem 1rem 2rem 1rem;
-      }
-      textarea {
-        font-size: 0.95rem;
-      }
-      button {
-        padding: 0.4rem 1rem;
-        font-size: 0.95rem;
-      }
+      #chat { padding: 0.8rem 1rem 0; }
+      textarea, button { font-size: 0.95rem; }
+      button { padding: 0.4rem 1rem; }
       .char-counter {
         width: 30px;
         height: 30px;
       }
-      .char-count {
-        font-size: 10px;
-      }
+      .char-count { font-size: 10px; }
       .msg-actions {
         position: static;
         opacity: 1;
         margin-top: 0.5rem;
         justify-content: flex-end;
+      }
+      /* Ensure keyboard doesn't break layout */
+      #chat-wrapper {
+        height: 100vh;
+        height: 100dvh;
       }
     }
   </style>
@@ -387,6 +382,7 @@
         <button class="header-btn" onclick="exportConversation()">Export</button>
       </div>
     </div>
+    
     <div id="chat">
       <div id="messages">
         <div class="msg assistant">
@@ -397,8 +393,9 @@
         </div>
         <div id="bottom-scroll-anchor"></div>
       </div>
+      
       <div id="input-area">
-        <textarea id="user_input" rows="3" placeholder="Enter your question..." maxlength="400"></textarea>
+        <textarea id="user_input" rows="3" placeholder="Enter your question..." maxlength="{{ max_input_length }}"></textarea>
         <div class="input-controls">
           <div class="input-left">
             <button class="secondary-btn" onclick="showStats()">Stats</button>
@@ -412,7 +409,7 @@
                 <circle class="char-bg" cx="18" cy="18" r="16"></circle>
                 <circle class="char-progress" id="progress-ring" cx="18" cy="18" r="16" stroke-dasharray="100" stroke-dashoffset="100"></circle>
               </svg>
-              <div class="char-count" id="char_count">400</div>
+              <div class="char-count" id="char_count">{{ max_input_length }}</div>
             </div>
             <button id="send-btn" onclick="sendMessage()">Send</button>
           </div>
@@ -422,66 +419,106 @@
   </div>
 
   <script>
-    // === CORE REFERENCES & MEMORY ===
-    const inputBox = document.getElementById("user_input");
-    const messagesDiv = document.getElementById("messages");
-    const charCount = document.getElementById("char_count");
-    const progressRing = document.getElementById("progress-ring");
-    const sendBtn = document.getElementById("send-btn");
-    const statusText = document.getElementById("status-text");
-    const typingIndicator = document.getElementById("typing-indicator");
+    // === CORE REFERENCES & STATE ===
+    const elements = {
+      input: document.getElementById("user_input"),
+      messages: document.getElementById("messages"),
+      charCount: document.getElementById("char_count"),
+      progressRing: document.getElementById("progress-ring"),
+      sendBtn: document.getElementById("send-btn"),
+      statusText: document.getElementById("status-text"),
+      typingIndicator: document.getElementById("typing-indicator")
+    };
 
-    let conversation = [
-      {
-        role: "assistant",
-        content: "Hello! I'm your Dehumidifier Assistant. Ask me anything about sizing or model selection."
-      }
-    ];
+    let conversation = [{
+      role: "assistant",
+      content: "Hello! I'm your Dehumidifier Assistant. Ask me anything about sizing or model selection."
+    }];
     let isProcessing = false;
 
     // === UTILITY FUNCTIONS ===
-    function showToast(message, type = 'info') {
-      const toast = document.createElement('div');
-      toast.className = `toast ${type}`;
-      toast.textContent = message;
-      document.body.appendChild(toast);
-      
-      setTimeout(() => toast.classList.add('show'), 100);
-      setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => document.body.removeChild(toast), 300);
-      }, 3000);
-    }
+    const utils = {
+      showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => toast.classList.add('show'), 100);
+        setTimeout(() => {
+          toast.classList.remove('show');
+          setTimeout(() => document.body.removeChild(toast), 300);
+        }, 3000);
+      },
 
-    function updateStatus(status, type = 'ready') {
-      statusText.textContent = status;
-      const dot = document.querySelector('.status-dot');
-      dot.style.background = type === 'processing' ? '#ff9800' : 
-                            type === 'error' ? '#f44336' : '#4CAF50';
-    }
+      updateStatus(status, type = 'ready') {
+        elements.statusText.textContent = status;
+        const dot = document.querySelector('.status-dot');
+        const colors = {
+          processing: '#ff9800',
+          error: '#f44336',
+          ready: '#4CAF50'
+        };
+        dot.style.background = colors[type] || colors.ready;
+      },
 
+      autoScroll() {
+        elements.messages.scrollTop = elements.messages.scrollHeight;
+      },
+
+      updateCharCounter() {
+        const max = {{ max_input_length }}, curr = elements.input.value.length;
+        elements.charCount.textContent = max - curr;
+        const pct = curr / max;
+        const circ = 2 * Math.PI * 16;
+        
+        elements.progressRing.setAttribute("stroke-dasharray", circ);
+        elements.progressRing.setAttribute("stroke-dashoffset", circ * (1 - pct));
+        
+        // Visual feedback for limits
+        const colors = curr > max * 0.9 ? '#ff9800' : 
+                      curr > max * 0.8 ? '#ffc107' : '#0074d9';
+        elements.progressRing.style.stroke = colors;
+      }
+    };
+
+    // === FEATURE FUNCTIONS ===
     function copyMessage(btn) {
       const messageText = btn.closest('.assistant').textContent.replace('Copy', '').trim();
       navigator.clipboard.writeText(messageText).then(() => {
-        showToast('Response copied to clipboard!', 'success');
+        utils.showToast('Response copied to clipboard!', 'success');
       }).catch(() => {
-        showToast('Failed to copy text', 'error');
+        utils.showToast('Failed to copy text', 'error');
       });
     }
 
-    function clearConversation() {
-      if (confirm('Clear conversation history?')) {
-        conversation = [conversation[0]]; // Keep welcome message
-        messagesDiv.innerHTML = `
-          <div class="msg assistant">
-            Hello! I'm your Dehumidifier Assistant. Ask me anything about sizing or model selection.
-            <div class="msg-actions">
-              <button class="msg-btn" onclick="copyMessage(this)">Copy</button>
-            </div>
-          </div>
-          <div id="bottom-scroll-anchor"></div>
-        `;
-        showToast('Conversation cleared', 'success');
+    async function clearConversation() {
+      if (confirm('Clear conversation history? This will reset the AI\'s memory.')) {
+        try {
+          // Clear server-side memory
+          const response = await fetch('/api/clear', { method: 'POST' });
+          const result = await response.json();
+          
+          if (response.ok) {
+            // Clear frontend display
+            conversation = [conversation[0]]; // Keep welcome message
+            elements.messages.innerHTML = `
+              <div class="msg assistant">
+                Hello! I'm your Dehumidifier Assistant. Ask me anything about sizing or model selection.
+                <div class="msg-actions">
+                  <button class="msg-btn" onclick="copyMessage(this)">Copy</button>
+                </div>
+              </div>
+              <div id="bottom-scroll-anchor"></div>
+            `;
+            utils.showToast('Conversation and memory cleared', 'success');
+          } else {
+            throw new Error(result.message || 'Failed to clear conversation');
+          }
+        } catch (error) {
+          console.error('Clear conversation error:', error);
+          utils.showToast('Failed to clear conversation memory', 'error');
+        }
       }
     }
 
@@ -497,87 +534,96 @@
       a.download = `dehumidifier-consultation-${new Date().toISOString().split('T')[0]}.txt`;
       a.click();
       URL.revokeObjectURL(url);
-      showToast('Conversation exported!', 'success');
+      utils.showToast('Conversation exported!', 'success');
     }
 
     async function showStats() {
       try {
         const response = await fetch('/api/stats');
         const stats = await response.json();
-        alert(`Usage Stats:\n\nDaily Questions: ${stats.daily_questions}\nQuestions Remaining: ${stats.questions_remaining}\nConversation Length: ${stats.conversation_length} messages\nDaily Tokens Used: ${stats.daily_tokens}`);
+        
+        const dailyUsed = stats.daily_message_count || 0;
+        const dailyLimit = stats.daily_limit || 20;
+        const remaining = Math.max(0, dailyLimit - dailyUsed);
+        const resetInfo = stats.last_message_date === new Date().toISOString().split('T')[0] 
+          ? 'Resets tomorrow' 
+          : 'Already reset today';
+        
+        const statsText = `📊 Usage Stats
+
+🗓️ Daily Messages:
+   Used: ${dailyUsed}/${dailyLimit}
+   Remaining: ${remaining}
+   ${resetInfo}
+
+💬 Current Session:
+   Messages: ${stats.conversation_length}
+   Session ID: ${stats.session_id?.substring(0, 8)}...
+
+⚙️ System:
+   Demo Mode: ${stats.demo_mode ? 'Yes' : 'No'}`;
+
+        alert(statsText);
       } catch (error) {
-        showToast('Failed to load stats', 'error');
+        console.error('Stats error:', error);
+        utils.showToast('Failed to load stats', 'error');
       }
     }
 
-    // === CHAR COUNTER & ENTER KEY ===
-    inputBox.addEventListener("input", () => {
-      const max = 400, curr = inputBox.value.length;
-      charCount.textContent = max - curr;
-      const pct = curr / max;
-      const circ = 2 * Math.PI * 16;
-      progressRing.setAttribute("stroke-dasharray", circ);
-      progressRing.setAttribute("stroke-dashoffset", circ * (1 - pct));
+    function retryLastMessage() {
+      const errorMsg = document.querySelector(".error-msg");
+      if (errorMsg) errorMsg.remove();
       
-      // Visual feedback for limits
-      if (curr > max * 0.9) {
-        progressRing.style.stroke = '#ff9800';
-      } else if (curr > max * 0.8) {
-        progressRing.style.stroke = '#ffc107';
-      } else {
-        progressRing.style.stroke = '#0074d9';
+      if (conversation.length > 1 && conversation[conversation.length - 1].role === "user") {
+        const lastUserMsg = conversation.pop();
+        elements.input.value = lastUserMsg.content;
+        utils.updateCharCounter();
+        
+        const userMsgs = document.querySelectorAll(".msg.user");
+        if (userMsgs.length > 0) {
+          userMsgs[userMsgs.length - 1].remove();
+        }
       }
-    });
-
-    inputBox.addEventListener("keydown", e => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
-    });
-
-    function autoScroll() {
-      messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
-    // === ENHANCED SEND MESSAGE ===
+    // === MAIN SEND MESSAGE FUNCTION ===
     async function sendMessage() {
       if (isProcessing) return;
       
-      const userInput = inputBox.value.trim();
+      const userInput = elements.input.value.trim();
       if (!userInput) return;
 
       isProcessing = true;
-      sendBtn.disabled = true;
-      sendBtn.textContent = "Sending...";
-      updateStatus("Processing...", "processing");
+      elements.sendBtn.disabled = true;
+      elements.sendBtn.textContent = "Sending...";
+      utils.updateStatus("Processing...", "processing");
 
       try {
-        // 1. Track & log
+        // Track conversation
         conversation.push({ role: "user", content: userInput });
 
-        // 2. Render user bubble
+        // Render user message
         const userMsg = document.createElement("div");
         userMsg.classList.add("msg", "user");
         userMsg.textContent = "You: " + userInput;
-        messagesDiv.appendChild(userMsg);
+        elements.messages.appendChild(userMsg);
 
-        // 3. Reset input & scroll
-        inputBox.value = "";
-        inputBox.dispatchEvent(new Event("input"));
-        autoScroll();
+        // Reset input
+        elements.input.value = "";
+        utils.updateCharCounter();
+        utils.autoScroll();
 
-        // 4. Enhanced thinking indicator
+        // Show thinking indicator
         const thinking = document.createElement("div");
         thinking.classList.add("msg", "thinking-enhanced");
         thinking.innerHTML = `
           <div class="thinking-spinner"></div>
           <div class="thinking-text">Analyzing your question...</div>
         `;
-        messagesDiv.appendChild(thinking);
-        autoScroll();
+        elements.messages.appendChild(thinking);
+        utils.autoScroll();
 
-        // 5. Call API
+        // API call
         const resp = await fetch("/api/assistant", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -591,44 +637,43 @@
           throw new Error(`${resp.status}: ${resp.statusText}`);
         }
 
-        // 6. Update thinking state
+        // Update thinking state
         thinking.querySelector('.thinking-text').textContent = 'Generating response...';
 
-        // 7. Stream the reply
+        // Stream response
         const reader = resp.body.getReader();
         const decoder = new TextDecoder();
         let result = "";
-        const el = document.createElement("div");
-        el.classList.add("msg", "assistant");
-        el.innerHTML = `<div class="msg-actions">
+        const responseEl = document.createElement("div");
+        responseEl.classList.add("msg", "assistant");
+        responseEl.innerHTML = `<div class="msg-actions">
           <button class="msg-btn" onclick="copyMessage(this)">Copy</button>
         </div>`;
-        thinking.replaceWith(el);
+        thinking.replaceWith(responseEl);
 
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
           result += decoder.decode(value, { stream: true });
-          el.innerHTML = result + "&#9608;" + `<div class="msg-actions">
+          responseEl.innerHTML = result + "&#9608;" + `<div class="msg-actions">
             <button class="msg-btn" onclick="copyMessage(this)">Copy</button>
           </div>`;
-          autoScroll();
+          utils.autoScroll();
         }
         
-        el.innerHTML = result + `<div class="msg-actions">
+        responseEl.innerHTML = result + `<div class="msg-actions">
           <button class="msg-btn" onclick="copyMessage(this)">Copy</button>
         </div>`;
-        autoScroll();
+        utils.autoScroll();
 
-        // 8. Update conversation
+        // Update conversation
         conversation.push({ role: "assistant", content: result });
-        showToast("Response received!", "success");
-        updateStatus("Ready", "ready");
+        utils.showToast("Response received!", "success");
+        utils.updateStatus("Ready", "ready");
 
       } catch (error) {
         console.error("Error:", error);
         
-        // Remove thinking indicator and show error
         const thinking = document.querySelector(".thinking-enhanced");
         if (thinking) {
           const errorMsg = document.createElement("div");
@@ -640,54 +685,82 @@
           thinking.replaceWith(errorMsg);
         }
         
-        showToast("Failed to get response", "error");
-        updateStatus("Error", "error");
+        utils.showToast("Failed to get response", "error");
+        utils.updateStatus("Error", "error");
       } finally {
         isProcessing = false;
-        sendBtn.disabled = false;
-        sendBtn.textContent = "Send";
+        elements.sendBtn.disabled = false;
+        elements.sendBtn.textContent = "Send";
       }
     }
 
-    function retryLastMessage() {
-      // Remove the error message and retry
-      const errorMsg = document.querySelector(".error-msg");
-      if (errorMsg) {
-        errorMsg.remove();
+    // === EVENT LISTENERS & INITIALIZATION ===
+    elements.input.addEventListener("input", utils.updateCharCounter);
+    elements.input.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
       }
-      
-      // Remove last user message from conversation and re-add to input
-      if (conversation.length > 1 && conversation[conversation.length - 1].role === "user") {
-        const lastUserMsg = conversation.pop();
-        inputBox.value = lastUserMsg.content;
-        inputBox.dispatchEvent(new Event("input"));
+    });
+
+    async function loadConversationHistory() {
+      try {
+        const response = await fetch('/api/history');
+        const data = await response.json();
         
-        // Remove last user message from display
-        const userMsgs = document.querySelectorAll(".msg.user");
-        if (userMsgs.length > 0) {
-          userMsgs[userMsgs.length - 1].remove();
+        if (data.history && data.history.length > 0) {
+          // Clear default welcome message
+          elements.messages.innerHTML = '';
+          
+          // Rebuild conversation from history
+          conversation = [{ role: "assistant", content: "Hello! I'm your Dehumidifier Assistant. Ask me anything about sizing or model selection." }];
+          
+          data.history.forEach(msg => {
+            conversation.push(msg);
+            
+            const msgEl = document.createElement("div");
+            msgEl.classList.add("msg", msg.role === "user" ? "user" : "assistant");
+            
+            if (msg.role === "user") {
+              msgEl.textContent = "You: " + msg.content;
+            } else {
+              msgEl.textContent = msg.content;
+              msgEl.innerHTML += `<div class="msg-actions">
+                <button class="msg-btn" onclick="copyMessage(this)">Copy</button>
+              </div>`;
+            }
+            
+            elements.messages.appendChild(msgEl);
+          });
+          
+          // Add scroll anchor
+          const anchor = document.createElement("div");
+          anchor.id = "bottom-scroll-anchor";
+          elements.messages.appendChild(anchor);
+          
+          utils.autoScroll();
+          utils.showToast(`Restored ${data.history.length} messages`, 'success');
         }
+      } catch (error) {
+        console.error('Failed to load conversation history:', error);
       }
     }
 
-    // === INITIALIZATION ===
-    document.addEventListener('DOMContentLoaded', () => {
-      inputBox.focus();
-      updateStatus("Ready", "ready");
+    document.addEventListener('DOMContentLoaded', async () => {
+      elements.input.focus();
+      utils.updateStatus("Loading...", "processing");
       
-      // Check initial status
+      // Load conversation history first
+      await loadConversationHistory();
+      
+      // Health check
       fetch('/api/health')
         .then(response => response.json())
         .then(data => {
-          if (data.status === 'healthy') {
-            updateStatus("Ready", "ready");
-          } else {
-            updateStatus("Service Issues", "error");
-          }
+          utils.updateStatus(data.status === 'healthy' ? "Ready" : "Service Issues", 
+                           data.status === 'healthy' ? "ready" : "error");
         })
-        .catch(() => {
-          updateStatus("Offline", "error");
-        });
+        .catch(() => utils.updateStatus("Offline", "error"));
     });
   </script>
 </body>

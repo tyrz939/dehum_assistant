@@ -1,143 +1,254 @@
-# Deployment Guide - Production-Ready Dehumidifier Assistant
+# Dehumidifier Assistant - Deployment Guide
 
-## 🏗️ **Architecture Overview**
+## 🚀 Quick Start
 
-We've transformed this from a cookie-based prototype to a **production-ready application**:
+### Prerequisites
+- Python 3.8+
+- Flask environment
+- WordPress site (for integration)
+- OpenAI API key (optional - has demo mode)
 
-```
-User Browser ↔ Flask App (Gunicorn) ↔ Redis (Sessions/Usage) ↔ OpenAI o3
-```
+### 1. Flask App Deployment
 
-## 🔧 **Key Improvements Made**
-
-### ✅ **Session Management Fixed**
-- **Before**: Dangerous cookie-based sessions (tamperable, size limits)
-- **After**: Redis-backed server-side sessions with secure cookies
-
-### ✅ **Cost Optimization Added**  
-- **Smart context trimming**: Reduces o3 token usage by 40-60%
-- **Relevance filtering**: Blocks off-topic questions before hitting API
-- **Token tracking**: Daily limits prevent runaway costs
-
-### ✅ **Security Hardened**
-- **Input validation**: Blocks injection attempts and validates content  
-- **Rate limiting**: 20 questions/day, token budgets
-- **Structured logging**: Track all requests and errors
-
-### ✅ **Production Ready**
-- **Gunicorn WSGI**: Proper production server (not Flask dev)
-- **Health checks**: `/api/health` and `/api/stats` endpoints
-- **Error handling**: Graceful failures with user-friendly messages
-
-## 🚀 **Render Deployment**
-
-### **1. Environment Variables**
-Set these in your Render dashboard:
+#### Local Development
 ```bash
-FLASK_SECRET_KEY=your-secret-key-here
-OPENAI_API_KEY=your-openai-api-key
-FLASK_ENV=production
-SESSION_COOKIE_SECURE=true  # Enable for HTTPS
+# Clone repository
+git clone <your-repo-url>
+cd dehum_assistant
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Set environment variables
+export OPENAI_API_KEY="your-openai-api-key"
+export SECRET_KEY="your-secret-key"
+
+# Run application
+python app.py
 ```
 
-### **2. Redis Setup**
-The `render.yaml` automatically provisions Redis:
-- **Free tier**: 25MB storage (sufficient for alpha)  
-- **Auto-configured**: `REDIS_URL` environment variable
-- **Session storage**: 7-day conversation history retention
+#### Production Deployment
 
-### **3. Deploy Commands**
+**Option A: Simple Server**
 ```bash
-git add .
-git commit -m "Production-ready architecture"
-git push origin main
+# Install dependencies
+pip install -r requirements.txt gunicorn
+
+# Create .env file
+echo "OPENAI_API_KEY=your-key-here" > .env
+echo "SECRET_KEY=your-secret-key-here" >> .env
+echo "FLASK_ENV=production" >> .env
+
+# Run with Gunicorn
+gunicorn -w 4 -b 0.0.0.0:5001 app:app
 ```
 
-Render will automatically:
-- Install dependencies from `requirements.txt`
-- Start with Gunicorn (not Flask dev server)
-- Connect Redis for session storage
+**Option B: Docker (if needed later)**
+```dockerfile
+FROM python:3.9-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+COPY . .
+EXPOSE 5001
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5001", "app:app"]
+```
 
-## 📊 **Cost Control Features**
+### 2. WordPress Integration
 
-### **Smart Context Management**
-- Keeps recent conversations + product-specific mentions
-- **Token savings**: ~40-60% reduction in API costs
-- **Quality maintained**: Still provides full product context
+#### Method 1: Add to Theme (Single Site)
+1. Copy content from `wordpress-integration.php`
+2. Paste at end of your theme's `functions.php`
+3. Update `DEFAULT_SERVER_URL` constant with your Flask app URL
 
-### **Daily Limits** 
-- **20 questions/day** per user session
-- **50,000 tokens/day** budget per session  
-- **Automatic reset** at midnight UTC
+#### Method 2: Create Plugin (Multiple Sites)
+1. Create directory: `wp-content/plugins/dehumidifier-chat/`
+2. Create file: `dehumidifier-chat.php` with plugin headers:
 
-### **Relevance Filtering**
-Blocks questions about:
-- Weather, cooking, jokes, general knowledge
-- **Only allows**: Dehumidifier sizing, models, humidity control
+```php
+<?php
+/**
+ * Plugin Name: Dehumidifier Chat Assistant
+ * Description: Integrates dehumidifier sizing chat assistant
+ * Version: 1.0.0
+ * Author: Your Name
+ */
 
-## 🔍 **Monitoring & Debugging**
+// Prevent direct access
+if (!defined('ABSPATH')) exit;
 
-### **Health Check**
+// Include the integration code
+include_once plugin_dir_path(__FILE__) . 'wordpress-integration.php';
+```
+
+3. Copy `wordpress-integration.php` to the plugin directory
+4. Activate plugin in WordPress admin
+
+## ⚙️ Configuration
+
+### Flask App Environment Variables
 ```bash
-curl https://your-app.onrender.com/api/health
-# Returns: {"status": "healthy", "redis": "connected"}
+OPENAI_API_KEY=sk-...           # OpenAI API key (optional - demo mode if missing)
+SECRET_KEY=your-secret-key      # Flask session secret
+FLASK_ENV=production           # Set to production for deployment
+PORT=5001                      # Port to run on (default: 5001)
 ```
 
-### **Usage Stats**
-```bash
-curl https://your-app.onrender.com/api/stats  
-# Returns: daily usage, remaining questions, session info
+### WordPress Settings
+After installation, go to **Settings > Dehumidifier Chat** in WordPress admin:
+
+- **Enable/Disable**: Toggle chat widget
+- **Server URL**: Your Flask app URL (e.g., `https://your-domain.com:5001`)
+- **Title/Subtitle**: Customize button text
+- **Page Targeting**: Control where chat appears
+
+## 🔧 Customization
+
+### Page Targeting
+Edit the `should_show_chat()` method in `wordpress-integration.php`:
+
+```php
+private function should_show_chat() {
+    // Show on specific pages
+    if (is_page(['contact', 'hvac', 'dehumidifiers'])) return true;
+    
+    // Show on posts with specific tags
+    if (is_single() && has_tag(['humidity', 'mold'])) return true;
+    
+    // Show on category pages
+    if (is_category(['home-improvement'])) return true;
+    
+    return false;
+}
 ```
 
-### **Structured Logs**
-All requests logged in JSON format:
-- Session IDs, question processing time
-- Token usage, optimization results  
-- Error details with context
+### Styling
+Modify the `get_chat_styles()` method:
 
-## 💰 **Expected Costs (Alpha Stage)**
+```php
+private function get_chat_styles() {
+    return "
+    #dehum-chat-button {
+        background: linear-gradient(135deg, #your-color, #your-color-dark);
+        bottom: 30px;  /* Adjust position */
+        right: 30px;
+    }
+    ";
+}
+```
 
-### **OpenAI o3 Usage**
-- **Optimized context**: ~2,000-5,000 tokens per question
-- **Cost per question**: $0.03-$0.12 USD
-- **Daily cost (20 questions)**: $0.60-$2.40 USD
+### Analytics
+The integration automatically tracks:
+- Google Analytics events (if gtag is available)
+- WordPress action hooks for custom analytics
+- Server-side logging in Flask app
 
-### **Render Infrastructure**  
-- **Web service**: Free tier (sufficient for alpha)
-- **Redis**: Free tier (25MB)
-- **Total**: $0/month for infrastructure
+## 🛡️ Security
 
-## 🎯 **Next Phase Improvements**
+### Flask App
+- Session-based conversation memory
+- Input validation and sanitization
+- Rate limiting (400 char limit, 20 message max)
+- CORS configuration for WordPress domains
 
-When you're ready to scale beyond alpha:
+### WordPress Integration
+- Nonce verification for AJAX requests
+- Input sanitization with WordPress functions
+- Capability checks for admin functions
+- Escaped output for XSS prevention
 
-1. **Conversation Caching**: Store common Q&A pairs
-2. **Model Optimization**: Fine-tune prompts for shorter responses  
-3. **User Authentication**: Simple email/password for better tracking
-4. **Analytics Dashboard**: Usage patterns, popular questions
-5. **A/B Testing**: Compare different prompt strategies
+## 📊 Monitoring
 
-## 🚨 **Security Notes**
+### Flask App Logs
+- Conversation logs: `conversation_logs/`
+- Application logs: Console output
+- Health check: `GET /api/health`
 
-- **HTTPS Required**: Set `SESSION_COOKIE_SECURE=true` in production
-- **Rate Limiting**: Currently session-based, add IP-based for extra protection
-- **API Key Security**: Store in Render environment variables, never commit to git
-- **Input Validation**: Already implemented, blocks malicious content
+### WordPress Analytics
+- Admin page shows connection status
+- Error logging to WordPress error log
+- Custom action hooks for tracking
 
-## 📈 **Scaling Considerations**
+## 🚨 Troubleshooting
 
-Current architecture supports:
-- **~100 concurrent users** (Render starter plan)
-- **~2,000 questions/day** (with current rate limits)
-- **Redis memory**: ~1,000 active sessions
+### Common Issues
 
-For higher scale, consider:
-- Render Professional plan
-- Redis upgrade
-- CDN for static assets
+**Chat button not appearing:**
+- Check `should_show_chat()` logic
+- Verify WordPress admin settings
+- Check browser console for JavaScript errors
+
+**Connection failed:**
+- Verify Flask app is running
+- Check CORS configuration
+- Confirm server URL in WordPress settings
+
+**Demo mode active:**
+- Set `OPENAI_API_KEY` environment variable
+- Restart Flask application
+- Check `/api/health` endpoint
+
+**Mobile issues:**
+- Test responsive CSS breakpoints
+- Check viewport meta tag on WordPress site
+- Verify iframe sizing on small screens
+
+### Debug Mode
+Enable debug logging in Flask:
+```python
+import logging
+logging.basicConfig(level=logging.DEBUG)
+```
+
+## 📁 File Structure
+
+```
+dehum_assistant/
+├── app.py                      # Main Flask application
+├── requirements.txt            # Python dependencies
+├── prompt_template.txt         # AI system prompt
+├── wordpress-integration.php   # WordPress integration code
+├── templates/
+│   ├── index.html             # Main chat interface
+│   └── popup.html             # WordPress popup version
+├── conversation_logs/         # Chat logs (auto-created)
+├── flask_sessions/           # Session storage (auto-created)
+└── DEPLOYMENT.md             # This file
+```
+
+## 🔄 Updates
+
+### Updating Flask App
+1. Pull latest code
+2. Install new dependencies: `pip install -r requirements.txt`
+3. Restart application
+
+### Updating WordPress Integration
+1. Update `wordpress-integration.php`
+2. Clear any WordPress caches
+3. Test functionality
+
+## 📞 Support
+
+### Health Checks
+- Flask: `http://your-domain:5001/api/health`
+- WordPress: Settings > Dehumidifier Chat (connection status)
+
+### Logs
+- Flask: `conversation_logs/` directory
+- WordPress: WordPress error logs
+- Browser: Developer console
 
 ---
 
-**Status**: ✅ **Ready for production deployment**
+## 🎯 Production Checklist
 
-This architecture is solid for alpha/beta testing with real users. The cost controls and security measures will protect against abuse while providing a professional user experience. 
+- [ ] Set strong `SECRET_KEY`
+- [ ] Configure `OPENAI_API_KEY` (or use demo mode)
+- [ ] Update CORS origins in Flask app
+- [ ] Set correct server URL in WordPress
+- [ ] Test on mobile devices
+- [ ] Verify analytics tracking
+- [ ] Check security headers
+- [ ] Monitor error logs
+- [ ] Set up backup strategy 

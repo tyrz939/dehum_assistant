@@ -1,9 +1,0 @@
-1. “I’ve got a 7 m × 4 m swim-spa (water temp 34 °C) inside a 12 m × 10 m room with a 3.2 m ceiling—what single ducted or wall units will cover the extra heat load?”
-2. “My basement is L-shaped: 5 m × 8 m plus a 3 m × 6 m alcove, both 2.4 m high—can one portable handle it or do I need a wall-mount?”
-3. “Indoor pool is 9 m long, 4 m wide (≈36 m² water at 27 °C) but the room has a raised central ceiling—2.4 m on the sides, 4 m in the middle; what’s the safest inverter option?”
-4. “Two adjoining studios, each 30 m² with a large archway between them, share one heated spa (10 m², water 32 °C); what combo keeps RH under 55 % without oversizing?”
-5. “Warehouse mezzanine (180 m², 5 m high) plus ground floor (180 m², 3 m high) open to each other—how many units and which family balances noise and coverage?”
-6. “I’m drying flood-soaked gyprock in a 60 m² room that’s currently 35 °C / 85 % RH—would an ST1001 PRO alone be enough?”
-7. “Hydrotherapy room, 15 m² pool surface at 33.5 °C, air kept around 26 °C, needs some fresh air—wall vs ducted recommendation?”
-8. “Tiny wine cellar 3 m × 4 m but kept at 12 °C—do any inverter wall units work that cold or must I duct something?”
-10. “I need 45 % RH in a 20 m² server room that runs 24/7; power is limited to a regular 10 A outlet—cheapest compliant model?”
