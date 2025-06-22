@@ -300,6 +300,28 @@
     }];
     let isProcessing = false;
 
+    // Load/save conversation from localStorage
+    function loadConversation() {
+      try {
+        const saved = localStorage.getItem('dehum_conversation');
+        if (saved) {
+          conversation = JSON.parse(saved);
+          return true;
+        }
+      } catch (e) {
+        console.warn('Failed to load conversation:', e);
+      }
+      return false;
+    }
+
+    function saveConversation() {
+      try {
+        localStorage.setItem('dehum_conversation', JSON.stringify(conversation));
+      } catch (e) {
+        console.warn('Failed to save conversation:', e);
+      }
+    }
+
     const elements = {
       input: document.getElementById("user_input"),
       messages: document.getElementById("messages"),
@@ -322,6 +344,30 @@
       }
     });
 
+    // Load conversation on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      if (loadConversation() && conversation.length > 1) {
+        // Rebuild display from localStorage
+        elements.messages.innerHTML = `
+          {% if demo_mode %}
+          <div class="wp-integration-info">
+            💡 <strong>Demo Mode:</strong> This is a demonstration. Set your OpenAI API key for full AI responses.
+          </div>
+          {% endif %}
+        `;
+        
+        conversation.forEach(msg => {
+          const msgEl = document.createElement("div");
+          msgEl.classList.add("msg", msg.role === "user" ? "user" : "assistant");
+          msgEl.textContent = msg.role === "user" ? "You: " + msg.content : msg.content;
+          elements.messages.appendChild(msgEl);
+        });
+        
+        autoScroll();
+        notifyParent('conversation_restored', { messageCount: conversation.length - 1 });
+      }
+    });
+
     function autoScroll() {
       elements.messages.scrollTop = elements.messages.scrollHeight;
     }
@@ -336,6 +382,7 @@
           if (response.ok) {
             // Clear frontend display
             conversation = [conversation[0]];
+            saveConversation(); // Save cleared state
             elements.messages.innerHTML = `
               {% if demo_mode %}
               <div class="wp-integration-info">
@@ -408,9 +455,7 @@ Try asking: "What size dehumidifier for a 40m² garage?"`;
       elements.sendBtn.textContent = "Sending...";
 
       try {
-        // Add user message
-        conversation.push({ role: "user", content: userInput });
-        
+        // Add user message to display immediately
         const userMsg = document.createElement("div");
         userMsg.classList.add("msg", "user");
         userMsg.textContent = "You: " + userInput;
@@ -437,16 +482,20 @@ Try asking: "What size dehumidifier for a 40m² garage?"`;
           conversation_length: conversation.length 
         });
 
-        // API call
+        // API call (send existing conversation history)
         const resp = await fetch("/api/assistant", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ input: userInput })
+          body: JSON.stringify({ 
+            input: userInput,
+            history: conversation.slice(1) // Send existing history without welcome message
+          })
         });
 
         if (!resp.ok) throw new Error(`${resp.status}: ${resp.statusText}`);
 
-        const result = await resp.text();
+        const data = await resp.json();
+        const result = data.response;
         
         const responseEl = document.createElement("div");
         responseEl.classList.add("msg", "assistant");
@@ -454,7 +503,9 @@ Try asking: "What size dehumidifier for a 40m² garage?"`;
         thinking.replaceWith(responseEl);
         autoScroll();
 
-        conversation.push({ role: "assistant", content: result });
+        // Update conversation with server's complete history (includes our message + response)
+        conversation = [conversation[0], ...data.history]; // Keep welcome message + server history
+        saveConversation(); // Save to localStorage
 
         // Notify parent of response received
         notifyParent('response_received', { 

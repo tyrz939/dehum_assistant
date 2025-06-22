@@ -436,6 +436,29 @@
     }];
     let isProcessing = false;
 
+    // Load conversation from localStorage
+    function loadConversation() {
+      try {
+        const saved = localStorage.getItem('dehum_conversation');
+        if (saved) {
+          conversation = JSON.parse(saved);
+          return true;
+        }
+      } catch (e) {
+        console.warn('Failed to load conversation from localStorage:', e);
+      }
+      return false;
+    }
+
+    // Save conversation to localStorage
+    function saveConversation() {
+      try {
+        localStorage.setItem('dehum_conversation', JSON.stringify(conversation));
+      } catch (e) {
+        console.warn('Failed to save conversation to localStorage:', e);
+      }
+    }
+
     // === UTILITY FUNCTIONS ===
     const utils = {
       showToast(message, type = 'info') {
@@ -502,6 +525,7 @@
           if (response.ok) {
             // Clear frontend display
             conversation = [conversation[0]]; // Keep welcome message
+            saveConversation(); // Save cleared state
             elements.messages.innerHTML = `
               <div class="msg assistant">
                 Hello! I'm your Dehumidifier Assistant. Ask me anything about sizing or model selection.
@@ -549,6 +573,9 @@
           ? 'Resets tomorrow' 
           : 'Already reset today';
         
+        // Get current conversation length from localStorage
+        const currentConversationLength = conversation.length - 1; // Exclude welcome message
+        
         const statsText = `📊 Usage Stats
 
 🗓️ Daily Messages:
@@ -557,11 +584,12 @@
    ${resetInfo}
 
 💬 Current Session:
-   Messages: ${stats.conversation_length}
+   Messages: ${currentConversationLength}
    Session ID: ${stats.session_id?.substring(0, 8)}...
 
 ⚙️ System:
-   Demo Mode: ${stats.demo_mode ? 'Yes' : 'No'}`;
+   Demo Mode: ${stats.demo_mode ? 'Yes' : 'No'}
+   Storage: Client-side (localStorage)`;
 
         alert(statsText);
       } catch (error) {
@@ -599,10 +627,7 @@
       utils.updateStatus("Processing...", "processing");
 
       try {
-        // Track conversation
-        conversation.push({ role: "user", content: userInput });
-
-        // Render user message
+        // Render user message immediately
         const userMsg = document.createElement("div");
         userMsg.classList.add("msg", "user");
         userMsg.textContent = "You: " + userInput;
@@ -623,13 +648,13 @@
         elements.messages.appendChild(thinking);
         utils.autoScroll();
 
-        // API call
+        // API call (send current conversation without the new user input)
         const resp = await fetch("/api/assistant", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             input: userInput,
-            history: conversation
+            history: conversation.slice(1) // Send existing history without welcome message
           })
         });
 
@@ -640,34 +665,21 @@
         // Update thinking state
         thinking.querySelector('.thinking-text').textContent = 'Generating response...';
 
-        // Stream response
-        const reader = resp.body.getReader();
-        const decoder = new TextDecoder();
-        let result = "";
+        // Get JSON response
+        const data = await resp.json();
+        const result = data.response;
+        
         const responseEl = document.createElement("div");
         responseEl.classList.add("msg", "assistant");
-        responseEl.innerHTML = `<div class="msg-actions">
-          <button class="msg-btn" onclick="copyMessage(this)">Copy</button>
-        </div>`;
-        thinking.replaceWith(responseEl);
-
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          result += decoder.decode(value, { stream: true });
-          responseEl.innerHTML = result + "&#9608;" + `<div class="msg-actions">
-            <button class="msg-btn" onclick="copyMessage(this)">Copy</button>
-          </div>`;
-          utils.autoScroll();
-        }
-        
         responseEl.innerHTML = result + `<div class="msg-actions">
           <button class="msg-btn" onclick="copyMessage(this)">Copy</button>
         </div>`;
+        thinking.replaceWith(responseEl);
         utils.autoScroll();
 
-        // Update conversation
-        conversation.push({ role: "assistant", content: result });
+        // Update conversation with server's complete history (includes our message + response)
+        conversation = [conversation[0], ...data.history]; // Keep welcome message + server history
+        saveConversation(); // Save to localStorage
         utils.showToast("Response received!", "success");
         utils.updateStatus("Ready", "ready");
 
@@ -703,55 +715,43 @@
       }
     });
 
-    async function loadConversationHistory() {
-      try {
-        const response = await fetch('/api/history');
-        const data = await response.json();
+    function displayConversation() {
+      // Clear messages
+      elements.messages.innerHTML = '';
+      
+      // Display all messages from conversation array
+      conversation.forEach(msg => {
+        const msgEl = document.createElement("div");
+        msgEl.classList.add("msg", msg.role === "user" ? "user" : "assistant");
         
-        if (data.history && data.history.length > 0) {
-          // Clear default welcome message
-          elements.messages.innerHTML = '';
-          
-          // Rebuild conversation from history
-          conversation = [{ role: "assistant", content: "Hello! I'm your Dehumidifier Assistant. Ask me anything about sizing or model selection." }];
-          
-          data.history.forEach(msg => {
-            conversation.push(msg);
-            
-            const msgEl = document.createElement("div");
-            msgEl.classList.add("msg", msg.role === "user" ? "user" : "assistant");
-            
-            if (msg.role === "user") {
-              msgEl.textContent = "You: " + msg.content;
-            } else {
-              msgEl.textContent = msg.content;
-              msgEl.innerHTML += `<div class="msg-actions">
-                <button class="msg-btn" onclick="copyMessage(this)">Copy</button>
-              </div>`;
-            }
-            
-            elements.messages.appendChild(msgEl);
-          });
-          
-          // Add scroll anchor
-          const anchor = document.createElement("div");
-          anchor.id = "bottom-scroll-anchor";
-          elements.messages.appendChild(anchor);
-          
-          utils.autoScroll();
-          utils.showToast(`Restored ${data.history.length} messages`, 'success');
+        if (msg.role === "user") {
+          msgEl.textContent = "You: " + msg.content;
+        } else {
+          msgEl.innerHTML = msg.content + `<div class="msg-actions">
+            <button class="msg-btn" onclick="copyMessage(this)">Copy</button>
+          </div>`;
         }
-      } catch (error) {
-        console.error('Failed to load conversation history:', error);
-      }
+        
+        elements.messages.appendChild(msgEl);
+      });
+      
+      // Add scroll anchor
+      const anchor = document.createElement("div");
+      anchor.id = "bottom-scroll-anchor";
+      elements.messages.appendChild(anchor);
+      
+      utils.autoScroll();
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
       elements.input.focus();
       utils.updateStatus("Loading...", "processing");
       
-      // Load conversation history first
-      await loadConversationHistory();
+      // Load conversation from localStorage
+      if (loadConversation() && conversation.length > 1) {
+        displayConversation();
+        utils.showToast(`Restored ${conversation.length - 1} messages`, 'success');
+      }
       
       // Health check
       fetch('/api/health')

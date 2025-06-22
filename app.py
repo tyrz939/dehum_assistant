@@ -38,8 +38,9 @@ app.config['SESSION_PERMANENT'] = False
 if CORS_AVAILABLE:
     CORS(app, origins=[
         'http://localhost:3000',  # Development
-        'https://your-wordpress-site.com',  # Replace with actual WordPress domain
-        'https://www.your-wordpress-site.com'  # Replace with actual WordPress domain
+        'https://dehumsaust.com.au',  # Replace with actual WordPress domain
+        'https://www.dehumsaust.com.au',  # Replace with actual WordPress domain
+        '*'  # Allow all origins for now - restrict later for security
     ])
 else:
     # Manual CORS headers for basic support
@@ -172,7 +173,6 @@ def get_session_id():
     """Get or create session ID"""
     if 'session_id' not in session:
         session['session_id'] = str(uuid.uuid4())
-        session['conversation_history'] = []
         session['daily_message_count'] = 0
         session['last_message_date'] = datetime.now().strftime('%Y-%m-%d')
         logger.info(f"New session created: {session['session_id']}")
@@ -239,8 +239,8 @@ def assistant():
         if not can_send:
             return Response(f"Daily message limit reached ({MAX_CONVERSATION_LENGTH} messages). Limit resets tomorrow.", status=429)
         
-        # Get conversation history
-        history = session.get('conversation_history', [])
+        # Get conversation history from request (client-side storage)
+        history = data.get('history', [])
         
         # Build messages for API
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
@@ -250,18 +250,20 @@ def assistant():
         # Get response
         assistant_response = call_openai_api(messages)
         
-        # Update conversation history
+        # Return updated conversation history (client will store it)
         history.extend([
             {"role": "user", "content": user_input},
             {"role": "assistant", "content": assistant_response}
         ])
-        session['conversation_history'] = history
         
         # Log conversation
         log_conversation(session_id, user_input, assistant_response)
         
         logger.info(f"Processed message for session {session_id}")
-        return Response(assistant_response, mimetype="text/plain")
+        return {
+            'response': assistant_response,
+            'history': history
+        }
         
     except Exception as e:
         logger.error(f"Error processing request: {str(e)}")
@@ -283,13 +285,12 @@ def stats():
         return {'error': 'Not available in production'}, 404
     
     session_id = get_session_id()
-    history = session.get('conversation_history', [])
     daily_count = session.get('daily_message_count', 0)
     last_date = session.get('last_message_date', 'N/A')
     
     return {
         'session_id': session_id,
-        'conversation_length': len(history),
+        'conversation_length': 'Stored client-side',
         'daily_message_count': daily_count,
         'daily_limit': MAX_CONVERSATION_LENGTH,
         'last_message_date': last_date,
@@ -300,28 +301,27 @@ def stats():
 def clear_conversation():
     """Clear conversation history (but keep daily message count)"""
     session_id = get_session_id()
-    session['conversation_history'] = []
     daily_count = session.get('daily_message_count', 0)
     logger.info(f"Conversation cleared for session {session_id} (daily count: {daily_count})")
     
     return {
         'status': 'cleared',
         'session_id': session_id,
-        'message': 'Conversation history cleared',
+        'message': 'Conversation history cleared (client-side)',
         'daily_message_count': daily_count,
         'note': 'Daily message limit not reset'
     }
 
 @app.route('/api/history')
 def get_history():
-    """Get conversation history for current session"""
+    """Legacy endpoint - history now stored client-side"""
     session_id = get_session_id()
-    history = session.get('conversation_history', [])
     
     return {
         'session_id': session_id,
-        'history': history,
-        'length': len(history)
+        'history': [],
+        'length': 0,
+        'note': 'History stored client-side in localStorage'
     }
 
 if __name__ == '__main__':
