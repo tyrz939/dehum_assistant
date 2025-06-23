@@ -298,6 +298,34 @@
       font-size: 15px; /* Increased from 12px */
       color: #004080;
     }
+
+    /* === ERROR MESSAGES & RETRY === */
+    .error-msg {
+      background: #fff5f5;
+      border: 1px solid #fed7d7;
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 0.5rem 0;
+      color: #742a2a;
+    }
+    .retry-btn {
+      background: var(--primary-blue);
+      color: white;
+      border: none;
+      padding: 0.4rem 0.8rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+      transition: background 0.2s;
+    }
+    .retry-btn:hover {
+      background: var(--primary-dark);
+    }
+    .retry-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -486,6 +514,105 @@ Try asking: "What size dehumidifier for a 40m² garage?"`;
       }
     }
 
+    let lastFailedMessage = null;
+    let retryCount = 0;
+
+    async function retryMessage(userInput, currentRetryCount = 0) {
+      if (isProcessing) return;
+      
+      isProcessing = true;
+      elements.sendBtn.disabled = true;
+      elements.sendBtn.textContent = "Retrying...";
+
+      // Remove any existing error messages
+      const errorMsg = document.querySelector(".error-msg");
+      if (errorMsg) errorMsg.remove();
+
+      try {
+        // Show enhanced thinking indicator for retries
+        const thinking = document.createElement("div");
+        thinking.classList.add("msg", "thinking-enhanced");
+        const retryText = currentRetryCount > 0 ? `Retry attempt ${currentRetryCount + 1}...` : 'Retrying...';
+        thinking.innerHTML = `
+          <div class="thinking-spinner"></div>
+          <div class="thinking-text">${retryText}</div>
+        `;
+        elements.messages.appendChild(thinking);
+        autoScroll();
+
+        // API call to retry endpoint
+        const resp = await fetch("/api/retry", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            input: userInput,
+            history: conversation.slice(1),
+            retry_count: currentRetryCount
+          })
+        });
+
+        const data = await resp.json();
+
+        if (!resp.ok || !data.success) {
+          throw new Error(data.message || `${resp.status}: ${resp.statusText}`);
+        }
+
+        // Success - display response
+        const responseEl = document.createElement("div");
+        responseEl.classList.add("msg", "assistant");
+        const retryBadge = data.retry_count > 1 ? `[Retry ${data.retry_count}] ` : '';
+        responseEl.textContent = retryBadge + data.response;
+        thinking.replaceWith(responseEl);
+        autoScroll();
+
+        // Update conversation
+        conversation = [conversation[0], ...data.history];
+        saveConversation();
+        
+        // Clear retry state
+        lastFailedMessage = null;
+        retryCount = 0;
+        
+        notifyParent('response_received', { 
+          response_length: data.response.length,
+          conversation_length: conversation.length,
+          retry_count: data.retry_count || 1
+        });
+
+      } catch (error) {
+        console.error("Retry error:", error);
+        
+        const thinking = document.querySelector(".thinking-enhanced");
+        if (thinking) {
+          const errorMsg = document.createElement("div");
+          errorMsg.classList.add("msg", "error-msg");
+          
+          let errorIcon = "❌";
+          let showRetryBtn = currentRetryCount < 3;
+          
+          if (error.message.includes("quota")) errorIcon = "💳", showRetryBtn = false;
+          else if (error.message.includes("timeout")) errorIcon = "🔌";
+          else if (error.message.includes("server")) errorIcon = "🔧";
+          
+          const retryButton = showRetryBtn 
+            ? `<button class="retry-btn" onclick="retryMessage('${userInput.replace(/'/g, "\\'")}', ${currentRetryCount + 1})">Retry (${currentRetryCount + 1}/3)</button>`
+            : '';
+          
+          errorMsg.innerHTML = `<strong>${errorIcon} Error:</strong> ${error.message}<br>${retryButton}`;
+          thinking.replaceWith(errorMsg);
+        }
+        
+        lastFailedMessage = userInput;
+        retryCount = currentRetryCount + 1;
+        
+        notifyParent('error_occurred', { error: error.message, retry_count: currentRetryCount + 1 });
+      } finally {
+        isProcessing = false;
+        elements.sendBtn.disabled = false;
+        elements.sendBtn.textContent = "Send";
+      }
+    }
+
     async function sendMessage() {
       if (isProcessing) return;
       
@@ -524,19 +651,22 @@ Try asking: "What size dehumidifier for a 40m² garage?"`;
           conversation_length: conversation.length 
         });
 
-        // API call (send existing conversation history)
+        // API call
         const resp = await fetch("/api/assistant", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
             input: userInput,
-            history: conversation.slice(1) // Send existing history without welcome message
+            history: conversation.slice(1)
           })
         });
 
-        if (!resp.ok) throw new Error(`${resp.status}: ${resp.statusText}`);
-
         const data = await resp.json();
+
+        if (!resp.ok || !data.success) {
+          throw new Error(data.message || `${resp.status}: ${resp.statusText}`);
+        }
+
         const result = data.response;
         
         const responseEl = document.createElement("div");
@@ -545,9 +675,13 @@ Try asking: "What size dehumidifier for a 40m² garage?"`;
         thinking.replaceWith(responseEl);
         autoScroll();
 
-        // Update conversation with server's complete history (includes our message + response)
-        conversation = [conversation[0], ...data.history]; // Keep welcome message + server history
-        saveConversation(); // Save to localStorage
+        // Update conversation
+        conversation = [conversation[0], ...data.history];
+        saveConversation();
+        
+        // Clear retry state on success
+        lastFailedMessage = null;
+        retryCount = 0;
 
         // Notify parent of response received
         notifyParent('response_received', { 
@@ -559,8 +693,27 @@ Try asking: "What size dehumidifier for a 40m² garage?"`;
         console.error("Error:", error);
         const thinking = document.querySelector(".thinking-enhanced");
         if (thinking) {
-          thinking.innerHTML = `<div class="error-msg">Error: ${error.message}</div>`;
+          const errorMsg = document.createElement("div");
+          errorMsg.classList.add("msg", "error-msg");
+          
+          let errorIcon = "❌";
+          let showRetryBtn = true;
+          
+          if (error.message.includes("quota")) errorIcon = "💳", showRetryBtn = false;
+          else if (error.message.includes("timeout")) errorIcon = "🔌";
+          else if (error.message.includes("server")) errorIcon = "🔧";
+          
+          const retryButton = showRetryBtn 
+            ? `<button class="retry-btn" onclick="retryMessage('${userInput.replace(/'/g, "\\'")}', 0)">Retry</button>`
+            : '';
+          
+          errorMsg.innerHTML = `<strong>${errorIcon} Error:</strong> ${error.message}<br>${retryButton}`;
+          thinking.replaceWith(errorMsg);
         }
+        
+        // Store failed message for retry
+        lastFailedMessage = userInput;
+        retryCount = 0;
         
         notifyParent('error_occurred', { error: error.message });
       } finally {

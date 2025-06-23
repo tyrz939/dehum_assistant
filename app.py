@@ -6,6 +6,7 @@ A conversational assistant for dehumidifier sizing and selection.
 import os
 import uuid
 import json
+import re
 import logging
 from datetime import datetime
 from dotenv import load_dotenv
@@ -63,39 +64,88 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Load system prompt
-SYSTEM_PROMPT = """You are a knowledgeable dehumidifier sizing and selection assistant. Help users choose the right dehumidifier for their specific needs by asking about:
+# Load product catalog and system prompt
+PRODUCT_CATALOG = {}
+SYSTEM_PROMPT = ""
+
+def load_product_catalog():
+    """Load product catalog from JSON file"""
+    global PRODUCT_CATALOG
+    try:
+        with open("product_db.json", "r", encoding="utf-8") as f:
+            PRODUCT_CATALOG = json.load(f)
+        logger.info(f"Loaded product catalog v{PRODUCT_CATALOG.get('catalog_version', 'unknown')}")
+        return True
+    except FileNotFoundError:
+        logger.error("product_db.json not found - using empty catalog")
+        PRODUCT_CATALOG = {"catalog_version": "none", "products": [], "sizing_rules": {}}
+        return False
+    except json.JSONDecodeError as e:
+        logger.error(f"Invalid JSON in product_db.json: {e}")
+        PRODUCT_CATALOG = {"catalog_version": "error", "products": [], "sizing_rules": {}}
+        return False
+
+def load_system_prompt():
+    """Load system prompt with product catalog injection"""
+    global SYSTEM_PROMPT
+    
+    # Try new modular prompt first
+    try:
+        with open("prompt_template_new.txt", "r", encoding="utf-8") as f:
+            prompt_template = f.read()
+        logger.info("Loaded new modular system prompt")
+    except FileNotFoundError:
+        # Fallback to original prompt
+        try:
+            with open("prompt_template.txt", "r", encoding="utf-8") as f:
+                prompt_template = f.read()
+            logger.info("Loaded original system prompt (fallback)")
+        except FileNotFoundError:
+            # Default fallback prompt
+            prompt_template = """You are a knowledgeable dehumidifier sizing and selection assistant. Help users choose the right dehumidifier for their specific needs by asking about:
 - Space type (room, garage, basement, pool area, etc.)
 - Square meters or dimensions
 - Special conditions (temperature, existing humidity issues, etc.)
 
 Provide specific product recommendations with model numbers, capacity ratings, and installation requirements. Be concise but thorough."""
+            logger.info("Using default system prompt")
+    
+    # Inject product catalog into prompt
+    catalog_info = f"""
 
-try:
-    with open("prompt_template.txt", "r", encoding="utf-8") as f:
-        SYSTEM_PROMPT = f.read()
-    logger.info("Loaded custom system prompt")
-except FileNotFoundError:
-    logger.info("Using default system prompt")
+PRODUCT CATALOG (Version: {PRODUCT_CATALOG.get('catalog_version', 'unknown')}):
+{json.dumps(PRODUCT_CATALOG, indent=2)}
+
+Use this catalog data for all recommendations. Never invent products not in this catalog.
+"""
+    
+    SYSTEM_PROMPT = prompt_template + catalog_info
+    logger.info(f"System prompt ready with {len(PRODUCT_CATALOG.get('products', []))} products")
+
+# Load resources on startup
+load_product_catalog()
+load_system_prompt()
 
 def get_demo_response(user_input: str) -> str:
     """Provide demo responses when no API key is available"""
     user_lower = user_input.lower()
     
+    # Try to extract JSON from demo responses for consistency
     if any(word in user_lower for word in ['garage', 'workshop']):
-        return """**Demo Response**
+        demo_json = {
+            "session_id": "demo",
+            "input_used": {"space_m2": 40, "application": "garage"},
+            "recommendation": {"sku": "IDHR60", "name": "FAIRLAND IDHR60", "coverage_ratio": 3.0, "price_aud": 3900},
+            "alternatives": [{"sku": "SP500C_PRO", "name": "SUNTEC SP500C PRO", "coverage_ratio": 2.7, "price_aud": 2999}],
+            "warnings": [],
+            "catalog_version": "2024-01-15",
+            "audit_note": "Demo mode response"
+        }
+        return f"""```json
+{json.dumps(demo_json, indent=2)}
+```
 
-For a garage/workshop, I'd typically recommend:
-
-• **Small garages (up to 30m²)**: Desiccant dehumidifier, 10-12L/day capacity
-• **Medium garages (30-60m²)**: Refrigerant dehumidifier, 20-25L/day capacity  
-• **Large workshops (60m²+)**: Commercial unit, 30L+ capacity
-
-Key considerations:
-- Insulation level
-- Ventilation 
-- Temperature range
-- Power supply (240V standard vs 415V three-phase)
+For a 40m² garage, I recommend the **FAIRLAND IDHR60** inverter unit ($3,900). It provides efficient coverage with a 3.0x safety ratio and includes energy-saving inverter technology.
 
 *Note: This is a demo. Set OPENAI_API_KEY for real AI responses.*"""
     
@@ -131,8 +181,8 @@ I help with dehumidifier sizing and selection. Try asking about:
 
 *Note: This is a demo. Set OPENAI_API_KEY for real AI responses.*"""
 
-def call_openai_api(messages: list) -> str:
-    """Call OpenAI API with proper error handling"""
+def call_openai_api(messages: list, retry_count: int = 0) -> str:
+    """Call OpenAI API with proper error handling and retry logic"""
     if DEMO_MODE:
         return get_demo_response(messages[-1]['content'])
     
@@ -143,26 +193,73 @@ def call_openai_api(messages: list) -> str:
         response = client.chat.completions.create(
             model="gpt-4o-mini",  # Using cheaper model for cost efficiency
             messages=messages,
-            max_tokens=500,
-            temperature=0.7
+            max_tokens=800,  # Increased for JSON + summary
+            temperature=0.3,  # Lower temperature for more consistent JSON
+            response_format={"type": "text"}  # Ensure text response that can include JSON
         )
         
         return response.choices[0].message.content
         
     except Exception as e:
-        logger.error(f"OpenAI API error: {str(e)}")
-        if "invalid_api_key" in str(e):
+        error_str = str(e).lower()
+        logger.error(f"OpenAI API error (attempt {retry_count + 1}): {str(e)}")
+        
+        # Handle specific error types
+        if "invalid_api_key" in error_str:
+            logger.warning("Invalid API key, falling back to demo mode")
             return get_demo_response(messages[-1]['content'])
-        return "I'm experiencing technical difficulties. Please try again in a moment."
+        
+        elif any(keyword in error_str for keyword in ['rate_limit', 'quota', 'billing']):
+            return "⚠️ API quota exceeded. Please try again later or contact support."
+        
+        elif any(keyword in error_str for keyword in ['timeout', 'connection', 'network']):
+            return "🔌 Connection timeout. Please check your internet and try again."
+        
+        elif any(keyword in error_str for keyword in ['server_error', '500', '502', '503']):
+            return "🔧 OpenAI servers are experiencing issues. Please try again in a few minutes."
+        
+        elif "content_filter" in error_str or "policy" in error_str:
+            return "⚠️ Your message was flagged by content filters. Please rephrase and try again."
+        
+        else:
+            # Generic error with helpful message
+            return f"❌ Technical error occurred. Please try the retry button. (Error: {str(e)[:50]}...)"
 
-def log_conversation(session_id: str, user_input: str, assistant_response: str):
-    """Log conversations for analysis"""
+def parse_ai_response(response_text: str) -> tuple:
+    """
+    Parse AI response to separate structured JSON data from customer-facing text.
+    Returns: (structured_data_dict, clean_customer_response_string)
+    """
+    # Extract JSON block for internal use
+    json_match = re.search(r'```json\n(.*?)\n```', response_text, re.DOTALL)
+    
+    if json_match:
+        try:
+            # Parse the JSON data
+            structured_data = json.loads(json_match.group(1))
+            
+            # Remove JSON block from customer response, including extra newlines
+            clean_response = re.sub(r'```json\n.*?\n```\n*', '', response_text, flags=re.DOTALL)
+            clean_response = clean_response.strip()
+            
+            return structured_data, clean_response
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse JSON from AI response: {e}")
+            return None, response_text
+    
+    # No JSON found, return original response
+    return None, response_text
+
+def log_conversation(session_id: str, user_input: str, assistant_response: str, structured_data: dict = None):
+    """Log conversations with optional structured data for analysis"""
     log_entry = {
         'timestamp': datetime.utcnow().isoformat(),
         'session_id': session_id,
         'user_input': user_input[:200],  # Truncate for privacy
         'assistant_response': assistant_response[:300],
-        'demo_mode': DEMO_MODE
+        'structured_data': structured_data,  # Now passed explicitly
+        'demo_mode': DEMO_MODE,
+        'catalog_version': PRODUCT_CATALOG.get('catalog_version', 'unknown')
     }
     
     log_file = f'conversation_logs/conversations_{datetime.now().strftime("%Y%m%d")}.log'
@@ -250,24 +347,118 @@ def assistant():
         # Get response
         assistant_response = call_openai_api(messages)
         
-        # Return updated conversation history (client will store it)
+        # Parse response to separate structured data from customer text
+        structured_data, clean_response = parse_ai_response(assistant_response)
+        
+        # Store clean response in conversation history (client will store it)
         history.extend([
             {"role": "user", "content": user_input},
-            {"role": "assistant", "content": assistant_response}
+            {"role": "assistant", "content": clean_response}
         ])
         
-        # Log conversation
-        log_conversation(session_id, user_input, assistant_response)
+        # Log conversation with structured data for internal use
+        log_conversation(session_id, user_input, clean_response, structured_data)
+        
+        # Log structured data separately if present (for future calc functions)
+        if structured_data:
+            logger.info(f"Structured data for session {session_id}: {json.dumps(structured_data, indent=2)}")
         
         logger.info(f"Processed message for session {session_id}")
         return {
-            'response': assistant_response,
-            'history': history
+            'response': clean_response,
+            'history': history,
+            'success': True
         }
         
     except Exception as e:
         logger.error(f"Error processing request: {str(e)}")
-        return Response("Technical difficulties. Please try again.", status=500)
+        return {
+            'success': False,
+            'error': str(e),
+            'error_type': 'server_error',
+            'message': 'Technical difficulties. Please use the retry button.'
+        }, 500
+
+@app.route('/api/retry', methods=['POST'])
+def retry_message():
+    """Retry last message with exponential backoff"""
+    try:
+        session_id = get_session_id()
+        
+        # Get and validate input
+        data = request.get_json() or {}
+        user_input = data.get('input', '').strip()
+        retry_count = data.get('retry_count', 0)
+        
+        if not user_input:
+            return {'success': False, 'message': 'No message to retry'}, 400
+        
+        if retry_count > 3:  # Max 3 retries
+            return {
+                'success': False, 
+                'message': 'Maximum retry attempts reached. Please try again later.',
+                'error_type': 'max_retries'
+            }, 429
+        
+        # Check daily message limit (retries count towards limit)
+        can_send, message_count = check_and_update_daily_limit()
+        if not can_send:
+            return {
+                'success': False,
+                'message': f"Daily message limit reached ({MAX_CONVERSATION_LENGTH} messages). Limit resets tomorrow.",
+                'error_type': 'rate_limit'
+            }, 429
+        
+        # Get conversation history from request
+        history = data.get('history', [])
+        
+        # Build messages for API
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+        messages.extend(history[-10:])  # Last 10 messages for context
+        messages.append({"role": "user", "content": user_input})
+        
+        # Add exponential backoff delay for retries
+        if retry_count > 0:
+            import time
+            delay = min(2 ** retry_count, 8)  # Cap at 8 seconds
+            logger.info(f"Retry {retry_count + 1} with {delay}s delay")
+            time.sleep(delay)
+        
+        # Get response with retry count
+        assistant_response = call_openai_api(messages, retry_count)
+        
+        # Parse response to separate structured data from customer text
+        structured_data, clean_response = parse_ai_response(assistant_response)
+        
+        # Store clean response in conversation history
+        history.extend([
+            {"role": "user", "content": user_input},
+            {"role": "assistant", "content": clean_response}
+        ])
+        
+        # Log conversation with retry info
+        log_conversation(session_id, f"[RETRY {retry_count + 1}] {user_input}", clean_response, structured_data)
+        
+        # Log structured data separately if present
+        if structured_data:
+            logger.info(f"Structured data for session {session_id} (retry {retry_count + 1}): {json.dumps(structured_data, indent=2)}")
+        
+        logger.info(f"Retry {retry_count + 1} successful for session {session_id}")
+        return {
+            'response': clean_response,
+            'history': history,
+            'success': True,
+            'retry_count': retry_count + 1
+        }
+        
+    except Exception as e:
+        logger.error(f"Error processing retry: {str(e)}")
+        return {
+            'success': False,
+            'error': str(e),
+            'error_type': 'server_error',
+            'message': 'Retry failed. Please try again later.'
+        }, 500
 
 @app.route('/api/health')
 def health():
@@ -294,8 +485,31 @@ def stats():
         'daily_message_count': daily_count,
         'daily_limit': MAX_CONVERSATION_LENGTH,
         'last_message_date': last_date,
-        'demo_mode': DEMO_MODE
+        'demo_mode': DEMO_MODE,
+        'catalog_version': PRODUCT_CATALOG.get('catalog_version', 'unknown'),
+        'product_count': len(PRODUCT_CATALOG.get('products', []))
     }
+
+@app.route('/api/reload-catalog', methods=['POST'])
+def reload_catalog():
+    """Reload product catalog (development only)"""
+    if os.getenv('FLASK_ENV') == 'production':
+        return {'error': 'Not available in production'}, 404
+    
+    try:
+        success = load_product_catalog()
+        if success:
+            load_system_prompt()  # Reload prompt with new catalog
+            return {
+                'status': 'success',
+                'catalog_version': PRODUCT_CATALOG.get('catalog_version', 'unknown'),
+                'product_count': len(PRODUCT_CATALOG.get('products', []))
+            }
+        else:
+            return {'status': 'error', 'message': 'Failed to load catalog'}, 500
+    except Exception as e:
+        logger.error(f"Catalog reload error: {str(e)}")
+        return {'status': 'error', 'message': str(e)}, 500
 
 @app.route('/api/clear', methods=['POST'])
 def clear_conversation():
