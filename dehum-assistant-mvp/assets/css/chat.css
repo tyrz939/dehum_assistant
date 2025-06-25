@@ -1,0 +1,367 @@
+/* === DEHUMIDIFIER ASSISTANT MVP - CHAT WIDGET STYLES === */
+
+:root {
+  --primary-blue: #0074d9;
+  --primary-dark: #005fa3;
+  --light-blue: #f0f8ff;
+  --text-dark: #003366;
+  --text-medium: #002244;
+  --success-green: #4CAF50;
+  --error-red: #f44336;
+  --border-light: #ddd;
+}
+
+/* === CHAT BUTTON (Bottom Right) === */
+#dehum-mvp-chat-button {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: linear-gradient(135deg, var(--primary-blue), var(--primary-dark));
+  color: white;
+  padding: 16px 20px;
+  border-radius: 25px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 20px rgba(0, 116, 217, 0.3);
+  z-index: 9999;
+  transition: all 0.3s ease;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+#dehum-mvp-chat-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 25px rgba(0, 116, 217, 0.4);
+}
+
+#dehum-mvp-chat-button span:first-child {
+  font-size: 20px;
+}
+
+.chat-text {
+  white-space: nowrap;
+}
+
+/* === CHAT MODAL === */
+#dehum-mvp-chat-modal {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 480px;
+  height: 680px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow: hidden;
+}
+
+/* === CHAT HEADER === */
+.chat-header {
+  background: var(--primary-blue);
+  color: white;
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.chat-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+#dehum-mvp-close-chat {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+#dehum-mvp-close-chat:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* === CHAT MESSAGES === */
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  scroll-behavior: smooth;
+}
+
+.user-message {
+  background: var(--primary-blue);
+  color: white;
+  padding: 10px 14px;
+  border-radius: 18px;
+  margin: 8px 0;
+  margin-left: 40px;
+  word-wrap: break-word;
+  font-size: 16px;
+  line-height: 1.4;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.assistant-message {
+  background: var(--light-blue);
+  color: var(--text-medium);
+  padding: 10px 14px;
+  border-radius: 18px;
+  margin: 8px 0;
+  margin-right: 40px;
+  white-space: pre-wrap;
+  font-size: 16px;
+  line-height: 1.5;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.typing-indicator {
+  background: var(--light-blue);
+  padding: 12px 14px;
+  border-radius: 18px;
+  margin: 8px 0;
+  margin-right: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  color: #666;
+  font-style: italic;
+}
+
+/* Enhanced typing dots animation */
+.typing-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.typing-dots span {
+  width: 8px;
+  height: 8px;
+  background: var(--primary-blue);
+  border-radius: 50%;
+  opacity: 0.4;
+  animation: typingDots 1.4s infinite ease-in-out;
+}
+
+.typing-dots span:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.typing-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typingDots {
+
+  0%,
+  60%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+
+  30% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Flexbox message styling */
+.message-content {
+  margin: 0;
+  line-height: inherit;
+  flex: 1;
+}
+
+.message-content p {
+  margin: 0;
+  line-height: inherit;
+}
+
+.message-time {
+  font-size: 12px;
+  opacity: 0.7;
+  text-align: right;
+  margin: 0;
+  line-height: 1.2;
+  flex-shrink: 0;
+}
+
+.user-message .message-time {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.assistant-message .message-time {
+  color: #888;
+}
+
+/* Enhanced error message styling */
+.error-message {
+  background: linear-gradient(135deg, #ffe6e6, #fff0f0);
+  border-left: 4px solid var(--error-red);
+  padding: 12px 14px;
+  border-radius: 12px;
+  margin: 8px 0;
+  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.1);
+  transition: all 0.3s ease;
+}
+
+.error-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.error-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.error-text {
+  color: #cc0000;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+/* === CHAT INPUT AREA === */
+.chat-input-area {
+  background: white;
+  padding: 16px 20px;
+  border-top: 1px solid #eee;
+  flex-shrink: 0;
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+#dehum-mvp-chat-input {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 20px;
+  border: 1px solid #ccc;
+  font-size: 16px;
+  resize: none;
+  font-family: inherit;
+  line-height: 1.4;
+  transition: border-color 0.2s;
+  min-height: 20px;
+}
+
+#dehum-mvp-chat-input:focus {
+  outline: none;
+  border-color: var(--primary-blue);
+}
+
+#dehum-mvp-send-button {
+  background: var(--primary-blue);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+#dehum-mvp-send-button:hover {
+  background: var(--primary-dark);
+}
+
+#dehum-mvp-send-button:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+/* === CHAT FOOTER === */
+.chat-footer {
+  padding: 8px 20px;
+  background: #f8f9fa;
+  border-top: 1px solid #eee;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.chat-footer small {
+  color: #666;
+  font-size: 13px;
+}
+
+/* === MOBILE RESPONSIVE === */
+@media screen and (max-width: 768px) {
+  #dehum-mvp-chat-modal {
+    bottom: 0;
+    right: 0;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+  }
+
+  #dehum-mvp-chat-button {
+    bottom: 20px;
+    right: 20px;
+    padding: 14px 18px;
+  }
+
+  .chat-text {
+    display: none;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .chat-input-area {
+    padding: 12px 16px;
+  }
+
+  .chat-messages {
+    padding: 16px;
+  }
+
+  .user-message {
+    margin-left: 40px;
+  }
+
+  .assistant-message,
+  .typing-indicator {
+    margin-right: 40px;
+  }
+}

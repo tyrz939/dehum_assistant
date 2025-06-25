@@ -356,9 +356,9 @@
       </div>
 
       <div id="input-area">
-        <textarea id="user_input" rows="2" placeholder="Ask about dehumidifier sizing..." maxlength="{{ max_input_length }}"></textarea>
+                 <textarea id="user_input" rows="2" placeholder="Ask about dehumidifier sizing..." maxlength="{{ max_input_length }}"></textarea>
         <div class="input-controls">
-          <span class="char-info" id="char_info">{{ max_input_length }} chars left</span>
+                     <span class="char-info" id="char_info">{{ max_input_length }} chars left</span>
           <div style="display: flex; gap: 12px; align-items: center;"> <!-- Increased gap -->
             <button class="secondary-btn" onclick="showHelp()">Help</button>
             <button id="send-btn" onclick="sendMessage()">Send</button>
@@ -405,9 +405,9 @@
       charInfo: document.getElementById("char_info")
     };
 
-    // Character counter
-    elements.input.addEventListener("input", () => {
-      const remaining = {{ max_input_length }} - elements.input.value.length;
+         // Character counter
+     elements.input.addEventListener("input", () => {
+       const remaining = {{ max_input_length }} - elements.input.value.length;
       elements.charInfo.textContent = `${remaining} chars left`;
       elements.charInfo.style.color = remaining < 50 ? '#ff9800' : '#666';
     });

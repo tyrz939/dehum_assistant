@@ -1,19 +1,23 @@
 # Dehumidifier Assistant
 
-A conversational AI assistant for dehumidifier sizing and selection, with seamless WordPress integration.
+A conversational AI assistant for dehumidifier sizing and selection. Currently running as a Flask application with plans for WordPress plugin integration.
 
-## ✨ Features
+## 🎯 Current Status
 
-- **Smart Conversation Memory**: Remembers context throughout the chat session
-- **Demo Mode**: Works without API key for testing and demonstrations
-- **WordPress Integration**: Professional floating chat button with modal popup
-- **Mobile Responsive**: Optimized for all device sizes
-- **Analytics Ready**: Built-in tracking for Google Analytics and WordPress
-- **Secure**: Input validation, CORS protection, and WordPress security best practices
+**PRODUCTION SYSTEM:** Flask application serving real users (active conversation logs)
+**NEXT PHASE:** Building minimal viable WordPress plugin for broader deployment
+
+## ✨ Current Features
+
+- **Smart Conversation Memory**: Remembers context throughout chat sessions
+- **Demo Mode**: Works without API key for testing and demonstrations  
+- **Professional Chat Interface**: Optimized for all device sizes
+- **Product Catalog Integration**: Real dehumidifier sizing recommendations
+- **Comprehensive Logging**: All conversations logged for business intelligence
 
 ## 🚀 Quick Start
 
-### 1. Flask Application
+### Flask Application
 
 ```bash
 # Install dependencies
@@ -29,109 +33,63 @@ python app.py
 
 The app will be available at `http://localhost:5001`
 
-### 2. WordPress Integration
-
-**Option A: Add to Theme**
-1. Copy the content from `wordpress-integration.php`
-2. Paste it at the end of your theme's `functions.php` file
-3. Update the `DEFAULT_SERVER_URL` constant with your Flask app URL
-
-**Option B: Create Plugin**
-1. Create a WordPress plugin using the code in `wordpress-integration.php`
-2. Activate the plugin in WordPress admin
-3. Configure settings at **Settings > Dehumidifier Chat**
-
 ## 📁 Project Structure
 
 ```
 dehum_assistant/
-├── app.py                      # Main Flask application
+├── app.py                      # Main Flask application (PRODUCTION)
 ├── requirements.txt            # Python dependencies  
 ├── prompt_template.txt         # AI system prompt
-├── wordpress-integration.php   # WordPress integration
+├── product_db.json            # Product catalog
 ├── templates/
 │   ├── index.html             # Main chat interface
-│   └── popup.html             # WordPress popup version
-├── conversation_logs/         # Chat logs (auto-created)
-├── flask_sessions/           # Session storage (auto-created)
-├── DEPLOYMENT.md             # Detailed deployment guide
+│   └── popup.html             # WordPress popup version  
+├── conversation_logs/         # Active user conversations
+├── flask_sessions/           # User session data
+├── PROJECT_ROADMAP.md        # Development roadmap
 └── README.md                 # This file
 ```
 
-## 🎯 Demo Mode
+## 🎯 Roadmap
 
-The application automatically enters demo mode when no OpenAI API key is provided. In demo mode:
-- Provides intelligent hardcoded responses for common queries
-- Maintains conversation flow and context
-- Perfect for testing and demonstrations
-- Gracefully handles API failures
+See [PROJECT_ROADMAP.md](PROJECT_ROADMAP.md) for the complete development plan including:
+- WordPress plugin MVP development
+- n8n workflow integration
+- Lead qualification system
+- Advanced business features
+
+## 🎨 Templates
+
+- **`index.html`**: Standalone chat interface
+- **`popup.html`**: WordPress integration template
+
+These templates will be used as reference for the upcoming WordPress plugin MVP.
 
 ## 🔧 Configuration
 
 ### Environment Variables
 ```bash
-OPENAI_API_KEY=sk-...          # OpenAI API key (optional)
+OPENAI_API_KEY=sk-...          # OpenAI API key (optional - demo mode without)
 SECRET_KEY=your-secret-key     # Flask session secret
-FLASK_ENV=production          # Environment (development/production)
+FLASK_ENV=production          # Environment setting
 PORT=5001                     # Port to run on
 ```
 
-### WordPress Settings
-After installation, configure the chat widget in WordPress admin:
-- **Settings > Dehumidifier Chat**
-- Set server URL, customize appearance, control page targeting
+## 📊 Active Usage
+
+Check `conversation_logs/` directory for real user interactions. The Flask app is currently serving live traffic and should remain operational during WordPress plugin development.
 
 ## 🛡️ Security Features
 
-- **Input Validation**: 400 character limit, message count limits
-- **Session Security**: Secure session management with Flask
-- **CORS Protection**: Configurable cross-origin resource sharing
-- **WordPress Security**: Nonce verification, input sanitization, capability checks
-
-## 📊 Analytics & Monitoring
-
-- **Conversation Logging**: Automatic logging to `conversation_logs/`
-- **Health Check Endpoint**: `GET /api/health`
-- **WordPress Analytics**: Built-in tracking with Google Analytics integration
-- **Error Monitoring**: Comprehensive error logging and handling
-
-## 🎨 Customization
-
-### Page Targeting
-Control where the chat widget appears by editing the `should_show_chat()` method in the WordPress integration.
-
-### Styling
-Customize the chat button appearance by modifying the CSS in `get_chat_styles()`.
-
-### AI Behavior
-Edit `prompt_template.txt` to customize the AI assistant's knowledge and responses.
-
-## 🚀 Deployment
-
-See [DEPLOYMENT.md](DEPLOYMENT.md) for comprehensive deployment instructions including:
-- Production server setup
-- WordPress plugin creation
-- Security configurations
-- Troubleshooting guide
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+- Input validation and rate limiting
+- Session-based conversation memory
+- Comprehensive error handling and logging
+- Demo mode fallback for reliability
 
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
-
-- **Issues**: Report bugs or request features via GitHub issues
-- **Documentation**: See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed setup instructions
-- **Health Check**: Use `/api/health` endpoint to verify application status
-
 ---
 
-**Ready to deploy!** 🎉 This application is production-ready with WordPress integration, security features, and comprehensive documentation.
+**Status: Flask app is production-ready and actively serving users. WordPress plugin MVP development ready to begin.**
