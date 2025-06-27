@@ -354,15 +354,10 @@ jQuery(document).ready(function ($) {
       if (this.conversationHistory.length > 0) {
         if (confirm('Start a new conversation? This will clear your current chat history.')) {
           this.clearHistory();
-
-          // Show a brief message that conversation was cleared
-          setTimeout(() => {
-            this.addMessage('New conversation started. Your daily message limit still applies.', 'assistant');
-          }, 300);
         }
       } else {
-        // No history, just show the info message
-        this.addMessage('This is already a new conversation. Your daily message limit still applies.', 'assistant');
+        // No history, no need to show any message - just keep the welcome message
+        console.log('Chat already clear - no action needed');
       }
     },
 

@@ -131,13 +131,14 @@ class DehumidifierAssistantMVP {
                 <div class="chat-header">
                     <h3>Dehumidifier Assistant</h3>
                     <div class="chat-header-buttons">
-                        <button id="dehum-mvp-clear-chat" title="Start New Conversation">🗑️</button>
+                        <button id="dehum-mvp-clear-chat" class="clear-button" title="Start New Conversation">Clear</button>
                         <button id="dehum-mvp-close-chat">&times;</button>
                     </div>
                 </div>
                 <div class="chat-messages" id="dehum-mvp-chat-messages">
                     <div class="assistant-message">
-                        Hello! I'm your Dehumidifier Assistant. Ask me anything about sizing or model selection.
+                        <div class="message-content">Hello! I'm your Dehumidifier Assistant. Ask me anything about sizing or model selection.</div>
+                        <div class="message-time">Now</div>
                     </div>
                 </div>
                 <div class="chat-input-area">
@@ -150,7 +151,7 @@ class DehumidifierAssistantMVP {
                     <button id="dehum-mvp-send-button">Send</button>
                 </div>
                 <div class="chat-footer">
-                    <small>⚠️ AI responses may contain errors - verify important details • <span id="char-count">0</span>/400 characters</small>
+                    <small>AI responses may contain errors - verify important details • <span id="char-count">0</span>/400 characters</small>
                 </div>
             </div>
         </div>

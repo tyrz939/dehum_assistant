@@ -85,12 +85,11 @@
   align-items: center;
 }
 
-#dehum-mvp-clear-chat,
 #dehum-mvp-close-chat {
   background: none;
   border: none;
   color: white;
-  font-size: 18px;
+  font-size: 24px;
   cursor: pointer;
   padding: 0;
   width: 32px;
@@ -102,16 +101,35 @@
   transition: background-color 0.2s;
 }
 
-#dehum-mvp-close-chat {
-  font-size: 24px;
+#dehum-mvp-clear-chat {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 16px;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-#dehum-mvp-clear-chat:hover,
+#dehum-mvp-clear-chat:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+#dehum-mvp-clear-chat:active {
+  background: rgba(255, 255, 255, 0.35);
+  transform: translateY(0px);
+}
+
 #dehum-mvp-close-chat:hover {
   background: rgba(255, 255, 255, 0.2);
 }
 
-#dehum-mvp-clear-chat:active,
 #dehum-mvp-close-chat:active {
   background: rgba(255, 255, 255, 0.3);
 }
