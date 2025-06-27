@@ -79,15 +79,22 @@
   font-weight: 600;
 }
 
+.chat-header-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#dehum-mvp-clear-chat,
 #dehum-mvp-close-chat {
   background: none;
   border: none;
   color: white;
-  font-size: 24px;
+  font-size: 18px;
   cursor: pointer;
   padding: 0;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -95,8 +102,18 @@
   transition: background-color 0.2s;
 }
 
+#dehum-mvp-close-chat {
+  font-size: 24px;
+}
+
+#dehum-mvp-clear-chat:hover,
 #dehum-mvp-close-chat:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+
+#dehum-mvp-clear-chat:active,
+#dehum-mvp-close-chat:active {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* === CHAT MESSAGES === */

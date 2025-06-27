@@ -2,6 +2,16 @@
 
 **Goal**: Build a minimal viable WordPress plugin that delivers the core features from PROJECT_ROADMAP.md through small, testable increments.
 
+## ⚠️ **CURRENT STATUS NOTE (Updated)**
+**WordPress ↔ n8n Integration: ✅ WORKING**
+- WordPress plugin successfully sends requests to n8n webhook
+- n8n is processing requests internally (not visible from WordPress codebase)
+- Full end-to-end functionality is operational
+- Chat widget → WordPress AJAX → n8n workflow → AI responses → back to user
+- Only admin interface expansion was broken (now fixed with proper WordPress script handling)
+
+**Key Point**: The core functionality works - n8n processing just isn't visible from the WordPress side.
+
 ## 🎯 **MVP Success Criteria**
 - ✅ Chat widget appears on WordPress pages
 - ✅ Messages sent to n8n workflow  
