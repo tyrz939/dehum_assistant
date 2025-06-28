@@ -15,7 +15,7 @@ jQuery(document).ready(function ($) {
       icon.addClass('expanded');
 
       // Load conversation if not already loaded
-      if (content.find('.loading-spinner').length > 0) {
+      if (content.find('.loading-state').length > 0) {
         loadConversation(sessionId);
       }
     } else {
@@ -73,4 +73,12 @@ jQuery(document).ready(function ($) {
     html += '</div>';
     container.html(html);
   }
+
+  // Handle custom date range toggle
+  window.toggleCustomDates = function (value) {
+    const customDates = document.getElementById('custom-dates');
+    if (customDates) {
+      customDates.style.display = value === 'custom' ? 'block' : 'none';
+    }
+  };
 }); 

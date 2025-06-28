@@ -1,402 +1,331 @@
-/* === DEHUMIDIFIER ASSISTANT MVP - CHAT WIDGET STYLES === */
+/**
+ * Dehumidifier Assistant Chat Widget
+ * Clean, professional CSS with proper cascade
+ */
 
-:root {
-  --primary-blue: #0074d9;
-  --primary-dark: #005fa3;
-  --light-blue: #f0f8ff;
-  --text-dark: #003366;
-  --text-medium: #002244;
-  --success-green: #4CAF50;
-  --error-red: #f44336;
-  --border-light: #ddd;
-}
-
-/* === CHAT BUTTON (Bottom Right) === */
-#dehum-mvp-chat-button {
+/* Chat Button */
+.dehum-chat-button {
   position: fixed;
-  bottom: 30px;
-  right: 30px;
-  background: linear-gradient(135deg, var(--primary-blue), var(--primary-dark));
+  bottom: 20px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  background: #0074d9;
   color: white;
-  padding: 16px 20px;
-  border-radius: 25px;
+  border: none;
+  border-radius: 50%;
   cursor: pointer;
+  z-index: 1000;
   display: flex;
   align-items: center;
-  gap: 10px;
-  box-shadow: 0 4px 20px rgba(0, 116, 217, 0.3);
-  z-index: 9999;
-  transition: all 0.3s ease;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-#dehum-mvp-chat-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 25px rgba(0, 116, 217, 0.4);
-}
-
-#dehum-mvp-chat-button span:first-child {
+  justify-content: center;
   font-size: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
 }
 
-.chat-text {
-  white-space: nowrap;
+.dehum-chat-button:hover {
+  background: #005fa3;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 116, 217, 0.3);
 }
 
-/* === CHAT MODAL === */
-#dehum-mvp-chat-modal {
+/* Chat Modal */
+.dehum-chat-modal {
   position: fixed;
-  bottom: 30px;
-  right: 30px;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Animation */
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.3s ease, visibility 0s 0.3s;
+}
+
+.dehum-chat-modal.show {
+  visibility: visible;
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+/* Chat Container */
+.dehum-chat-container {
   width: 480px;
-  height: 680px;
+  height: 700px;
+  max-height: 85vh;
+  /* Dynamic scaling for shorter screens */
+  min-height: 500px;
+  /* Minimum height to maintain usability */
   background: white;
   border-radius: 12px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-  z-index: 10000;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   overflow: hidden;
+
+  /* Animation */
+  transform: scale(0.95);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
-/* === CHAT HEADER === */
-.chat-header {
-  background: var(--primary-blue);
+.dehum-chat-modal.show .dehum-chat-container {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* Responsive: Mobile full-screen */
+@media (max-width: 767px) {
+  .dehum-chat-modal {
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  .dehum-chat-container {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    transform: translateY(100%);
+  }
+
+  .dehum-chat-modal.show .dehum-chat-container {
+    transform: translateY(0);
+  }
+}
+
+/* Responsive: Desktop bottom-right positioning */
+@media (min-width: 768px) {
+  .dehum-chat-modal {
+    align-items: flex-end;
+    justify-content: flex-end;
+  }
+
+  .dehum-chat-container {
+    margin: 0 20px 90px 0;
+  }
+}
+
+/* Responsive: Large desktop screens */
+@media (min-width: 1200px) {
+  .dehum-chat-container {
+    width: 520px;
+    height: 750px;
+  }
+}
+
+/* Responsive: Very large desktop screens */
+@media (min-width: 1600px) {
+  .dehum-chat-container {
+    width: 560px;
+    height: 800px;
+  }
+}
+
+/* Responsive: Short screens (laptops, tablets in landscape) */
+@media (min-width: 768px) and (max-height: 800px) {
+  .dehum-chat-container {
+    height: 75vh;
+    max-height: 600px;
+  }
+}
+
+/* Responsive: Very short screens */
+@media (min-width: 768px) and (max-height: 650px) {
+  .dehum-chat-container {
+    height: 70vh;
+    max-height: 450px;
+    min-height: 400px;
+  }
+}
+
+/* Header */
+.dehum-chat-header {
+  background: #0074d9;
   color: white;
   padding: 16px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-shrink: 0;
 }
 
-.chat-header h3 {
+.dehum-chat-header h3 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
 }
 
-.chat-header-buttons {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-#dehum-mvp-close-chat {
+.dehum-close-btn {
   background: none;
   border: none;
   color: white;
   font-size: 24px;
   cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
+  padding: 4px;
+  border-radius: 4px;
   transition: background-color 0.2s;
 }
 
-#dehum-mvp-clear-chat {
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: white;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 6px 12px;
-  border-radius: 16px;
-  transition: all 0.2s;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-#dehum-mvp-clear-chat:hover {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.5);
-  transform: translateY(-1px);
-}
-
-#dehum-mvp-clear-chat:active {
-  background: rgba(255, 255, 255, 0.35);
-  transform: translateY(0px);
-}
-
-#dehum-mvp-close-chat:hover {
+.dehum-close-btn:hover {
   background: rgba(255, 255, 255, 0.2);
 }
 
-#dehum-mvp-close-chat:active {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-/* === CHAT MESSAGES === */
-.chat-messages {
+/* Messages */
+.dehum-chat-messages {
   flex: 1;
+  padding: 24px;
   overflow-y: auto;
-  padding: 20px;
-  scroll-behavior: smooth;
-}
-
-.user-message {
-  background: var(--primary-blue);
-  color: white;
-  padding: 10px 14px;
-  border-radius: 18px;
-  margin: 8px 0;
-  margin-left: 40px;
-  word-wrap: break-word;
-  font-size: 16px;
-  line-height: 1.4;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.assistant-message {
-  background: var(--light-blue);
-  color: var(--text-medium);
-  padding: 10px 14px;
-  border-radius: 18px;
-  margin: 8px 0;
-  margin-right: 40px;
-  white-space: pre-wrap;
-  font-size: 16px;
+  background: #f8f9fa;
+  font-size: 15px;
   line-height: 1.5;
+}
+
+.dehum-welcome {
+  background: #e3f2fd;
+  padding: 20px;
+  border-radius: 10px;
+  border-left: 4px solid #0074d9;
+  margin-bottom: 24px;
+  font-size: 16px;
+}
+
+.dehum-message {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  margin-bottom: 20px;
 }
 
-.typing-indicator {
-  background: var(--light-blue);
-  padding: 12px 14px;
-  border-radius: 18px;
-  margin: 8px 0;
-  margin-right: 40px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 16px;
-  color: #666;
-  font-style: italic;
-}
-
-/* Enhanced typing dots animation */
-.typing-dots {
-  display: flex;
-  gap: 4px;
-}
-
-.typing-dots span {
-  width: 8px;
-  height: 8px;
-  background: var(--primary-blue);
-  border-radius: 50%;
-  opacity: 0.4;
-  animation: typingDots 1.4s infinite ease-in-out;
-}
-
-.typing-dots span:nth-child(1) {
-  animation-delay: 0s;
-}
-
-.typing-dots span:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.typing-dots span:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-@keyframes typingDots {
-
-  0%,
-  60%,
-  100% {
-    opacity: 0.4;
-    transform: scale(1);
-  }
-
-  30% {
-    opacity: 1;
-    transform: scale(1.2);
-  }
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-/* Flexbox message styling */
-.message-content {
-  margin: 0;
-  line-height: inherit;
-  flex: 1;
-}
-
-.message-content p {
-  margin: 0;
-  line-height: inherit;
-}
-
-.message-time {
-  font-size: 12px;
-  opacity: 0.7;
-  text-align: right;
-  margin: 0;
-  line-height: 1.2;
-  flex-shrink: 0;
-}
-
-.user-message .message-time {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.assistant-message .message-time {
-  color: #888;
-}
-
-/* Enhanced error message styling */
-.error-message {
-  background: linear-gradient(135deg, #ffe6e6, #fff0f0);
-  border-left: 4px solid var(--error-red);
-  padding: 12px 14px;
-  border-radius: 12px;
-  margin: 8px 0;
-  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.1);
-  transition: all 0.3s ease;
-}
-
-.error-content {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.error-icon {
-  font-size: 16px;
-  flex-shrink: 0;
-}
-
-.error-text {
-  color: #cc0000;
-  font-size: 16px;
-  line-height: 1.4;
-}
-
-/* === CHAT INPUT AREA === */
-.chat-input-area {
-  background: white;
-  padding: 16px 20px;
-  border-top: 1px solid #eee;
-  flex-shrink: 0;
-  display: flex;
-  gap: 10px;
+.dehum-message--user {
   align-items: flex-end;
 }
 
-#dehum-mvp-chat-input {
+.dehum-message--assistant {
+  align-items: flex-start;
+}
+
+.dehum-message__bubble {
+  padding: 12px 16px;
+  max-width: 90%;
+  display: inline-block;
+  word-wrap: break-word;
+  border-radius: 8px;
+}
+
+.dehum-message--user .dehum-message__bubble {
+  background: #f1f8e9;
+  color: #202124;
+  border-right: 4px solid #4caf50;
+}
+
+.dehum-message--assistant .dehum-message__bubble {
+  background: #e3f2fd;
+  color: #202124;
+  border-left: 4px solid #0074d9;
+  box-shadow: none;
+}
+
+.dehum-message--error .dehum-message__bubble {
+  background: #ffebee;
+  color: #c62828;
+  border-radius: 8px;
+  border-left: 4px solid #f44336;
+  max-width: 100%;
+}
+
+.dehum-message__timestamp {
+  font-size: 11px;
+  color: #6c757d;
+  margin-top: 4px;
+}
+
+.dehum-message--error .dehum-message__timestamp {
+  display: none;
+}
+
+/* Typing Indicator */
+#typing-indicator .dehum-message__bubble {
+  padding: 12px 16px;
+}
+
+.typing-dots span {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #90a4ae;
+  margin: 0 1px;
+  animation: typing-bounce 1.4s infinite ease-in-out both;
+}
+
+.typing-dots span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes typing-bounce {
+
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+  }
+
+  40% {
+    transform: scale(1.0);
+  }
+}
+
+/* Input Area */
+.dehum-chat-input {
+  padding: 16px 20px;
+  background: white;
+  border-top: 1px solid #e1e5e9;
+}
+
+.dehum-input-area {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.dehum-chat-input textarea {
   flex: 1;
   padding: 12px 16px;
+  border: 1px solid #ddd;
   border-radius: 20px;
-  border: 1px solid #ccc;
-  font-size: 16px;
   resize: none;
-  font-family: inherit;
-  line-height: 1.4;
-  transition: border-color 0.2s;
-  min-height: 20px;
-}
-
-#dehum-mvp-chat-input:focus {
   outline: none;
-  border-color: var(--primary-blue);
+  font-family: inherit;
+  font-size: 14px;
+  min-height: 20px;
+  max-height: 100px;
 }
 
-#dehum-mvp-send-button {
-  background: var(--primary-blue);
+.dehum-chat-input textarea:focus {
+  border-color: #0074d9;
+}
+
+.dehum-send-btn {
+  background: #0074d9;
   color: white;
   border: none;
-  padding: 12px 20px;
-  border-radius: 20px;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
   cursor: pointer;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 14px;
   transition: background-color 0.2s;
 }
 
-#dehum-mvp-send-button:hover {
-  background: var(--primary-dark);
-}
-
-#dehum-mvp-send-button:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-}
-
-/* === CHAT FOOTER === */
-.chat-footer {
-  padding: 8px 20px;
-  background: #f8f9fa;
-  border-top: 1px solid #eee;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.chat-footer small {
-  color: #666;
-  font-size: 13px;
-}
-
-/* === MOBILE RESPONSIVE === */
-@media screen and (max-width: 768px) {
-  #dehum-mvp-chat-modal {
-    bottom: 0;
-    right: 0;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    border-radius: 0;
-  }
-
-  #dehum-mvp-chat-button {
-    bottom: 20px;
-    right: 20px;
-    padding: 14px 18px;
-  }
-
-  .chat-text {
-    display: none;
-  }
-}
-
-@media screen and (max-width: 480px) {
-  .chat-input-area {
-    padding: 12px 16px;
-  }
-
-  .chat-messages {
-    padding: 16px;
-  }
-
-  .user-message {
-    margin-left: 40px;
-  }
-
-  .assistant-message,
-  .typing-indicator {
-    margin-right: 40px;
-  }
+.dehum-send-btn:hover {
+  background: #005fa3;
 }
