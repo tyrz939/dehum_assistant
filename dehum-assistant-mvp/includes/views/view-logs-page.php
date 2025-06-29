@@ -29,8 +29,14 @@ if (!defined('ABSPATH')) {
             <tr valign="top">
                 <th scope="row"><label for="dehum_mvp_n8n_webhook_pass"><?php _e('n8n Webhook Password', 'dehum-assistant-mvp'); ?></label></th>
                 <td>
-                    <input type="password" id="dehum_mvp_n8n_webhook_pass" name="dehum_mvp_n8n_webhook_pass" value="<?php echo esc_attr(get_option('dehum_mvp_n8n_webhook_pass')); ?>" class="regular-text" placeholder="<?php esc_attr_e('Password', 'dehum-assistant-mvp'); ?>" />
-                    <p class="description"><?php _e('The Basic Auth password for your n8n webhook.', 'dehum-assistant-mvp'); ?></p>
+                    <?php $has_password = !empty(get_option('dehum_mvp_n8n_webhook_pass_encrypted')); ?>
+                    <input type="password" id="dehum_mvp_n8n_webhook_pass" name="dehum_mvp_n8n_webhook_pass" value="" class="regular-text" placeholder="<?php echo $has_password ? esc_attr__('Password is set (enter new password to change)', 'dehum-assistant-mvp') : esc_attr__('Password', 'dehum-assistant-mvp'); ?>" />
+                    <p class="description">
+                        <?php _e('The Basic Auth password for your n8n webhook.', 'dehum-assistant-mvp'); ?>
+                        <?php if ($has_password): ?>
+                            <br><em><?php _e('Password is encrypted and stored securely. Leave blank to keep current password.', 'dehum-assistant-mvp'); ?></em>
+                        <?php endif; ?>
+                    </p>
                 </td>
             </tr>
         </table>
@@ -106,15 +112,15 @@ if (!defined('ABSPATH')) {
         <div class="dehum-filter-actions">
             <div>
                 <?php if ($total_sessions > 0): ?>
-                    <a href="<?php echo wp_nonce_url(add_query_arg(['action' => 'export'] + $_GET), 'dehum_export', 'export_nonce'); ?>" class="button">📊 <?php _e('Export CSV', 'dehum-assistant-mvp'); ?></a>
+                    <a href="<?php echo wp_nonce_url(add_query_arg(['action' => 'export'] + $_GET), DEHUM_MVP_EXPORT_NONCE, 'export_nonce'); ?>" class="button">📊 <?php _e('Export CSV', 'dehum-assistant-mvp'); ?></a>
                 <?php endif; ?>
             </div>
             
             <div class="dehum-bulk-actions">
                 <form method="POST" onsubmit="return confirm('<?php esc_attr_e('Are you sure?', 'dehum-assistant-mvp'); ?>');">
-                    <?php wp_nonce_field('dehum_bulk_actions', 'bulk_nonce'); ?>
+                    <?php wp_nonce_field(DEHUM_MVP_BULK_NONCE, 'bulk_nonce'); ?>
                     <input type="hidden" name="bulk_action" value="delete_old">
-                    <button type="submit" class="button button-secondary">🗑️ <?php _e('Delete Old (90+ days)', 'dehum-assistant-mvp'); ?></button>
+                    <button type="submit" class="button button-secondary">🗑️ <?php printf(_e('Delete Old (%d+ days)', 'dehum-assistant-mvp'), DEHUM_MVP_OLD_CONVERSATIONS_DAYS); ?></button>
                 </form>
             </div>
         </div>
@@ -127,19 +133,24 @@ if (!defined('ABSPATH')) {
         </div>
     <?php else: ?>
         
+        <!-- Instructions -->
+        <div style="background: #e7f3ff; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #2271b1;">
+            <strong>💡 How to view conversations:</strong> Click on any conversation card below to expand and see the complete conversation thread with all user questions and AI responses in chronological order.
+        </div>
+        
         <!-- Conversations List -->
         <div id="conversations-list">
             <?php foreach ($sessions as $session): ?>
                 <div class="conversation-card" data-session="<?php echo esc_attr($session->session_id); ?>">
                     <div class="card-header">
-                        <div class="conversation-info">
-                            <div class="conversation-preview"><?php echo esc_html(wp_trim_words($session->first_question, 12)); ?></div>
-                            <div class="conversation-meta">
-                                <span><?php echo intval($session->message_count); ?> messages</span>
-                                <span><?php echo human_time_diff(strtotime($session->last_message), current_time('timestamp')); ?> ago</span>
-                                <span><?php echo esc_html($session->user_ip); ?></span>
-                            </div>
+                                            <div class="conversation-info">
+                        <div class="conversation-preview"><?php echo esc_html(wp_trim_words($session->first_question, 12)); ?></div>
+                        <div class="conversation-meta">
+                            <span><?php echo intval($session->message_count); ?> exchange<?php echo intval($session->message_count) !== 1 ? 's' : ''; ?></span>
+                            <span><?php echo human_time_diff(strtotime($session->last_message), current_time('timestamp')); ?> ago</span>
+                            <span><?php echo esc_html($session->user_ip); ?></span>
                         </div>
+                    </div>
                         <div class="expand-icon"><span class="dashicons dashicons-arrow-down-alt2"></span></div>
                     </div>
                     <div class="card-content" id="content-<?php echo esc_attr($session->session_id); ?>" style="display: none;">

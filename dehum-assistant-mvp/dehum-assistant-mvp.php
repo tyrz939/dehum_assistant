@@ -8,6 +8,12 @@
  * License: MIT
  * Text Domain: dehum-assistant-mvp
  * 
+ * GitHub Plugin URI: tyrz939/dehum_assistant
+ * GitHub Branch: main
+ * Requires WP: 5.0
+ * Tested up to: 6.4
+ * Requires PHP: 7.4
+ * 
  * ====================================================================
  * COMPLETE FRONTEND + BACKEND SOLUTION
  * ====================================================================
@@ -22,12 +28,15 @@
  * ✅ Export, search, pagination, bulk actions
  * ✅ Mobile-first responsive design
  * ✅ Accessibility features (ARIA labels, keyboard navigation)
+ * ✅ GitHub Updater support for automatic updates
  * 
  * FEATURES:
  * 🎯 Mobile: Full-screen chat experience
- * 🎯 Desktop: Floating 350x500px widget  
+ * 🎯 Desktop: Floating 480x700px widget  
  * 🎯 Smart positioning and animations
  * 🎯 Session persistence and conversation threading
+ * 🎯 Professional admin interface with natural conversation flow
+ * 🎯 Automatic updates from GitHub repository
  * ====================================================================
  */
 
@@ -40,10 +49,32 @@ if (!defined('ABSPATH')) {
 define('DEHUM_MVP_VERSION', '2.3.0');
 define('DEHUM_MVP_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('DEHUM_MVP_PLUGIN_URL', plugin_dir_url(__FILE__));
+
+// Rate limiting and security constants
 define('DEHUM_MVP_DAILY_MESSAGE_LIMIT', 50);
+define('DEHUM_MVP_MESSAGE_MAX_LENGTH', 400);
+define('DEHUM_MVP_WEBHOOK_TIMEOUT', 30);
+define('DEHUM_MVP_ACTIVATION_NOTICE_DURATION', 30);
+
+// Database and cleanup constants
+define('DEHUM_MVP_OLD_CONVERSATIONS_DAYS', 90);
+define('DEHUM_MVP_DEFAULT_PER_PAGE', 20);
+
+// AJAX action constants
+define('DEHUM_MVP_AJAX_CHAT', 'dehum_mvp_chat');
+define('DEHUM_MVP_AJAX_SESSION_DETAILS', 'dehum_mvp_get_session_details');
+
+// Nonce action constants
+define('DEHUM_MVP_CHAT_NONCE', 'dehum_mvp_chat_nonce');
+define('DEHUM_MVP_SESSION_NONCE', 'dehum_session_details');
+define('DEHUM_MVP_BULK_NONCE', 'dehum_bulk_actions');
+define('DEHUM_MVP_EXPORT_NONCE', 'dehum_export');
 
 // Include the main plugin class
 require_once DEHUM_MVP_PLUGIN_PATH . 'includes/class-dehum-mvp-main.php';
+
+// Include the updater class
+require_once DEHUM_MVP_PLUGIN_PATH . 'includes/class-dehum-mvp-updater.php';
 
 /**
  * Register activation and deactivation hooks.
@@ -61,6 +92,12 @@ register_deactivation_hook(__FILE__, ['Dehum_MVP_Main', 'deactivate']);
  * @since    2.3.0
  */
 function run_dehum_mvp() {
-    return Dehum_MVP_Main::instance();
+    // Initialize main plugin
+    $main = Dehum_MVP_Main::instance();
+    
+    // Initialize updater for tyrz939/dehum_assistant repository
+    new Dehum_MVP_Updater(__FILE__, 'tyrz939/dehum_assistant');
+    
+    return $main;
 }
 run_dehum_mvp(); 

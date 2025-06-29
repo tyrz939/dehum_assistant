@@ -48,7 +48,7 @@ class Dehum_MVP_Frontend {
         // Localize script with frontend-specific data
         wp_localize_script('dehum-mvp-chat', 'dehumMVP', [
             'ajaxUrl'    => admin_url('admin-ajax.php'),
-            'nonce'      => wp_create_nonce('dehum_mvp_chat_nonce'),
+            'nonce'      => wp_create_nonce(DEHUM_MVP_CHAT_NONCE),
             'isLoggedIn' => is_user_logged_in(),
             'siteUrl'    => home_url()
         ]);
@@ -75,7 +75,12 @@ class Dehum_MVP_Frontend {
                     <!-- Header -->
                     <div class="dehum-chat-header">
                         <h3 id="chat-title">Dehumidifier Assistant</h3>
-                        <button id="dehum-close-btn" class="dehum-close-btn" aria-label="Close chat">&times;</button>
+                        <div class="dehum-header-actions">
+                            <button id="dehum-clear-btn" class="dehum-clear-btn" aria-label="Clear conversation" title="Clear conversation and start fresh">
+                                🗑️
+                            </button>
+                            <button id="dehum-close-btn" class="dehum-close-btn" aria-label="Close chat">&times;</button>
+                        </div>
                     </div>
                     
                     <!-- Messages -->

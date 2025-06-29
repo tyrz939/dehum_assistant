@@ -13,6 +13,7 @@
       button: '#dehum-mvp-chat-button',
       modal: '#dehum-mvp-chat-modal',
       closeBtn: '#dehum-close-btn',
+      clearBtn: '#dehum-clear-btn',
       messages: '#dehum-chat-messages',
       input: '#dehum-chat-input',
       sendBtn: '#dehum-send-btn'
@@ -22,6 +23,7 @@
     isOpen: false,
     isProcessing: false,
     conversation: [],
+    currentSessionId: null, // Track current session ID
 
     /**
      * Initialize the chat widget
@@ -30,6 +32,7 @@
       this.bindEvents();
       this.setupAccessibility();
       this.loadConversation();
+      this.loadSessionId();
     },
 
     /**
@@ -44,6 +47,11 @@
       // Close chat
       $(this.selectors.closeBtn).on('click', () => {
         this.closeChat();
+      });
+
+      // Clear conversation
+      $(this.selectors.clearBtn).on('click', () => {
+        this.clearConversation();
       });
 
       // Close on background click
@@ -97,6 +105,7 @@
 
       // Reload conversation from storage in case it was cleared in another tab
       this.loadConversation();
+      this.loadSessionId();
     },
 
     /**
@@ -107,6 +116,33 @@
 
       this.isOpen = false;
       $(this.selectors.modal).removeClass('show').attr('aria-hidden', 'true');
+    },
+
+    /**
+     * Clear the conversation and start a new session
+     */
+    clearConversation() {
+      if (this.isProcessing) return;
+
+      // Confirm with user
+      if (!confirm('Clear conversation and start fresh? This cannot be undone.')) {
+        return;
+      }
+
+      // Clear frontend state
+      this.conversation = [];
+      this.currentSessionId = null;
+      $(this.selectors.messages).empty();
+
+      // Clear storage
+      this.saveConversation();
+      this.saveSessionId();
+
+      // Show confirmation message
+      this.addSystemMessage('Conversation cleared. Starting fresh!');
+
+      // Focus input for new conversation
+      $(this.selectors.input).focus();
     },
 
     /**
@@ -129,6 +165,12 @@
         .then(response => {
           this.hideTypingIndicator();
           this.addMessage('assistant', response.response);
+
+          // Store session ID from response
+          if (response.session_id) {
+            this.currentSessionId = response.session_id;
+            this.saveSessionId();
+          }
         })
         .catch(error => {
           this.hideTypingIndicator();
@@ -142,15 +184,23 @@
     callAPI(message) {
       this.isProcessing = true;
 
+      // Prepare data with session ID if available
+      const requestData = {
+        action: 'dehum_mvp_chat',
+        message: message,
+        nonce: dehumMVP.nonce
+      };
+
+      // Include session ID if we have one
+      if (this.currentSessionId) {
+        requestData.session_id = this.currentSessionId;
+      }
+
       return new Promise((resolve, reject) => {
         $.ajax({
           url: dehumMVP.ajaxUrl,
           type: 'POST',
-          data: {
-            action: 'dehum_mvp_chat',
-            message: message,
-            nonce: dehumMVP.nonce
-          },
+          data: requestData,
           timeout: 30000
         }).done(response => {
           if (response.success) {
@@ -187,6 +237,28 @@
 
       this.renderMessage(message);
       this.scrollToBottom();
+    },
+
+    /**
+     * Add a system message (for notifications)
+     */
+    addSystemMessage(content) {
+      const messageHtml = `
+        <div class="dehum-message dehum-message--system">
+            <div class="dehum-message__bubble">
+                <em>${this.escapeHtml(content)}</em>
+            </div>
+        </div>
+      `;
+      $(this.selectors.messages).append(messageHtml);
+      this.scrollToBottom();
+
+      // Auto-remove system messages after 3 seconds
+      setTimeout(() => {
+        $('.dehum-message--system').fadeOut(300, function () {
+          $(this).remove();
+        });
+      }, 3000);
     },
 
     /**
@@ -228,6 +300,35 @@
     saveConversation() {
       try {
         localStorage.setItem('dehum_conversation', JSON.stringify(this.conversation));
+      } catch (e) {
+        // Silently fail if localStorage is not available
+      }
+    },
+
+    /**
+     * Load session ID from localStorage
+     */
+    loadSessionId() {
+      try {
+        const storedSessionId = localStorage.getItem('dehum_session_id');
+        if (storedSessionId) {
+          this.currentSessionId = storedSessionId;
+        }
+      } catch (e) {
+        this.currentSessionId = null;
+      }
+    },
+
+    /**
+     * Save session ID to localStorage
+     */
+    saveSessionId() {
+      try {
+        if (this.currentSessionId) {
+          localStorage.setItem('dehum_session_id', this.currentSessionId);
+        } else {
+          localStorage.removeItem('dehum_session_id');
+        }
       } catch (e) {
         // Silently fail if localStorage is not available
       }

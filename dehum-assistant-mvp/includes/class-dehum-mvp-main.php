@@ -63,6 +63,9 @@ final class Dehum_MVP_Main {
         $this->database = new Dehum_MVP_Database();
         $this->ajax = new Dehum_MVP_Ajax($this->database);  // Always load AJAX handlers
         
+        // Run maintenance tasks
+        $this->run_maintenance_tasks();
+        
         // Admin components must be loaded immediately to catch early hooks like 'admin_menu'.
         if (is_admin()) {
             $this->admin = new Dehum_MVP_Admin($this->database);
@@ -96,15 +99,21 @@ final class Dehum_MVP_Main {
      * Plugin activation hook.
      */
     public static function activate() {
-        // We can't use constants here as they are not defined during activation.
-        // We must build the path from this file's location.
-        require_once plugin_dir_path(__FILE__) . 'class-dehum-mvp-database.php';
+        // Validate constants are available, fallback to file-based path
+        $plugin_path = defined('DEHUM_MVP_PLUGIN_PATH') ? DEHUM_MVP_PLUGIN_PATH : plugin_dir_path(dirname(__FILE__));
+        $db_file = $plugin_path . 'includes/class-dehum-mvp-database.php';
+        
+        if (!file_exists($db_file)) {
+            wp_die('Dehumidifier Assistant: Required database class file not found during activation.');
+        }
+        
+        require_once $db_file;
         
         $db = new Dehum_MVP_Database();
         $db->create_conversations_table();
 
-        set_transient('dehum_mvp_activation_notice', true, 30);
-        update_option('dehum_mvp_version', '2.3.0'); // Hardcode version on activation
+        set_transient('dehum_mvp_activation_notice', true, DEHUM_MVP_ACTIVATION_NOTICE_DURATION);
+        update_option('dehum_mvp_version', defined('DEHUM_MVP_VERSION') ? DEHUM_MVP_VERSION : '2.3.0');
         flush_rewrite_rules();
     }
 
@@ -113,5 +122,19 @@ final class Dehum_MVP_Main {
      */
     public static function deactivate() {
         flush_rewrite_rules();
+    }
+
+    /**
+     * Run maintenance tasks like credential migration and database upgrades.
+     */
+    private function run_maintenance_tasks() {
+        // Migrate credentials if needed
+        Dehum_MVP_Ajax::migrate_credentials();
+        
+        // Check for database upgrades
+        $current_db_version = get_option('dehum_mvp_db_version', '1.0');
+        if (version_compare($current_db_version, '1.1', '<')) {
+            $this->database->create_conversations_table(); // This will run the upgrade
+        }
     }
 } 

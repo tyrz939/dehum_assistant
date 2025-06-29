@@ -161,19 +161,43 @@
   font-weight: 600;
 }
 
+.dehum-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.dehum-clear-btn,
 .dehum-close-btn {
   background: none;
   border: none;
   color: white;
-  font-size: 24px;
   cursor: pointer;
-  padding: 4px;
+  padding: 6px 8px;
   border-radius: 4px;
   transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
+.dehum-close-btn {
+  font-size: 24px;
+  padding: 4px;
+}
+
+.dehum-clear-btn {
+  font-size: 16px;
+  opacity: 0.9;
+}
+
+.dehum-clear-btn:hover,
 .dehum-close-btn:hover {
   background: rgba(255, 255, 255, 0.2);
+}
+
+.dehum-clear-btn:hover {
+  opacity: 1;
 }
 
 /* Messages */
@@ -236,6 +260,16 @@
   border-radius: 8px;
   border-left: 4px solid #f44336;
   max-width: 100%;
+}
+
+.dehum-message--system .dehum-message__bubble {
+  background: #fff3e0;
+  color: #ef6c00;
+  border-radius: 8px;
+  border-left: 4px solid #ff9800;
+  max-width: 100%;
+  text-align: center;
+  font-size: 14px;
 }
 
 .dehum-message__timestamp {

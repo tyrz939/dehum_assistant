@@ -43,13 +43,46 @@ class Dehum_MVP_Database {
             KEY session_id (session_id),
             KEY timestamp (timestamp),
             KEY user_ip (user_ip),
+            KEY session_timestamp (session_id, timestamp),
+            KEY ip_timestamp (user_ip, timestamp),
+            KEY timestamp_session (timestamp, session_id),
             FULLTEXT KEY search_content (message, response)
         ) $charset_collate;";
         
         require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
         dbDelta($sql);
         
-        update_option('dehum_mvp_db_version', '1.0');
+        update_option('dehum_mvp_db_version', '1.1');
+        
+        // Ensure composite indexes exist for existing installations
+        $this->add_composite_indexes();
+    }
+
+    /**
+     * Add composite indexes to existing table if they don't exist.
+     */
+    private function add_composite_indexes() {
+        global $wpdb;
+        $table_name = $this->get_conversations_table_name();
+        
+        // Check if composite indexes exist and add them if missing
+        $indexes_to_add = [
+            'session_timestamp' => 'session_id, timestamp',
+            'ip_timestamp' => 'user_ip, timestamp', 
+            'timestamp_session' => 'timestamp, session_id'
+        ];
+        
+        foreach ($indexes_to_add as $index_name => $columns) {
+            $index_exists = $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS 
+                 WHERE table_schema = %s AND table_name = %s AND index_name = %s",
+                DB_NAME, $table_name, $index_name
+            ));
+            
+            if (!$index_exists) {
+                $wpdb->query("ALTER TABLE $table_name ADD INDEX $index_name ($columns)");
+            }
+        }
     }
 
     /**
@@ -93,7 +126,7 @@ class Dehum_MVP_Database {
 
         list($where_clause, $where_params) = $this->build_where_clause($filters);
 
-        $per_page = isset($filters['per_page']) ? intval($filters['per_page']) : 20;
+        $per_page = isset($filters['per_page']) ? intval($filters['per_page']) : DEHUM_MVP_DEFAULT_PER_PAGE;
         $paged = isset($filters['paged']) ? intval($filters['paged']) : 1;
         $offset = ($paged - 1) * $per_page;
         
@@ -190,7 +223,7 @@ class Dehum_MVP_Database {
     }
     
     /**
-     * Delete conversations older than 90 days.
+     * Delete conversations older than the configured number of days.
      *
      * @return int|false The number of rows deleted, or false on error.
      */
@@ -198,10 +231,10 @@ class Dehum_MVP_Database {
         global $wpdb;
         $table_name = $this->get_conversations_table_name();
         
-        return $wpdb->query("
+        return $wpdb->query($wpdb->prepare("
             DELETE FROM $table_name 
-            WHERE timestamp < DATE_SUB(NOW(), INTERVAL 90 DAY)
-        ");
+            WHERE timestamp < DATE_SUB(NOW(), INTERVAL %d DAY)
+        ", DEHUM_MVP_OLD_CONVERSATIONS_DAYS));
     }
 
     /**

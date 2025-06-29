@@ -30,16 +30,16 @@ class Dehum_MVP_Ajax {
      * Add the WordPress AJAX hooks.
      */
     private function add_ajax_hooks() {
-        add_action('wp_ajax_dehum_mvp_chat', [$this, 'handle_chat_message']);
-        add_action('wp_ajax_nopriv_dehum_mvp_chat', [$this, 'handle_chat_message']);
-        add_action('wp_ajax_dehum_mvp_get_session_details', [$this, 'handle_get_session_details']);
+        add_action('wp_ajax_' . DEHUM_MVP_AJAX_CHAT, [$this, 'handle_chat_message']);
+        add_action('wp_ajax_nopriv_' . DEHUM_MVP_AJAX_CHAT, [$this, 'handle_chat_message']);
+        add_action('wp_ajax_' . DEHUM_MVP_AJAX_SESSION_DETAILS, [$this, 'handle_get_session_details']);
     }
 
     /**
      * Handle the incoming chat message from the frontend.
      */
     public function handle_chat_message() {
-        if (!wp_verify_nonce($_POST['nonce'], 'dehum_mvp_chat_nonce')) {
+        if (!wp_verify_nonce($_POST['nonce'], DEHUM_MVP_CHAT_NONCE)) {
             wp_send_json_error(['message' => 'Security check failed'], 403);
         }
 
@@ -49,7 +49,7 @@ class Dehum_MVP_Ajax {
         }
 
         $user_input = sanitize_textarea_field($_POST['message']);
-        if (empty($user_input) || strlen($user_input) > 400) {
+        if (empty($user_input) || strlen($user_input) > DEHUM_MVP_MESSAGE_MAX_LENGTH) {
             wp_send_json_error(['message' => 'Invalid message length']);
         }
 
@@ -78,7 +78,7 @@ class Dehum_MVP_Ajax {
      * Handle the admin request to get details for a specific session.
      */
     public function handle_get_session_details() {
-        if (!wp_verify_nonce($_POST['nonce'], 'dehum_session_details')) {
+        if (!wp_verify_nonce($_POST['nonce'], DEHUM_MVP_SESSION_NONCE)) {
             wp_send_json_error(['message' => 'Security check failed'], 403);
         }
 
@@ -139,15 +139,19 @@ class Dehum_MVP_Ajax {
         $headers = ['Content-Type' => 'application/json'];
         
         $user = get_option('dehum_mvp_n8n_webhook_user');
-        $pass = get_option('dehum_mvp_n8n_webhook_pass');
-        if (!empty($user) && !empty($pass)) {
-            $headers['Authorization'] = 'Basic ' . base64_encode($user . ':' . $pass);
+        $pass_encrypted = get_option('dehum_mvp_n8n_webhook_pass_encrypted');
+        if (!empty($user) && !empty($pass_encrypted)) {
+            // Decrypt the password for use
+            $pass = $this->decrypt_credential($pass_encrypted);
+            if ($pass !== false) {
+                $headers['Authorization'] = 'Basic ' . base64_encode($user . ':' . $pass);
+            }
         }
 
         $args = [
             'body'        => $body,
             'headers'     => $headers,
-            'timeout'     => 30,
+            'timeout'     => DEHUM_MVP_WEBHOOK_TIMEOUT,
             'data_format' => 'body'
         ];
         
@@ -217,5 +221,64 @@ class Dehum_MVP_Ajax {
             }
         }
         return '127.0.0.1';
+    }
+
+    /**
+     * Encrypt a credential using WordPress salts.
+     *
+     * @param string $credential The credential to encrypt.
+     * @return string The encrypted credential.
+     */
+    public function encrypt_credential($credential) {
+        if (empty($credential)) {
+            return '';
+        }
+        
+        // Use WordPress auth key as encryption key
+        $key = defined('AUTH_KEY') ? AUTH_KEY : 'dehum_mvp_fallback_key';
+        $iv = openssl_random_pseudo_bytes(16);
+        $encrypted = openssl_encrypt($credential, 'AES-256-CBC', $key, 0, $iv);
+        
+        // Combine IV and encrypted data, then base64 encode
+        return base64_encode($iv . $encrypted);
+    }
+
+    /**
+     * Decrypt a credential using WordPress salts.
+     *
+     * @param string $encrypted_credential The encrypted credential.
+     * @return string|false The decrypted credential or false on failure.
+     */
+    private function decrypt_credential($encrypted_credential) {
+        if (empty($encrypted_credential)) {
+            return false;
+        }
+        
+        $key = defined('AUTH_KEY') ? AUTH_KEY : 'dehum_mvp_fallback_key';
+        $data = base64_decode($encrypted_credential);
+        
+        if (strlen($data) < 16) {
+            return false;
+        }
+        
+        $iv = substr($data, 0, 16);
+        $encrypted = substr($data, 16);
+        
+        return openssl_decrypt($encrypted, 'AES-256-CBC', $key, 0, $iv);
+    }
+
+    /**
+     * Migrate old plain text password to encrypted format.
+     * Called during plugin initialization if needed.
+     */
+    public static function migrate_credentials() {
+        $old_pass = get_option('dehum_mvp_n8n_webhook_pass');
+        if (!empty($old_pass) && !get_option('dehum_mvp_n8n_webhook_pass_encrypted')) {
+            $ajax_instance = new self(new Dehum_MVP_Database());
+            $encrypted_pass = $ajax_instance->encrypt_credential($old_pass);
+            
+            update_option('dehum_mvp_n8n_webhook_pass_encrypted', $encrypted_pass);
+            delete_option('dehum_mvp_n8n_webhook_pass'); // Remove plain text version
+        }
     }
 } 

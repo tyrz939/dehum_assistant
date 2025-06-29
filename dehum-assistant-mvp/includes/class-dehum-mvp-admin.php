@@ -65,7 +65,7 @@ class Dehum_MVP_Admin {
             );
 
             wp_localize_script('dehum-mvp-admin', 'dehum_admin_vars', [
-                'nonce' => wp_create_nonce('dehum_session_details')
+                'nonce' => wp_create_nonce(DEHUM_MVP_SESSION_NONCE)
             ]);
         }
     }
@@ -76,7 +76,24 @@ class Dehum_MVP_Admin {
     public function register_settings() {
         register_setting('dehum_mvp_options_group', 'dehum_mvp_n8n_webhook_url', ['type' => 'string', 'sanitize_callback' => 'esc_url_raw']);
         register_setting('dehum_mvp_options_group', 'dehum_mvp_n8n_webhook_user', ['type' => 'string']);
-        register_setting('dehum_mvp_options_group', 'dehum_mvp_n8n_webhook_pass', ['type' => 'string']);
+        register_setting('dehum_mvp_options_group', 'dehum_mvp_n8n_webhook_pass', ['type' => 'string', 'sanitize_callback' => [$this, 'encrypt_password_callback']]);
+    }
+
+    /**
+     * Sanitize and encrypt the webhook password.
+     *
+     * @param string $password The plain text password.
+     * @return string Empty string (we store encrypted version separately).
+     */
+    public function encrypt_password_callback($password) {
+        if (!empty($password)) {
+            // Create AJAX instance to access encryption method
+            $ajax = new Dehum_MVP_Ajax($this->db);
+            $encrypted = $ajax->encrypt_credential($password);
+            update_option('dehum_mvp_n8n_webhook_pass_encrypted', $encrypted);
+        }
+        // Always return empty string to prevent storing plain text
+        return '';
     }
     
     /**
@@ -171,7 +188,7 @@ class Dehum_MVP_Admin {
      */
     private function handle_actions() {
         // Handle bulk delete
-        if (isset($_POST['bulk_action'], $_POST['bulk_nonce']) && wp_verify_nonce($_POST['bulk_nonce'], 'dehum_bulk_actions')) {
+        if (isset($_POST['bulk_action'], $_POST['bulk_nonce']) && wp_verify_nonce($_POST['bulk_nonce'], DEHUM_MVP_BULK_NONCE)) {
             if ($_POST['bulk_action'] === 'delete_old') {
                 $deleted_count = $this->db->delete_old_conversations();
                 // Add admin notice for feedback
@@ -179,7 +196,7 @@ class Dehum_MVP_Admin {
         }
         
         // Handle export
-        if (isset($_GET['action'], $_GET['export_nonce']) && $_GET['action'] === 'export' && wp_verify_nonce($_GET['export_nonce'], 'dehum_export')) {
+        if (isset($_GET['action'], $_GET['export_nonce']) && $_GET['action'] === 'export' && wp_verify_nonce($_GET['export_nonce'], DEHUM_MVP_EXPORT_NONCE)) {
             $this->db->export_conversations($_GET);
         }
     }

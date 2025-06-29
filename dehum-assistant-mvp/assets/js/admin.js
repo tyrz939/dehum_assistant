@@ -38,7 +38,7 @@ jQuery(document).ready(function ($) {
       },
       success: function (response) {
         if (response.success && response.data.length > 0) {
-          displayMessages(container, response.data);
+          displayConversationFlow(container, response.data);
         } else {
           container.html('<div class="loading-state" style="color: #d63638;">Failed to load conversation</div>');
         }
@@ -49,28 +49,58 @@ jQuery(document).ready(function ($) {
     });
   }
 
-  function displayMessages(container, messages) {
-    let html = '<div class="chat-messages">';
+  function displayConversationFlow(container, messages) {
+    let html = '<div class="conversation-thread">';
+
+    // Conversation header with summary info
+    html += '<div class="conversation-thread-header">';
+    html += '<div class="thread-info">';
+    html += '<strong>Conversation Thread</strong> • ' + messages.length + ' exchange' + (messages.length !== 1 ? 's' : '');
+    html += '</div>';
+    html += '<div class="thread-meta">';
+    html += '<span class="session-duration">Started ' + messages[0].timestamp;
+    if (messages.length > 1) {
+      html += ' • Ended ' + messages[messages.length - 1].timestamp;
+    }
+    html += '</span>';
+    html += '</div>';
+    html += '</div>';
+
+    // Natural conversation flow
+    html += '<div class="conversation-messages">';
 
     $.each(messages, function (index, msg) {
-      html += '<div class="chat-message">';
-
       // User message
-      html += '<div class="message-user">';
-      html += '<div class="message-header">User • ' + msg.timestamp + '</div>';
-      html += '<div class="message-text">' + $('<div>').text(msg.message).html() + '</div>';
+      html += '<div class="chat-bubble user-bubble">';
+      html += '<div class="bubble-avatar">👤</div>';
+      html += '<div class="bubble-content">';
+      html += '<div class="bubble-text">' + $('<div>').text(msg.message).html() + '</div>';
+      html += '<div class="bubble-time">' + msg.timestamp + '</div>';
+      html += '</div>';
       html += '</div>';
 
-      // Assistant response
-      html += '<div class="message-assistant">';
-      html += '<div class="message-header">Assistant</div>';
-      html += '<div class="message-text">' + $('<div>').text(msg.response).html() + '</div>';
+      // AI response
+      html += '<div class="chat-bubble ai-bubble">';
+      html += '<div class="bubble-avatar">🤖</div>';
+      html += '<div class="bubble-content">';
+      html += '<div class="bubble-text">' + $('<div>').text(msg.response).html() + '</div>';
+      html += '<div class="bubble-time">' + msg.timestamp + '</div>';
       html += '</div>';
-
       html += '</div>';
     });
 
+    html += '</div>'; // Close conversation-messages
+
+    // Conversation footer with session info
+    html += '<div class="conversation-thread-footer">';
+    html += '<div class="session-info">';
+    html += '<span><strong>Session ID:</strong> <code>' + messages[0].id + '</code></span>';
+    html += '<span><strong>User IP:</strong> <code>' + messages[0].user_ip + '</code></span>';
+    html += '<span><strong>Total Messages:</strong> ' + (messages.length * 2) + ' (' + messages.length + ' exchanges)</span>';
     html += '</div>';
+    html += '</div>';
+
+    html += '</div>'; // Close conversation-thread
     container.html(html);
   }
 
