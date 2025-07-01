@@ -33,6 +33,7 @@ class Dehum_MVP_Admin {
     private function add_admin_hooks() {
         add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('admin_init', [$this, 'register_settings']);
+        add_action('admin_init', [$this, 'handle_export_download']);
         add_action('admin_menu', [$this, 'add_admin_menu']);
         add_action('admin_notices', [$this, 'admin_activation_notice']);
         add_action('wp_dashboard_setup', [$this, 'add_dashboard_widget']);
@@ -65,7 +66,9 @@ class Dehum_MVP_Admin {
             );
 
             wp_localize_script('dehum-mvp-admin', 'dehum_admin_vars', [
-                'nonce' => wp_create_nonce(DEHUM_MVP_SESSION_NONCE)
+                'nonce' => wp_create_nonce(DEHUM_MVP_SESSION_NONCE),
+                'delete_nonce' => wp_create_nonce(DEHUM_MVP_DELETE_SESSION_NONCE),
+                'ajaxurl' => admin_url('admin-ajax.php')
             ]);
         }
     }
@@ -172,6 +175,7 @@ class Dehum_MVP_Admin {
             'date_filter'  => isset($_GET['date_filter']) ? sanitize_text_field($_GET['date_filter']) : '',
             'custom_start' => isset($_GET['custom_start']) ? sanitize_text_field($_GET['custom_start']) : '',
             'custom_end'   => isset($_GET['custom_end']) ? sanitize_text_field($_GET['custom_end']) : '',
+            'ip_filter'    => isset($_GET['ip_filter']) ? sanitize_text_field($_GET['ip_filter']) : '',
             'per_page'     => isset($_GET['per_page']) ? intval($_GET['per_page']) : 20,
             'paged'        => isset($_GET['paged']) ? intval($_GET['paged']) : 1,
         ];
@@ -184,20 +188,176 @@ class Dehum_MVP_Admin {
     }
 
     /**
+     * Handle CSV export download on admin_init.
+     */
+    public function handle_export_download() {
+        // Only handle export if we're on the right page and have the right parameters
+        if (!isset($_GET['page']) || $_GET['page'] !== 'dehum-mvp-logs') {
+            return;
+        }
+        
+        if (!isset($_GET['action']) || $_GET['action'] !== 'export') {
+            return;
+        }
+        
+        if (!isset($_GET['export_nonce']) || !wp_verify_nonce($_GET['export_nonce'], DEHUM_MVP_EXPORT_NONCE)) {
+            wp_die('Security check failed.');
+        }
+        
+        if (!current_user_can('manage_options')) {
+            wp_die('Insufficient permissions.');
+        }
+        
+        // Remove pagination and action params from filters
+        $export_filters = $_GET;
+        unset($export_filters['action'], $export_filters['export_nonce'], $export_filters['paged'], $export_filters['page']);
+        
+        $this->export_conversations_direct($export_filters);
+    }
+
+    /**
+     * Export conversations directly with proper headers.
+     */
+    private function export_conversations_direct($filters = []) {
+        global $wpdb;
+        $table_name = $this->db->get_conversations_table_name();
+        
+        list($where_clause, $where_params) = $this->db->build_where_clause($filters);
+        
+        $query = "SELECT * FROM $table_name $where_clause ORDER BY timestamp DESC";
+
+        if (!empty($where_params)) {
+            $conversations = $wpdb->get_results($wpdb->prepare($query, $where_params));
+        } else {
+            $conversations = $wpdb->get_results($query);
+        }
+
+        // Generate filename
+        $filename = 'dehumidifier-conversations-' . date('Y-m-d-H-i-s') . '.csv';
+        
+        // Set headers for download - must be done before any output
+        status_header(200);
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: no-cache, must-revalidate');
+        header('Expires: 0');
+        header('Pragma: no-cache');
+        
+        // Disable WordPress's default headers
+        remove_action('wp_head', 'wp_generator');
+        
+        // Output UTF-8 BOM for Excel
+        echo chr(239) . chr(187) . chr(191);
+        
+        // Output CSV headers
+        $headers = [
+            'Session ID', 
+            'Date/Time', 
+            'User Message', 
+            'AI Response', 
+            'User IP',
+            'Message Length',
+            'Response Length'
+        ];
+        
+        echo '"' . implode('","', $headers) . '"' . "\r\n";
+        
+        // Output data rows
+        foreach ($conversations as $conv) {
+            $row = [
+                $conv->session_id,
+                $conv->timestamp,
+                str_replace('"', '""', $conv->message), // Escape quotes
+                str_replace('"', '""', $conv->response), // Escape quotes
+                $conv->user_ip,
+                strlen($conv->message),
+                strlen($conv->response)
+            ];
+            
+            echo '"' . implode('","', $row) . '"' . "\r\n";
+        }
+        
+        // Clean exit
+        exit;
+    }
+
+    /**
      * Handle bulk actions and exports.
      */
     private function handle_actions() {
-        // Handle bulk delete
+        // Handle individual session delete via AJAX (handled in AJAX class)
+        
+        // Handle bulk actions
         if (isset($_POST['bulk_action'], $_POST['bulk_nonce']) && wp_verify_nonce($_POST['bulk_nonce'], DEHUM_MVP_BULK_NONCE)) {
-            if ($_POST['bulk_action'] === 'delete_old') {
-                $deleted_count = $this->db->delete_old_conversations();
-                // Add admin notice for feedback
+            $action = $_POST['bulk_action'];
+            $success_message = '';
+            $error_message = '';
+            
+            switch ($action) {
+                case 'delete_old':
+                    $deleted_count = $this->db->delete_old_conversations();
+                    if ($deleted_count !== false) {
+                        $success_message = sprintf(__('Successfully deleted %d old conversations.', 'dehum-assistant-mvp'), $deleted_count);
+                    } else {
+                        $error_message = __('Failed to delete old conversations.', 'dehum-assistant-mvp');
+                    }
+                    break;
+                    
+                case 'delete_selected':
+                    if (isset($_POST['selected_sessions']) && is_array($_POST['selected_sessions'])) {
+                        $session_ids = array_map('sanitize_text_field', $_POST['selected_sessions']);
+                        $deleted_count = $this->db->delete_sessions_bulk($session_ids);
+                        if ($deleted_count !== false) {
+                            $success_message = sprintf(__('Successfully deleted %d selected conversations.', 'dehum-assistant-mvp'), count($session_ids));
+                        } else {
+                            $error_message = __('Failed to delete selected conversations.', 'dehum-assistant-mvp');
+                        }
+                    }
+                    break;
+                    
+                case 'delete_by_date':
+                    if (isset($_POST['delete_start_date'], $_POST['delete_end_date'])) {
+                        $start_date = sanitize_text_field($_POST['delete_start_date']);
+                        $end_date = sanitize_text_field($_POST['delete_end_date']);
+                        if ($start_date && $end_date) {
+                            $deleted_count = $this->db->delete_by_date_range($start_date, $end_date);
+                            if ($deleted_count !== false) {
+                                $success_message = sprintf(__('Successfully deleted %d conversations from %s to %s.', 'dehum-assistant-mvp'), $deleted_count, $start_date, $end_date);
+                            } else {
+                                $error_message = __('Failed to delete conversations by date range.', 'dehum-assistant-mvp');
+                            }
+                        }
+                    }
+                    break;
+                    
+                case 'delete_by_ip':
+                    if (isset($_POST['delete_ip'])) {
+                        $ip_address = sanitize_text_field($_POST['delete_ip']);
+                        if ($ip_address) {
+                            $deleted_count = $this->db->delete_by_ip($ip_address);
+                            if ($deleted_count !== false) {
+                                $success_message = sprintf(__('Successfully deleted %d conversations from IP %s.', 'dehum-assistant-mvp'), $deleted_count, $ip_address);
+                            } else {
+                                $error_message = __('Failed to delete conversations by IP address.', 'dehum-assistant-mvp');
+                            }
+                        }
+                    }
+                    break;
             }
+            
+            // Store messages in transients for display
+            if ($success_message) {
+                set_transient('dehum_admin_success', $success_message, 30);
+            }
+            if ($error_message) {
+                set_transient('dehum_admin_error', $error_message, 30);
+            }
+            
+            // Redirect to prevent resubmission
+            wp_redirect(admin_url('tools.php?page=dehum-mvp-logs'));
+            exit;
         }
         
-        // Handle export
-        if (isset($_GET['action'], $_GET['export_nonce']) && $_GET['action'] === 'export' && wp_verify_nonce($_GET['export_nonce'], DEHUM_MVP_EXPORT_NONCE)) {
-            $this->db->export_conversations($_GET);
-        }
+        // Export is now handled in admin_init hook
     }
 } 

@@ -67,6 +67,7 @@ define('DEHUM_MVP_AJAX_SESSION_DETAILS', 'dehum_mvp_get_session_details');
 // Nonce action constants
 define('DEHUM_MVP_CHAT_NONCE', 'dehum_mvp_chat_nonce');
 define('DEHUM_MVP_SESSION_NONCE', 'dehum_session_details');
+define('DEHUM_MVP_DELETE_SESSION_NONCE', 'dehum_delete_session');
 define('DEHUM_MVP_BULK_NONCE', 'dehum_bulk_actions');
 define('DEHUM_MVP_EXPORT_NONCE', 'dehum_export');
 

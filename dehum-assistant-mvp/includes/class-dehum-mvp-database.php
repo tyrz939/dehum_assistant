@@ -238,42 +238,80 @@ class Dehum_MVP_Database {
     }
 
     /**
-     * Export conversations to a CSV file.
+     * Delete a specific session and all its conversations.
      *
-     * @param array $filters Filters to apply to the export.
+     * @param string $session_id The session ID to delete.
+     * @return int|false The number of rows deleted, or false on error.
      */
-    public function export_conversations($filters = []) {
+    public function delete_session($session_id) {
         global $wpdb;
         $table_name = $this->get_conversations_table_name();
         
-        list($where_clause, $where_params) = $this->build_where_clause($filters);
-        
-        $query = "SELECT * FROM $table_name $where_clause ORDER BY timestamp DESC";
-
-        if (!empty($where_params)) {
-            $conversations = $wpdb->get_results($wpdb->prepare($query, $where_params));
-        } else {
-            $conversations = $wpdb->get_results($query);
-        }
-
-        // Generate filename and set headers
-        $filename = 'dehumidifier-conversations-' . date('Y-m-d-H-i-s') . '.csv';
-        header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
-        header('Pragma: no-cache');
-        header('Expires: 0');
-
-        $output = fopen('php://output', 'w');
-        
-        fputcsv($output, ['Session ID', 'Date/Time', 'User Message', 'AI Response', 'User IP']);
-        
-        foreach ($conversations as $conv) {
-            fputcsv($output, [$conv->session_id, $conv->timestamp, $conv->message, $conv->response, $conv->user_ip]);
-        }
-        
-        fclose($output);
-        exit;
+        return $wpdb->delete(
+            $table_name,
+            ['session_id' => $session_id],
+            ['%s']
+        );
     }
+
+    /**
+     * Delete multiple sessions in bulk.
+     *
+     * @param array $session_ids Array of session IDs to delete.
+     * @return int|false The number of rows deleted, or false on error.
+     */
+    public function delete_sessions_bulk($session_ids) {
+        if (empty($session_ids) || !is_array($session_ids)) {
+            return false;
+        }
+
+        global $wpdb;
+        $table_name = $this->get_conversations_table_name();
+        
+        // Sanitize session IDs
+        $placeholders = implode(',', array_fill(0, count($session_ids), '%s'));
+        $query = "DELETE FROM $table_name WHERE session_id IN ($placeholders)";
+        
+        return $wpdb->query($wpdb->prepare($query, $session_ids));
+    }
+
+    /**
+     * Delete conversations by date range.
+     *
+     * @param string $start_date Start date (Y-m-d format).
+     * @param string $end_date End date (Y-m-d format).
+     * @return int|false The number of rows deleted, or false on error.
+     */
+    public function delete_by_date_range($start_date, $end_date) {
+        global $wpdb;
+        $table_name = $this->get_conversations_table_name();
+        
+        return $wpdb->query($wpdb->prepare("
+            DELETE FROM $table_name 
+            WHERE DATE(timestamp) >= %s AND DATE(timestamp) <= %s
+        ", $start_date, $end_date));
+    }
+
+    /**
+     * Delete conversations by IP address.
+     *
+     * @param string $ip_address The IP address to delete conversations for.
+     * @return int|false The number of rows deleted, or false on error.
+     */
+    public function delete_by_ip($ip_address) {
+        global $wpdb;
+        $table_name = $this->get_conversations_table_name();
+        
+        return $wpdb->delete(
+            $table_name,
+            ['user_ip' => $ip_address],
+            ['%s']
+        );
+    }
+
+
+
+
 
     /**
      * Build the WHERE clause for DB queries based on filters.
@@ -281,7 +319,7 @@ class Dehum_MVP_Database {
      * @param array $filters An associative array of filters.
      * @return array An array containing the WHERE clause string and the parameters array.
      */
-    private function build_where_clause($filters) {
+    public function build_where_clause($filters) {
         global $wpdb;
         $where_conditions = [];
         $where_params = [];
@@ -293,7 +331,8 @@ class Dehum_MVP_Database {
                 $where_conditions[] = "MATCH (message, response) AGAINST (%s IN NATURAL LANGUAGE MODE)";
                 $where_params[] = $search;
             } else {
-                $where_conditions[] = "(message LIKE %s OR response LIKE %s)";
+                $where_conditions[] = "(message LIKE %s OR response LIKE %s OR session_id LIKE %s)";
+                $where_params[] = '%' . $wpdb->esc_like($search) . '%';
                 $where_params[] = '%' . $wpdb->esc_like($search) . '%';
                 $where_params[] = '%' . $wpdb->esc_like($search) . '%';
             }
@@ -322,6 +361,12 @@ class Dehum_MVP_Database {
                     }
                     break;
             }
+        }
+        
+        // IP filter
+        if (!empty($filters['ip_filter'])) {
+            $where_conditions[] = "user_ip = %s";
+            $where_params[] = $filters['ip_filter'];
         }
         
         $where_clause = !empty($where_conditions) ? 'WHERE ' . implode(' AND ', $where_conditions) : '';

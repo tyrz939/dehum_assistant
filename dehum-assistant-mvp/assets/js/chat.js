@@ -33,6 +33,7 @@
       this.setupAccessibility();
       this.loadConversation();
       this.loadSessionId();
+      this.initButtonEffects();
     },
 
     /**
@@ -87,6 +88,21 @@
      */
     setupAccessibility() {
       $(this.selectors.modal).attr('aria-hidden', 'true');
+    },
+
+    /**
+     * Initialize button visual effects
+     */
+    initButtonEffects() {
+      // Add a subtle pulse effect after a delay to draw attention
+      setTimeout(() => {
+        $(this.selectors.button).addClass('pulse');
+
+        // Remove pulse after first interaction
+        $(this.selectors.button).one('click', () => {
+          $(this.selectors.button).removeClass('pulse');
+        });
+      }, 3000);
     },
 
     /**

@@ -33,6 +33,9 @@ class Dehum_MVP_Ajax {
         add_action('wp_ajax_' . DEHUM_MVP_AJAX_CHAT, [$this, 'handle_chat_message']);
         add_action('wp_ajax_nopriv_' . DEHUM_MVP_AJAX_CHAT, [$this, 'handle_chat_message']);
         add_action('wp_ajax_' . DEHUM_MVP_AJAX_SESSION_DETAILS, [$this, 'handle_get_session_details']);
+        
+        // Add individual session delete handler
+        add_action('wp_ajax_dehum_mvp_delete_session', [$this, 'handle_delete_session_ajax']);
     }
 
     /**
@@ -279,6 +282,34 @@ class Dehum_MVP_Ajax {
             
             update_option('dehum_mvp_n8n_webhook_pass_encrypted', $encrypted_pass);
             delete_option('dehum_mvp_n8n_webhook_pass'); // Remove plain text version
+        }
+    }
+
+    /**
+     * Handle AJAX request to delete an individual session.
+     */
+    public function handle_delete_session_ajax() {
+        // Verify nonce and permissions
+        if (!wp_verify_nonce($_POST['nonce'], DEHUM_MVP_DELETE_SESSION_NONCE) || !current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Security check failed.', 'dehum-assistant-mvp')]);
+            return;
+        }
+
+        if (empty($_POST['session_id'])) {
+            wp_send_json_error(['message' => __('Session ID is required.', 'dehum-assistant-mvp')]);
+            return;
+        }
+
+        $session_id = sanitize_text_field($_POST['session_id']);
+        $deleted_count = $this->db->delete_session($session_id);
+        
+        if ($deleted_count !== false && $deleted_count > 0) {
+            wp_send_json_success([
+                'message' => sprintf(__('Successfully deleted conversation with %d messages.', 'dehum-assistant-mvp'), $deleted_count),
+                'deleted_count' => $deleted_count
+            ]);
+        } else {
+            wp_send_json_error(['message' => __('Failed to delete session or session not found.', 'dehum-assistant-mvp')]);
         }
     }
 } 

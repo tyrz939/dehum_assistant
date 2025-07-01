@@ -66,7 +66,14 @@ class Dehum_MVP_Frontend {
         <div id="dehum-mvp-chat-widget">
             <!-- Chat Button -->
             <button id="dehum-mvp-chat-button" class="dehum-chat-button" aria-label="Open Dehumidifier Assistant">
-                💬
+                <span class="dehum-button-content">
+                    <span class="dehum-ai-icon">
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+                            <path d="M12 1C5.925 1 1 5.925 1 12s4.925 11 11 11 11-4.925 11-11S18.075 1 12 1zM8.5 6c.825 0 1.5.675 1.5 1.5S9.325 9 8.5 9 7 8.325 7 7.5 7.675 6 8.5 6zm7 0c.825 0 1.5.675 1.5 1.5S16.325 9 15.5 9 14 8.325 14 7.5 14.675 6 15.5 6zM12 18c-2.5 0-4.5-1.5-5.5-3.5h2c.5 1 1.5 1.5 3.5 1.5s3-.5 3.5-1.5h2c-1 2-3 3.5-5.5 3.5z"/>
+                        </svg>
+                    </span>
+                    <span class="dehum-ai-text">AI</span>
+                </span>
             </button>
             
             <!-- Chat Modal -->
