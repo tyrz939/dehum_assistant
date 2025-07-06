@@ -45,7 +45,7 @@
       "technology": "inverter",
       "pool_safe": true,
       "price_aud": 3900,
-      "performance_factor": 1.0,
+      "performance_factor": 1.3,
       "capacity_lpd": 60,
       "url": "https://example.com/products/IDHR60"
     },
@@ -57,7 +57,7 @@
       "technology": "inverter",
       "pool_safe": true,
       "price_aud": 4600,
-      "performance_factor": 1.0,
+      "performance_factor": 1.3,
       "capacity_lpd": 96,
       "url": "https://example.com/products/IDHR96"
     },
@@ -69,7 +69,7 @@
       "technology": "inverter",
       "pool_safe": true,
       "price_aud": 5400,
-      "performance_factor": 1.0,
+      "performance_factor": 1.3,
       "capacity_lpd": 120,
       "url": "https://example.com/products/IDHR120"
     },
@@ -165,7 +165,7 @@
       "technology": "portable",
       "pool_safe": false,
       "price_aud": null,
-      "performance_factor": 1.0,
+      "performance_factor": 1,
       "capacity_lpd": 100,
       "url": "https://example.com/products/ST_SERIES"
     },
@@ -177,7 +177,7 @@
       "technology": "portable",
       "pool_safe": false,
       "price_aud": null,
-      "performance_factor": 1.0,
+      "performance_factor": 1,
       "capacity_lpd": 90,
       "url": "https://example.com/products/CT_SERIES"
     }

@@ -399,15 +399,18 @@
      * Escape HTML then convert line breaks to <br>
      */
     formatContent(text) {
-      // Convert markdown links first ( [text](url) ) while raw
-      let processed = text.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, (match, label, url) => {
-        const safeLabel = this.escapeHtml(label);
+      // First escape any existing HTML to prevent XSS
+      let processed = this.escapeHtml(text);
+
+      // Convert markdown links of the form [label](url) into anchor tags
+      processed = processed.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, (match, label, url) => {
+        // label is already escaped above; ensure URL is safely escaped for attributes
         const safeUrl = this.escapeHtml(url);
-        return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeLabel}</a>`;
+        return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${label}</a>`;
       });
 
-      // Now escape remaining HTML then convert new lines
-      processed = this.escapeHtml(processed).replace(/\n/g, '<br>');
+      // Replace newlines with <br> for multi-line support
+      processed = processed.replace(/\n/g, '<br>');
       return processed;
     }
   };

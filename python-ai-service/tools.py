@@ -510,6 +510,7 @@ class DehumidifierTools:
             catalog.append({
                 "sku": p["sku"],
                 "name": p.get("name", p["sku"]),
+                "type": p.get("type"),
                 "effective_capacity_lpd": eff_cap,
                 "capacity_lpd": p["capacity_lpd"],
                 "performance_factor": p.get("performance_factor", 1.0),

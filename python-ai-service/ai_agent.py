@@ -121,6 +121,13 @@ class DehumidifierAgent:
     async def get_ai_response(self, messages: List[Dict[str, str]]) -> Dict[str, Any]:
         """Get response from OpenAI with function calling"""
         try:
+            # Determine last user message content for preference detection
+            last_user_content = ""
+            for m in reversed(messages):
+                if m.get("role") == "user":
+                    last_user_content = m.get("content", "") or ""
+                    break
+
             # Define available functions
             functions = [
                 {
@@ -220,9 +227,18 @@ class DehumidifierAgent:
                     room_volume = result.get("room_volume_m3")
                     pool_area = func_args.get("pool_area_m2", 0)
                     pool_required = bool(func_args.get("has_pool", False)) or pool_area > 0
+                    # Detect form-factor preference from the latest user message
+                    preferred_types = self._detect_preferred_types(last_user_content)
+                    catalog = self.tools.get_catalog_with_effective_capacity(include_pool_safe_only=pool_required)
+                    if preferred_types:
+                        filtered = [p for p in catalog if p.get("type") in preferred_types]
+                        # Fallback to full catalog if no items match the preference
+                        catalog = filtered if filtered else catalog
+
                     catalog_data = {
                         "required_load_lpd": result.get("recommended_capacity_lpd"),
-                        "catalog": self.tools.get_catalog_with_effective_capacity(include_pool_safe_only=pool_required)
+                        "preferred_types": preferred_types,
+                        "catalog": catalog
                     }
                 elif func_name == "calculate_dehum_load":
                     result = self.tools.calculate_dehum_load(**func_args)
@@ -237,9 +253,17 @@ class DehumidifierAgent:
                     room_volume = result.get("volume")
                     pool_area = func_args.get("pool_area_m2", 0)
                     pool_required = bool(func_args.get("has_pool", False)) or pool_area > 0
+                    # Detect form-factor preference from the latest user message
+                    preferred_types = self._detect_preferred_types(last_user_content)
+                    catalog = self.tools.get_catalog_with_effective_capacity(include_pool_safe_only=pool_required)
+                    if preferred_types:
+                        filtered = [p for p in catalog if p.get("type") in preferred_types]
+                        catalog = filtered if filtered else catalog
+
                     catalog_data = {
                         "required_load_lpd": result.get("latentLoad_L24h"),
-                        "catalog": self.tools.get_catalog_with_effective_capacity(include_pool_safe_only=pool_required)
+                        "preferred_types": preferred_types,
+                        "catalog": catalog
                     }
                 
                 # Get follow-up response with function result
@@ -325,3 +349,19 @@ class DehumidifierAgent:
             "claude-3-sonnet-20240229",
             "claude-3-haiku-20240307"
         ] 
+
+    def _detect_preferred_types(self, text: str) -> List[str]:
+        """Simple heuristic to detect preferred installation types from user text"""
+        if not text:
+            return []
+        t = text.lower()
+        prefs = []
+        if "ducted" in t or "duct" in t:
+            prefs.append("ducted")
+        if "wall" in t:
+            # treat 'wall mount' or 'wall-mounted'
+            prefs.append("wall_mount")
+        if "portable" in t:
+            prefs.append("portable")
+        return prefs
+    
