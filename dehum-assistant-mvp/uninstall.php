@@ -50,7 +50,17 @@ function dehum_mvp_cleanup_options() {
         'dehum_mvp_activated_at',
         'dehum_mvp_version',
         'dehum_mvp_db_version',
-        'dehum_mvp_n8n_webhook_url'
+        
+        // Python AI Service settings
+        'dehum_mvp_ai_service_url',
+        'dehum_mvp_ai_service_key',
+        'dehum_mvp_ai_service_key_encrypted',
+        
+        // Legacy n8n webhook settings
+        'dehum_mvp_n8n_webhook_url',
+        'dehum_mvp_n8n_webhook_user',
+        'dehum_mvp_n8n_webhook_pass',
+        'dehum_mvp_n8n_webhook_pass_encrypted'
     ];
     
     foreach ($options_to_delete as $option) {

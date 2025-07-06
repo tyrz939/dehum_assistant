@@ -7,37 +7,40 @@ Transform the dehumidifier assistant from a basic chat interface into a comprehe
 - Seamlessly hands off complex cases to human experts
 - Integrates directly into WordPress/Elementor for maximum reach
 
-## 🏗️ **AGREED ARCHITECTURE: PHP Plugin + n8n Hybrid**
+## 🏗️ **UPDATED ARCHITECTURE: WordPress + Python AI Service + n8n Business Intelligence**
 
 ### **Architecture Decision**
-**Hybrid approach combining WordPress-native PHP plugin with self-hosted n8n workflows:**
+**Three-tier architecture optimized for each layer's strengths:**
 
-- **PHP Plugin (UI Shell)**: WordPress integration, Elementor widget, chat interface, local logging, admin dashboard
-- **n8n Workflows (Intelligence Engine)**: AI processing, sizing calculations, lead scoring, external integrations, data routing
+- **WordPress Plugin (UI Layer)**: Chat interface, Elementor integration, conversation logging, admin dashboard
+- **Python AI Service (Intelligence Layer)**: AI agent with tools, sizing calculations, conversation management, model-agnostic design
+- **n8n Workflows (Business Intelligence Layer)**: Lead scoring, email automation, CRM integration, analytics routing
 
 ### **Division of Responsibilities**
 ```
-User Interaction → PHP Plugin → n8n Webhook → AI Processing → Response
-                      ↓                           ↓
-              WP Database                External Systems
-              (conversations)            (CRM, email, etc.)
+User Interaction → WordPress → Python AI Service → n8n Business Intelligence → External Systems
+                     ↓              ↓                    ↓
+                WP Database    AI Processing        Lead Automation
+                (conversations)  (tools/sizing)    (CRM/email/analytics)
 ```
 
 **Benefits:**
-- ✅ Native WordPress integration (PHP handles what PHP does best)
-- ✅ Powerful AI workflows (n8n handles complex logic)
-- ✅ Future-proof (easy to modify workflows without touching WordPress)
-- ✅ Scalable (add integrations without code changes)
-- ✅ Cost-effective (self-hosted n8n, no monthly fees)
+- ✅ **Native WordPress integration** (PHP handles UI/logging)
+- ✅ **Powerful AI with full control** (Python handles complex AI logic)
+- ✅ **Model flexibility** (OpenAI/Claude/Gemini/Llama with no vendor lock-in)
+- ✅ **Business automation** (n8n handles lead intelligence and integrations)
+- ✅ **Easy debugging** (Python AI service can be developed/tested independently)
+- ✅ **Scalable architecture** (each layer can be optimized independently)
 
 ---
 
-## 📋 Current Requirements (Your Specifications)
+## 📋 Current Requirements (Updated for New Architecture)
 
-### 1. **Sizing Calculation Tool**
-- **Goal**: AI can use dedicated calculation functions instead of estimating
-- **Implementation**: Separate calc module that AI calls with parameters
-- **Benefits**: More accurate, consistent, auditable sizing recommendations
+### 1. **Python AI Service with Tools**
+- **Goal**: Model-agnostic AI agent with dedicated calculation functions
+- **Implementation**: FastAPI service with OpenAI/Claude/Gemini support via LiteLLM
+- **Tools**: Dehumidifier sizing calculator, product lookup, technical reference
+- **Benefits**: Full control, easy debugging, no vendor lock-in, rapid development
 - **Priority**: HIGH
 
 ### 2. **Elementor Integration**
@@ -46,18 +49,19 @@ User Interaction → PHP Plugin → n8n Webhook → AI Processing → Response
 - **Benefits**: Marketing team can place assistant anywhere without developer help
 - **Priority**: MEDIUM-HIGH
 
-### 3. **Comprehensive Reference Materials**
-- **Goal**: AI has access to detailed specs and installation manuals
+### 3. **n8n Business Intelligence Engine**
+- **Goal**: Automated lead scoring, email workflows, CRM integration
 - **Components**: 
-  - Full product specification database
-  - Complete installation manual (accessible when needed)
-  - Technical documentation library
-- **Implementation**: Searchable knowledge base with AI access
-- **Priority**: MEDIUM
+  - Lead scoring based on conversation analysis
+  - Email automation for qualified leads
+  - CRM integration (HubSpot, Salesforce)
+  - Analytics routing and metrics tracking
+- **Implementation**: n8n workflows triggered by Python AI service
+- **Priority**: HIGH
 
 ### 4. **Domain-Specific Filtering**
 - **Goal**: Only respond to dehumidifier-related questions
-- **Implementation**: Input validation and topic classification
+- **Implementation**: AI prompt engineering + Python validation logic
 - **Benefits**: Prevents off-topic usage, maintains professional focus
 - **Example**: "I can only help with dehumidifier sizing and selection. How can I assist with your humidity control needs?"
 - **Priority**: MEDIUM
@@ -74,19 +78,19 @@ User Interaction → PHP Plugin → n8n Webhook → AI Processing → Response
 
 ---
 
-## 🚀 Implementation Priority Matrix (Updated for Hybrid Architecture)
+## 🚀 Implementation Priority Matrix (Updated for New Architecture)
 
-| Feature | PHP Plugin | n8n Workflow | Technical Complexity | Priority |
-|---------|------------|--------------|---------------------|----------|
-| Basic Chat Interface | ✅ UI Shell | ✅ AI Processing | LOW | 1 |
-| Elementor Integration | ✅ Widget | ❌ None | LOW | 2 |
-| Chat Logging (WP) | ✅ Database | ✅ Enrichment | LOW | 3 |
-| Domain Filtering | ✅ Basic | ✅ AI Classification | LOW | 4 |
-| Sizing Calc Tool | ❌ None | ✅ Full Logic | MEDIUM | 5 |
-| Human Handoff Engine | ✅ Contact Form | ✅ Lead Routing | MEDIUM | 6 |
-| Reference Materials | ✅ Search UI | ✅ Document Processing | MEDIUM | 7 |
-| Lead Scoring | ❌ None | ✅ Full Logic | MEDIUM | 8 |
-| Quote Generation | ✅ Display | ✅ PDF Creation | HIGH | 9 |
+| Feature | WordPress Plugin | Python AI Service | n8n Business Intelligence | Technical Complexity | Priority |
+|---------|------------------|-------------------|---------------------------|---------------------|----------|
+| Basic Chat Interface | ✅ UI Shell | ✅ AI Processing | ❌ None | LOW | 1 |
+| AI Agent with Tools | ❌ None | ✅ Full Implementation | ❌ None | MEDIUM | 2 |
+| Chat Logging (WP) | ✅ Database | ✅ Conversation Data | ✅ Lead Enrichment | LOW | 3 |
+| Elementor Integration | ✅ Widget | ❌ None | ❌ None | LOW | 4 |
+| Lead Scoring & Email | ❌ None | ✅ Intelligence Data | ✅ Automation Logic | MEDIUM | 5 |
+| Domain Filtering | ✅ Basic | ✅ AI Classification | ❌ None | LOW | 6 |
+| CRM Integration | ❌ None | ✅ Lead Data | ✅ API Connections | MEDIUM | 7 |
+| Human Handoff Engine | ✅ Contact Form | ✅ Escalation Logic | ✅ Routing Rules | MEDIUM | 8 |
+| Analytics & Metrics | ✅ Dashboard | ✅ Conversation Analysis | ✅ Data Routing | HIGH | 9 |
 
 ---
 
@@ -96,67 +100,83 @@ User Interaction → PHP Plugin → n8n Webhook → AI Processing → Response
 - **Engagement**: Average conversation length and depth
 - **Sales Impact**: Revenue attributed to AI assistant
 - **Efficiency**: Reduction in manual sizing requests
+- **Model Performance**: Response quality across different AI providers
 
 ---
 
 ## 🔄 Implementation Roadmap
 
-### **Phase 1: Foundation (Week 1-2)**
-**Goal: Replace Flask with PHP+n8n hybrid, maintain current functionality**
+### **Phase 1: Core AI Service (Week 1-2)**
+**Goal: Replace n8n AI complexity with Python AI service**
 
-**PHP Plugin Tasks:**
-- WordPress plugin structure and activation
-- Basic chat interface (replicate current UI)
-- Elementor widget registration
-- Database tables for conversation logging
+**Python AI Service Tasks:**
+- FastAPI service with basic chat endpoint
+- OpenAI integration with function calling
+- Dehumidifier sizing calculator tool
+- LiteLLM integration for model flexibility
+- Basic conversation management and session handling
+
+**WordPress Plugin Tasks:**
+- Update chat widget to call Python service instead of n8n
+- Maintain conversation logging in WordPress database
 - Admin dashboard for viewing conversations
 
 **n8n Workflow Tasks:**
-- Basic webhook receiver for chat messages
-- OpenAI API integration with existing prompt
-- Simple response logic (sizing recommendations)
-- WordPress webhook for storing conversations
+- Simple webhook receiver for business intelligence data
+- Basic lead scoring logic
+- Email notification workflows
 
-**Deliverable: Working chat system with feature parity to current Flask app**
+**Deliverable: Working Python AI service with tool calling**
 
-### **Phase 2: Enhanced Intelligence (Week 3-4)**
-**Goal: Add smart features that were difficult in Flask**
+### **Phase 2: Business Intelligence (Week 3-4)**
+**Goal: Add smart lead qualification and automation**
 
-**PHP Plugin Tasks:**
-- Contact capture form for escalations
+**Python AI Service Tasks:**
+- Enhanced conversation analysis and lead scoring
+- Product recommendation engine
+- Technical reference integration
+- Multi-model A/B testing capability
+
+**WordPress Plugin Tasks:**
+- Elementor widget integration
 - Enhanced admin dashboard with lead management
-- Search interface for reference materials
+- Contact capture forms for escalations
 
 **n8n Workflow Tasks:**
-- Lead scoring logic based on conversation content
-- Human handoff decision engine
-- Email notifications for qualified leads
-- Domain filtering with AI classification
+- Advanced lead scoring workflows
+- CRM integration (HubSpot/Salesforce)
+- Email automation sequences
+- Analytics routing (Google Analytics, etc.)
 
-**Deliverable: Smart lead qualification and routing system**
+**Deliverable: Complete business intelligence and automation system**
 
 ### **Phase 3: Advanced Features (Month 2)**
-**Goal: Add business-critical advanced functionality**
+**Goal: Add enterprise-grade capabilities**
 
-**PHP Plugin Tasks:**
-- Quote display interface
+**Python AI Service Tasks:**
+- Advanced conversation flows and context management
+- Integration with technical documentation
+- Performance optimization and caching
+- Multi-language support preparation
+
+**WordPress Plugin Tasks:**
 - Advanced admin analytics dashboard
 - User management and permissions
+- A/B testing interface for different AI models
 
 **n8n Workflow Tasks:**
-- Dedicated sizing calculation engine
-- Reference material search and processing
-- PDF quote generation
-- CRM integration workflows
-- Multi-step conversation flows
+- Advanced CRM workflows
+- Customer journey automation
+- Performance analytics and reporting
+- Integration with calendar/scheduling systems
 
-**Deliverable: Complete business tool with advanced features**
+**Deliverable: Enterprise-ready dehumidifier assistant with full business automation**
 
 ---
 
 ## 🎯 **Immediate Next Steps**
-1. **Set up development environment** (WordPress + n8n connection)
-2. **Create basic PHP plugin structure** 
-3. **Build first n8n workflow** (webhook → OpenAI → response)
-4. **Test integration** between PHP and n8n
-5. **Migrate core functionality** from Flask to hybrid system 
+1. **Set up Python AI service** (FastAPI + OpenAI + LiteLLM)
+2. **Create basic dehumidifier sizing tool** in Python
+3. **Update WordPress plugin** to call Python service
+4. **Test AI agent with function calling** 
+5. **Set up n8n business intelligence workflows** 

@@ -285,7 +285,7 @@
       const messageHtml = `
             <div class="${messageClass}">
                 <div class="dehum-message__bubble">
-                    ${this.escapeHtml(message.content)}
+                    ${this.formatContent(message.content)}
                 </div>
                 <div class="dehum-message__timestamp">${message.timestamp}</div>
             </div>
@@ -393,6 +393,22 @@
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
+    },
+
+    /**
+     * Escape HTML then convert line breaks to <br>
+     */
+    formatContent(text) {
+      // Convert markdown links first ( [text](url) ) while raw
+      let processed = text.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, (match, label, url) => {
+        const safeLabel = this.escapeHtml(label);
+        const safeUrl = this.escapeHtml(url);
+        return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeLabel}</a>`;
+      });
+
+      // Now escape remaining HTML then convert new lines
+      processed = this.escapeHtml(processed).replace(/\n/g, '<br>');
+      return processed;
     }
   };
 

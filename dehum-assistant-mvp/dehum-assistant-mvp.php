@@ -2,8 +2,8 @@
 /**
  * Plugin Name: Dehumidifier Assistant MVP
  * Plugin URI: https://github.com/your-username/dehum-assistant
- * Description: Complete dehumidifier assistant with responsive chat widget, n8n AI integration, admin interface, and conversation logging
- * Version: 2.3.0
+ * Description: Complete dehumidifier assistant with responsive chat widget, Python AI service integration, admin interface, and conversation logging
+ * Version: 2.4.0
  * Author: Your Name
  * License: MIT
  * Text Domain: dehum-assistant-mvp
@@ -20,7 +20,8 @@
  * 
  * What's INCLUDED:
  * ✅ Responsive frontend chat widget (mobile fullscreen, desktop floating)
- * ✅ n8n webhook integration & AI processing
+ * ✅ Python AI service integration with OpenAI function calling
+ * ✅ Backward compatible n8n webhook support (legacy)
  * ✅ Admin interface (Tools → Dehumidifier Logs) 
  * ✅ Conversation database logging & session management
  * ✅ Rate limiting & security features
@@ -29,6 +30,7 @@
  * ✅ Mobile-first responsive design
  * ✅ Accessibility features (ARIA labels, keyboard navigation)
  * ✅ GitHub Updater support for automatic updates
+ * ✅ Encrypted credential storage for API keys
  * 
  * FEATURES:
  * 🎯 Mobile: Full-screen chat experience
@@ -46,7 +48,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define Plugin Constants
-define('DEHUM_MVP_VERSION', '2.3.0');
+define('DEHUM_MVP_VERSION', '2.4.0');
 define('DEHUM_MVP_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('DEHUM_MVP_PLUGIN_URL', plugin_dir_url(__FILE__));
 

@@ -57,16 +57,29 @@ class Dehum_MVP_Ajax {
         }
 
         $session_id = $this->get_or_create_session_id();
-        $n8n_response = $this->call_n8n_webhook($user_input);
+        
+        $ai_service_url = get_option('dehum_mvp_ai_service_url');
+        if (empty($ai_service_url)) {
+            wp_send_json_error([
+                'message' => 'AI service not configured. Please set it in settings.',
+                'original_message' => $user_input
+            ]);
+            wp_die();
+        }
 
-        if ($n8n_response && isset($n8n_response['success']) && $n8n_response['success']) {
+        // Always use Python AI Service
+        $response = $this->call_ai_service($user_input);
+
+        if ($response && isset($response['success']) && $response['success']) {
             $this->increment_rate_limit_counter();
-            $this->db->log_conversation($session_id, $user_input, $n8n_response['response'], $this->get_user_ip());
+            $this->db->log_conversation($session_id, $user_input, $response['response'], $this->get_user_ip());
 
             wp_send_json_success([
-                'response'   => $n8n_response['response'],
+                'response'   => $response['response'],
                 'timestamp'  => current_time('mysql'),
-                'session_id' => $session_id
+                'session_id' => $response['session_id'] ?? $session_id,
+                'recommendations' => $response['recommendations'] ?? [],
+                'function_calls' => $response['function_calls'] ?? []
             ]);
         } else {
             wp_send_json_error([
@@ -126,28 +139,37 @@ class Dehum_MVP_Ajax {
     }
 
     /**
-     * Call the n8n webhook with the user's message.
+     * Call the Python AI service with the user's message.
      *
      * @param string $message The user's message.
-     * @return array|false The decoded JSON response from n8n or false on failure.
+     * @return array|false The decoded JSON response from the AI service or false on failure.
      */
-    private function call_n8n_webhook($message) {
-        $webhook_url = get_option('dehum_mvp_n8n_webhook_url');
-        if (empty($webhook_url)) {
-            error_log('Dehum MVP: n8n webhook URL is not set in settings.');
+    private function call_ai_service($message) {
+        $service_url = get_option('dehum_mvp_ai_service_url');
+        if (empty($service_url)) {
+            error_log('Dehum MVP: AI service URL is not set in settings.');
             return false;
         }
 
-        $body = wp_json_encode(['message' => $message]);
+        // Ensure the URL ends with the chat endpoint
+        $service_url = rtrim($service_url, '/') . '/chat';
+
+        $session_id = $this->get_or_create_session_id();
+        
+        $body = wp_json_encode([
+            'message'    => $message,
+            'session_id' => $session_id,
+            'user_id'    => ($uid = get_current_user_id()) ? (string) $uid : null
+        ]);
+        
         $headers = ['Content-Type' => 'application/json'];
         
-        $user = get_option('dehum_mvp_n8n_webhook_user');
-        $pass_encrypted = get_option('dehum_mvp_n8n_webhook_pass_encrypted');
-        if (!empty($user) && !empty($pass_encrypted)) {
-            // Decrypt the password for use
-            $pass = $this->decrypt_credential($pass_encrypted);
-            if ($pass !== false) {
-                $headers['Authorization'] = 'Basic ' . base64_encode($user . ':' . $pass);
+        // Add API key authentication if configured
+        $api_key_encrypted = get_option('dehum_mvp_ai_service_key_encrypted');
+        if (!empty($api_key_encrypted)) {
+            $api_key = $this->decrypt_credential($api_key_encrypted);
+            if ($api_key !== false) {
+                $headers['Authorization'] = 'Bearer ' . $api_key;
             }
         }
 
@@ -158,15 +180,38 @@ class Dehum_MVP_Ajax {
             'data_format' => 'body'
         ];
         
-        $response = wp_remote_post($webhook_url, $args);
+        $response = wp_remote_post($service_url, $args);
         
-        if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
-             error_log('Dehum MVP: n8n webhook error: ' . (is_wp_error($response) ? $response->get_error_message() : wp_remote_retrieve_response_code($response)));
+        if (is_wp_error($response)) {
+            error_log('Dehum MVP: AI service error: ' . $response->get_error_message());
+            return false;
+        }
+        
+        $response_code = wp_remote_retrieve_response_code($response);
+        if ($response_code !== 200) {
+            error_log('Dehum MVP: AI service HTTP error: ' . $response_code);
             return false;
         }
 
         $data = json_decode(wp_remote_retrieve_body($response), true);
-        return json_last_error() === JSON_ERROR_NONE ? $data : false;
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            error_log('Dehum MVP: AI service JSON decode error: ' . json_last_error_msg());
+            return false;
+        }
+        
+        // Transform the Python service response to match the expected format
+        if (isset($data['message'])) {
+            return [
+                'success' => true,
+                'response' => $data['message'],
+                'session_id' => $data['session_id'] ?? $session_id,
+                'timestamp' => $data['timestamp'] ?? current_time('mysql'),
+                'recommendations' => $data['recommendations'] ?? [],
+                'function_calls' => $data['function_calls'] ?? []
+            ];
+        }
+        
+        return false;
     }
 
     /**
@@ -271,10 +316,11 @@ class Dehum_MVP_Ajax {
     }
 
     /**
-     * Migrate old plain text password to encrypted format.
+     * Migrate old plain text credentials to encrypted format.
      * Called during plugin initialization if needed.
      */
     public static function migrate_credentials() {
+        // Migrate legacy n8n password
         $old_pass = get_option('dehum_mvp_n8n_webhook_pass');
         if (!empty($old_pass) && !get_option('dehum_mvp_n8n_webhook_pass_encrypted')) {
             $ajax_instance = new self(new Dehum_MVP_Database());
@@ -282,6 +328,16 @@ class Dehum_MVP_Ajax {
             
             update_option('dehum_mvp_n8n_webhook_pass_encrypted', $encrypted_pass);
             delete_option('dehum_mvp_n8n_webhook_pass'); // Remove plain text version
+        }
+        
+        // Migrate AI service API key if needed (future use)
+        $old_api_key = get_option('dehum_mvp_ai_service_key_plain');
+        if (!empty($old_api_key) && !get_option('dehum_mvp_ai_service_key_encrypted')) {
+            $ajax_instance = new self(new Dehum_MVP_Database());
+            $encrypted_key = $ajax_instance->encrypt_credential($old_api_key);
+            
+            update_option('dehum_mvp_ai_service_key_encrypted', $encrypted_key);
+            delete_option('dehum_mvp_ai_service_key_plain'); // Remove plain text version
         }
     }
 

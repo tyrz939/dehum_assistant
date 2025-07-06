@@ -37,6 +37,8 @@ class Dehum_MVP_Admin {
         add_action('admin_menu', [$this, 'add_admin_menu']);
         add_action('admin_notices', [$this, 'admin_activation_notice']);
         add_action('wp_dashboard_setup', [$this, 'add_dashboard_widget']);
+        add_action('admin_post_dehum_reset_rate', [ $this, 'handle_rate_reset' ]);
+        add_action('admin_notices', [ $this, 'rate_reset_notice' ]);
     }
 
     /**
@@ -77,6 +79,11 @@ class Dehum_MVP_Admin {
      * Register plugin settings.
      */
     public function register_settings() {
+        // New Python AI Service settings
+        register_setting('dehum_mvp_options_group', 'dehum_mvp_ai_service_url', ['type' => 'string', 'sanitize_callback' => 'esc_url_raw']);
+        register_setting('dehum_mvp_options_group', 'dehum_mvp_ai_service_key', ['type' => 'string', 'sanitize_callback' => [$this, 'encrypt_api_key_callback']]);
+        
+        // Legacy n8n settings (kept for backward compatibility)
         register_setting('dehum_mvp_options_group', 'dehum_mvp_n8n_webhook_url', ['type' => 'string', 'sanitize_callback' => 'esc_url_raw']);
         register_setting('dehum_mvp_options_group', 'dehum_mvp_n8n_webhook_user', ['type' => 'string']);
         register_setting('dehum_mvp_options_group', 'dehum_mvp_n8n_webhook_pass', ['type' => 'string', 'sanitize_callback' => [$this, 'encrypt_password_callback']]);
@@ -94,6 +101,23 @@ class Dehum_MVP_Admin {
             $ajax = new Dehum_MVP_Ajax($this->db);
             $encrypted = $ajax->encrypt_credential($password);
             update_option('dehum_mvp_n8n_webhook_pass_encrypted', $encrypted);
+        }
+        // Always return empty string to prevent storing plain text
+        return '';
+    }
+    
+    /**
+     * Sanitize and encrypt the AI service API key.
+     *
+     * @param string $api_key The plain text API key.
+     * @return string Empty string (we store encrypted version separately).
+     */
+    public function encrypt_api_key_callback($api_key) {
+        if (!empty($api_key)) {
+            // Create AJAX instance to access encryption method
+            $ajax = new Dehum_MVP_Ajax($this->db);
+            $encrypted = $ajax->encrypt_credential($api_key);
+            update_option('dehum_mvp_ai_service_key_encrypted', $encrypted);
         }
         // Always return empty string to prevent storing plain text
         return '';
@@ -125,10 +149,17 @@ class Dehum_MVP_Admin {
      */
     public function admin_activation_notice() {
         if (get_transient('dehum_mvp_activation_notice')) {
-            $webhook_url = get_option('dehum_mvp_n8n_webhook_url');
-            $webhook_status = empty($webhook_url) 
-                ? '<span style="color:red;">Action Required: n8n Webhook URL is not set.</span>' 
-                : '<span style="color:green;">n8n Webhook URL is configured.</span>';
+            $ai_service_url = get_option('dehum_mvp_ai_service_url');
+            $legacy_webhook_url = get_option('dehum_mvp_n8n_webhook_url');
+            
+            // Check which service is configured
+            if (!empty($ai_service_url)) {
+                $service_status = '<span style="color:green;">✅ Python AI Service is configured.</span>';
+            } elseif (!empty($legacy_webhook_url)) {
+                $service_status = '<span style="color:orange;">⚠️ Legacy n8n webhook detected. Consider upgrading to Python AI Service.</span>';
+            } else {
+                $service_status = '<span style="color:red;">❌ Action Required: AI Service URL is not set.</span>';
+            }
 
             ?>
             <div class="notice notice-success is-dismissible">
@@ -136,7 +167,7 @@ class Dehum_MVP_Admin {
                     <strong>Dehumidifier Assistant MVP is active!</strong>
                     The chat widget is now live on your site's frontend.
                     <a href="<?php echo admin_url('tools.php?page=dehum-mvp-logs'); ?>">View Conversation Logs</a>
-                    <br><small><?php echo $webhook_status; ?></small>
+                    <br><small><?php echo $service_status; ?></small>
                 </p>
             </div>
             <?php
@@ -169,6 +200,12 @@ class Dehum_MVP_Admin {
     public function render_logs_page() {
         // Handle bulk actions and exports before rendering the page
         $this->handle_actions();
+
+        echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '" style="margin-bottom:15px;">';
+        wp_nonce_field( 'dehum_reset_rate', 'dehum_reset_rate_nonce' );
+        echo '<input type="hidden" name="action" value="dehum_reset_rate">';
+        echo '<button type="submit" class="button">' . __( 'Reset Rate Limits', 'dehum-assistant-mvp' ) . '</button>';
+        echo '</form>';
 
         $filters = [
             'search'       => isset($_GET['search']) ? sanitize_text_field($_GET['search']) : '',
@@ -359,5 +396,42 @@ class Dehum_MVP_Admin {
         }
         
         // Export is now handled in admin_init hook
+    }
+
+    /* =====================================================
+     *  RATE-LIMIT RESET HANDLER
+     * ===================================================== */
+
+    /**
+     * Handle the global rate-limit reset request (admin-post).
+     */
+    public function handle_rate_reset() {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( 'Insufficient permissions.' );
+        }
+
+        // Verify nonce
+        if ( ! isset( $_POST['dehum_reset_rate_nonce'] ) || ! wp_verify_nonce( $_POST['dehum_reset_rate_nonce'], 'dehum_reset_rate' ) ) {
+            wp_die( 'Security check failed.' );
+        }
+
+        global $wpdb;
+        // Delete any transients that store rate info (prefix: dehum_mvp_rate_limit_)
+        $wpdb->query( "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_dehum_mvp_rate_limit_%' OR option_name LIKE '_transient_timeout_dehum_mvp_rate_limit_%'" );
+
+        set_transient( 'dehum_rate_reset_notice', __( 'Assistant rate-limit counters have been reset.', 'dehum-assistant-mvp' ), 30 );
+
+        wp_safe_redirect( wp_get_referer() ? wp_get_referer() : admin_url('tools.php?page=dehum-mvp-logs') );
+        exit;
+    }
+
+    /**
+     * Display admin notice after a successful reset.
+     */
+    public function rate_reset_notice() {
+        if ( $msg = get_transient( 'dehum_rate_reset_notice' ) ) {
+            echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $msg ) . '</p></div>';
+            delete_transient( 'dehum_rate_reset_notice' );
+        }
     }
 } 
