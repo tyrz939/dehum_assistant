@@ -16,9 +16,9 @@ class Config:
     GOOGLE_API_KEY: Optional[str] = os.getenv("GOOGLE_API_KEY")
     
     # Service Configuration
-    DEFAULT_MODEL: str = os.getenv("DEFAULT_MODEL", "gpt-4o-mini")
+    DEFAULT_MODEL: str = os.getenv("DEFAULT_MODEL")
     SERVICE_HOST: str = os.getenv("SERVICE_HOST", "0.0.0.0")
-    SERVICE_PORT: int = int(os.getenv("SERVICE_PORT", "8000"))
+    SERVICE_PORT: int = int(os.getenv("PORT", 8000))
     
     # Logging Configuration
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
@@ -32,6 +32,8 @@ class Config:
     
     # WordPress Integration
     WORDPRESS_URL: str = os.getenv("WORDPRESS_URL", "http://localhost")
+    
+    THINKING_MODEL: str = os.getenv("THINKING_MODEL")
     
     @classmethod
     def validate(cls) -> bool:

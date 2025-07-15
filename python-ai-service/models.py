@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
+from dataclasses import dataclass
 
 class MessageRole(str, Enum):
     """Message roles for conversation"""
@@ -22,7 +23,7 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     """Request model for chat endpoint"""
-    message: str = Field(..., description="User message", max_length=400)
+    message: str = Field(..., description="User message", max_length=1200)
     session_id: str = Field(..., description="Session identifier")
     user_id: Optional[str] = None
     context: Optional[Dict[str, Any]] = None
@@ -37,6 +38,19 @@ class ChatResponse(BaseModel):
     conversation_id: Optional[str] = None
     metadata: Optional[Dict[str, Any]] = None
 
+class StreamingChatResponse(BaseModel):
+    """Streaming response model for chat endpoint"""
+    message: str
+    session_id: str
+    timestamp: datetime
+    is_final: bool = False
+    is_thinking: bool = False
+    is_streaming_chunk: bool = False  # Indicates real-time text chunks from OpenAI
+    function_calls: Optional[List[Dict[str, Any]]] = None
+    recommendations: Optional[List[Dict[str, Any]]] = None
+    conversation_id: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = None
+
 class SessionInfo(BaseModel):
     """Session information model"""
     session_id: str
@@ -45,6 +59,21 @@ class SessionInfo(BaseModel):
     last_activity: datetime
     message_count: int
     metadata: Optional[Dict[str, Any]] = None
+    tool_cache: Dict[str, Any] = Field(default_factory=dict)  # per-session cache of tool results
+
+@dataclass
+class Product:
+    """Product information"""
+    sku: str
+    name: str
+    type: str  # wall_mount, ducted, portable
+    capacity_lpd: float
+    price_aud: Optional[float] = None
+    url: Optional[str] = None
+    pool_safe: bool = False
+    performance_factor: float = 1.0
+    max_room_m2: Optional[float] = None
+    max_room_m3: Optional[float] = None
 
 class ProductRecommendation(BaseModel):
     """Product recommendation model"""
@@ -55,7 +84,6 @@ class ProductRecommendation(BaseModel):
     technology: str
     max_room_m2: Optional[float] = None
     max_room_m3: Optional[float] = None
-    max_pool_m2: Optional[float] = None
     pool_safe: bool = False
     price_aud: Optional[float] = None
     operating_temp_range: Optional[str] = None

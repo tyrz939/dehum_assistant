@@ -31,14 +31,24 @@ class Dehum_MVP_Admin {
      * Add the WordPress admin hooks.
      */
     private function add_admin_hooks() {
-        add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
-        add_action('admin_init', [$this, 'register_settings']);
-        add_action('admin_init', [$this, 'handle_export_download']);
+        // Main settings/logs page
         add_action('admin_menu', [$this, 'add_admin_menu']);
-        add_action('admin_notices', [$this, 'admin_activation_notice']);
+        add_action('admin_init', [$this, 'register_settings']);
+        
+        // Admin assets
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_assets']);
+        
+        // Dashboard widget
         add_action('wp_dashboard_setup', [$this, 'add_dashboard_widget']);
-        add_action('admin_post_dehum_reset_rate', [ $this, 'handle_rate_reset' ]);
-        add_action('admin_notices', [ $this, 'rate_reset_notice' ]);
+        
+        // Admin notices
+        add_action('admin_notices', [$this, 'admin_activation_notice']);
+        add_action('admin_notices', [$this, 'rate_reset_notice']);
+
+        // Form/action handlers
+        add_action('admin_post_dehum_mvp_rotate_key', [$this, 'handle_rotate_key']);
+        add_action('admin_post_dehum_reset_rate', [$this, 'handle_rate_reset']);
+        add_action('admin_init', [$this, 'handle_export_download']);
     }
 
     /**
@@ -57,6 +67,39 @@ class Dehum_MVP_Admin {
             [],
             DEHUM_MVP_VERSION
         );
+
+        // Prefer local icon font; fallback to Google CDN if the woff2 file is missing
+        $local_font = DEHUM_MVP_PLUGIN_PATH . 'assets/fonts/MaterialSymbolsOutlined.woff2';
+        if (file_exists($local_font)) {
+            wp_enqueue_style(
+                'dehum-mvp-material-symbols',
+                DEHUM_MVP_PLUGIN_URL . 'assets/css/material-symbols.css',
+                [],
+                DEHUM_MVP_VERSION
+            );
+        } else {
+            // Fallback – restores icon immediately until site owner adds local font file
+            wp_enqueue_style(
+                'dehum-mvp-material-symbols',
+                'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined',
+                [],
+                null
+            );
+        }
+
+        // Inject same theme variables for admin area
+        $theme_css = ':root {
+  --background: #ffffff;
+  --foreground: #1e1e1e;
+  --card: #ffffff;
+  --card-foreground: #1e1e1e;
+  --primary: #4054B2;
+  --secondary: #4054B2;
+  --primary-foreground: #ffffff;
+  --accent: #f3f4f6;
+  --accent-foreground: #1e1e1e;
+}';
+        wp_add_inline_style('dehum-mvp-admin', $theme_css);
 
         if ($hook === 'tools_page_dehum-mvp-logs') {
             wp_enqueue_script(
@@ -83,10 +126,110 @@ class Dehum_MVP_Admin {
         register_setting('dehum_mvp_options_group', 'dehum_mvp_ai_service_url', ['type' => 'string', 'sanitize_callback' => 'esc_url_raw']);
         register_setting('dehum_mvp_options_group', 'dehum_mvp_ai_service_key', ['type' => 'string', 'sanitize_callback' => [$this, 'encrypt_api_key_callback']]);
         
+        // Appearance settings
+        register_setting('dehum_mvp_options_group', 'dehum_mvp_chat_icon', ['type'=>'string','sanitize_callback'=>'sanitize_text_field', 'default'=>'sms']);
+        register_setting('dehum_mvp_options_group', 'dehum_mvp_theme_css', ['type'=>'string','sanitize_callback'=>'wp_kses_post']);
+
+        // NEW: Access control setting
+        register_setting('dehum_mvp_options_group', 'dehum_mvp_chat_logged_in_only', ['type' => 'boolean', 'sanitize_callback' => 'intval', 'default' => 0]);
+        
         // Legacy n8n settings (kept for backward compatibility)
         register_setting('dehum_mvp_options_group', 'dehum_mvp_n8n_webhook_url', ['type' => 'string', 'sanitize_callback' => 'esc_url_raw']);
         register_setting('dehum_mvp_options_group', 'dehum_mvp_n8n_webhook_user', ['type' => 'string']);
         register_setting('dehum_mvp_options_group', 'dehum_mvp_n8n_webhook_pass', ['type' => 'string', 'sanitize_callback' => [$this, 'encrypt_password_callback']]);
+
+        // Add settings sections and fields
+        add_settings_section(
+            'dehum_mvp_ai_service_section',
+            __('AI Service Settings', 'dehum-assistant-mvp'),
+            null,
+            'dehum-mvp-logs'
+        );
+
+        add_settings_field(
+            'dehum_mvp_ai_service_url',
+            __('Python AI Service URL', 'dehum-assistant-mvp'),
+            [$this, 'ai_service_url_callback'],
+            'dehum-mvp-logs',
+            'dehum_mvp_ai_service_section'
+        );
+
+        add_settings_field(
+            'dehum_mvp_ai_service_key',
+            __('AI Service API Key', 'dehum-assistant-mvp'),
+            [$this, 'ai_service_key_callback'],
+            'dehum-mvp-logs',
+            'dehum_mvp_ai_service_section'
+        );
+
+        add_settings_section(
+            'dehum_mvp_appearance_section',
+            __('Appearance', 'dehum-assistant-mvp'),
+            null,
+            'dehum-mvp-logs'
+        );
+
+        add_settings_field(
+            'dehum_mvp_chat_icon',
+            __('Chat Icon (Material Symbol name)', 'dehum-assistant-mvp'),
+            [$this, 'chat_icon_callback'],
+            'dehum-mvp-logs',
+            'dehum_mvp_appearance_section'
+        );
+
+        add_settings_field(
+            'dehum_mvp_theme_css',
+            __('Custom Theme CSS Variables', 'dehum-assistant-mvp'),
+            [$this, 'theme_css_callback'],
+            'dehum-mvp-logs',
+            'dehum_mvp_appearance_section'
+        );
+
+        add_settings_section(
+            'dehum_mvp_access_section',
+            __('Chat Access', 'dehum-assistant-mvp'),
+            null,
+            'dehum-mvp-logs'
+        );
+
+        add_settings_field(
+            'dehum_mvp_chat_logged_in_only',
+            __('Restrict chat to logged-in users only', 'dehum-assistant-mvp'),
+            [$this, 'chat_access_callback'],
+            'dehum-mvp-logs',
+            'dehum_mvp_access_section'
+        );
+
+        add_settings_section(
+            'dehum_mvp_legacy_section',
+            __('Legacy n8n Settings', 'dehum-assistant-mvp'),
+            [$this, 'legacy_section_callback'],
+            'dehum-mvp-logs'
+        );
+
+        add_settings_field(
+            'dehum_mvp_n8n_webhook_url',
+            __('n8n Webhook URL', 'dehum-assistant-mvp'),
+            [$this, 'n8n_webhook_url_callback'],
+            'dehum-mvp-logs',
+            'dehum_mvp_legacy_section'
+        );
+
+        add_settings_field(
+            'dehum_mvp_n8n_webhook_user',
+            __('n8n Webhook Username', 'dehum-assistant-mvp'),
+            [$this, 'n8n_webhook_user_callback'],
+            'dehum-mvp-logs',
+            'dehum_mvp_legacy_section'
+        );
+
+        add_settings_field(
+            'dehum_mvp_n8n_webhook_pass',
+            __('n8n Webhook Password', 'dehum-assistant-mvp'),
+            [$this, 'n8n_webhook_pass_callback'],
+            'dehum-mvp-logs',
+            'dehum_mvp_legacy_section'
+        );
     }
 
     /**
@@ -143,7 +286,7 @@ class Dehum_MVP_Admin {
             [$this, 'render_logs_page']
         );
     }
-    
+
     /**
      * Display the admin notice on plugin activation.
      */
@@ -221,6 +364,12 @@ class Dehum_MVP_Admin {
         $total_sessions = $this->db->count_sessions($filters);
         $all_stats = $this->db->get_stats();
 
+        $data = [
+            'is_sodium_available' => function_exists('sodium_crypto_secretbox')
+        ];
+
+        // Pass data to the view
+        extract($data);
         require_once DEHUM_MVP_PLUGIN_PATH . 'includes/views/view-logs-page.php';
     }
 
@@ -433,5 +582,91 @@ class Dehum_MVP_Admin {
             echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $msg ) . '</p></div>';
             delete_transient( 'dehum_rate_reset_notice' );
         }
+    }
+
+    public function handle_rotate_key() {
+        if (!function_exists('sodium_crypto_secretbox_keygen')) {
+            set_transient('dehum_admin_error', 'Key rotation requires the libsodium PHP extension, which is not installed.', 30);
+            wp_redirect(admin_url('tools.php?page=dehum-mvp-logs'));
+            wp_die();
+            exit;
+        }
+
+        check_admin_referer('dehum_mvp_rotate_key');
+        if (!current_user_can('manage_options')) {
+            wp_die('Unauthorized');
+        }
+        $old_key = get_option('dehum_mvp_encryption_key');
+        $new_key = base64_encode(sodium_crypto_secretbox_keygen());
+        update_option('dehum_mvp_old_encryption_key', $old_key);
+        update_option('dehum_mvp_encryption_key', $new_key);
+        
+        set_transient('dehum_admin_success', 'Encryption key rotated successfully.', 30);
+        wp_redirect(admin_url('tools.php?page=dehum-mvp-logs'));
+        exit;
+    }
+
+    public function ai_service_url_callback() {
+        $value = get_option('dehum_mvp_ai_service_url');
+        echo '<input type="url" id="dehum_mvp_ai_service_url" name="dehum_mvp_ai_service_url" value="' . esc_attr($value) . '" class="regular-text" placeholder="http://localhost:8000" />';
+        echo '<p class="description">';
+        echo __('Enter the URL of your Python AI service (without /chat endpoint).', 'dehum-assistant-mvp');
+        echo '<br><strong>' . __('Recommended:', 'dehum-assistant-mvp') . '</strong> <code>http://localhost:8000</code> ' . __('for local development', 'dehum-assistant-mvp');
+        echo '</p>';
+    }
+
+    public function ai_service_key_callback() {
+        $has_api_key = !empty(get_option('dehum_mvp_ai_service_key_encrypted'));
+        echo '<input type="password" id="dehum_mvp_ai_service_key" name="dehum_mvp_ai_service_key" value="" class="regular-text" placeholder="' . ($has_api_key ? esc_attr__('API key is set (enter new key to change)', 'dehum-assistant-mvp') : esc_attr__('Optional API key for authentication', 'dehum-assistant-mvp')) . '" />';
+        echo '<p class="description">';
+        echo __('Optional API key for authenticating with your AI service.', 'dehum-assistant-mvp');
+        if ($has_api_key) {
+            echo '<br><em>' . __('API key is encrypted and stored securely. Leave blank to keep current key.', 'dehum-assistant-mvp') . '</em>';
+        }
+        echo '</p>';
+    }
+
+    public function chat_icon_callback() {
+        $value = get_option('dehum_mvp_chat_icon', 'sms');
+        echo '<input type="text" id="dehum_mvp_chat_icon" name="dehum_mvp_chat_icon" value="' . esc_attr($value) . '" class="regular-text" />';
+        echo '<p class="description">' . __('Enter a Google Material Symbol name, e.g., sms, chat, forum.', 'dehum-assistant-mvp') . '</p>';
+    }
+
+    public function theme_css_callback() {
+        $value = get_option('dehum_mvp_theme_css');
+        echo '<textarea id="dehum_mvp_theme_css" name="dehum_mvp_theme_css" rows="8" cols="60" class="large-text code">' . esc_textarea($value) . '</textarea>';
+        echo '<p class="description">' . __('Paste custom :root { ... } CSS to override default colors.', 'dehum-assistant-mvp') . '</p>';
+    }
+
+    public function chat_access_callback() {
+        $value = get_option('dehum_mvp_chat_logged_in_only', 0);
+        echo '<label><input type="checkbox" name="dehum_mvp_chat_logged_in_only" value="1" ' . checked($value, 1, false) . ' /> ' . __('Only logged-in users can use the chat (testing mode)', 'dehum-assistant-mvp') . '</label>';
+    }
+
+    public function legacy_section_callback() {
+        echo '<p style="color: #666; font-style: italic;">' . __('These settings are kept for backward compatibility. New installations should use the Python AI Service above.', 'dehum-assistant-mvp') . '</p>';
+    }
+
+    public function n8n_webhook_url_callback() {
+        $value = get_option('dehum_mvp_n8n_webhook_url');
+        echo '<input type="url" id="dehum_mvp_n8n_webhook_url" name="dehum_mvp_n8n_webhook_url" value="' . esc_attr($value) . '" class="regular-text" placeholder="https://your-n8n-instance.com/webhook/..." />';
+        echo '<p class="description">' . __('Enter the full webhook URL for your n8n workflow.', 'dehum-assistant-mvp') . '</p>';
+    }
+
+    public function n8n_webhook_user_callback() {
+        $value = get_option('dehum_mvp_n8n_webhook_user');
+        echo '<input type="text" id="dehum_mvp_n8n_webhook_user" name="dehum_mvp_n8n_webhook_user" value="' . esc_attr($value) . '" class="regular-text" placeholder="' . esc_attr__('Username', 'dehum-assistant-mvp') . '" />';
+        echo '<p class="description">' . __('The Basic Auth username for your n8n webhook.', 'dehum-assistant-mvp') . '</p>';
+    }
+
+    public function n8n_webhook_pass_callback() {
+        $has_password = !empty(get_option('dehum_mvp_n8n_webhook_pass_encrypted'));
+        echo '<input type="password" id="dehum_mvp_n8n_webhook_pass" name="dehum_mvp_n8n_webhook_pass" value="" class="regular-text" placeholder="' . ($has_password ? esc_attr__('Password is set (enter new password to change)', 'dehum-assistant-mvp') : esc_attr__('Password', 'dehum-assistant-mvp')) . '" />';
+        echo '<p class="description">';
+        echo __('The Basic Auth password for your n8n webhook.', 'dehum-assistant-mvp');
+        if ($has_password) {
+            echo '<br><em>' . __('Password is encrypted and stored securely. Leave blank to keep current password.', 'dehum-assistant-mvp') . '</em>';
+        }
+        echo '</p>';
     }
 } 

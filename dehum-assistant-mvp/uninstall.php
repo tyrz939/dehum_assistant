@@ -14,16 +14,7 @@ if (!defined('WP_UNINSTALL_PLUGIN')) {
     exit;
 }
 
-// Security check - make sure we're in the right context
-if (!current_user_can('activate_plugins')) {
-    return;
-}
-
-// Get the plugin file path for additional security
-$plugin = isset($_REQUEST['plugin']) ? $_REQUEST['plugin'] : '';
-if ($plugin !== plugin_basename(__FILE__)) {
-    return;
-}
+// Capability checks are unreliable in uninstall context and may block cleanup. Rely solely on WP_UNINSTALL_PLUGIN constant.
 
 /**
  * Clean up database tables

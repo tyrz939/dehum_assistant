@@ -273,3 +273,10 @@ wp transient delete dehum_mvp_remote_version
 ---
 
 **🎉 You're now ready for professional Git-based plugin updates!** 
+
+## Security Notes
+- Enforce HTTPS: Use Let's Encrypt or provider certs for all live deployments.
+
+## Backup and Rollback
+- Before deploy, backup WP DB: wp db export backup.sql
+- Roll back to tagged version: git checkout v2.4.2-mvp 

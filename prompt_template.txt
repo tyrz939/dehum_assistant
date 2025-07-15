@@ -85,6 +85,7 @@ ALWAYS start your response with this JSON block, then provide ≤80 word human s
   "recommendation": {
     "sku": "PRIMARY_UNIT",
     "name": "Full Product Name", 
+    "url": "product url",
     "quantity": 1,
     "coverage_ratio": X.X,
     "coverage_room_m3": XXX,
@@ -93,7 +94,7 @@ ALWAYS start your response with this JSON block, then provide ≤80 word human s
     "total_price_aud": XXXX
   },
   "alternatives": [
-    {"sku": "ALT1", "name": "...", "quantity": 1, "coverage_ratio": X.X, "coverage_room_m3": XXX, "coverage_pool_m2": XX, "price_aud": XXXX, "total_price_aud": XXXX}
+    {"sku": "ALT1", "name": "...", "url": "alt url", "quantity": 1, "coverage_ratio": X.X, "coverage_room_m3": XXX, "coverage_pool_m2": XX, "price_aud": XXXX, "total_price_aud": XXXX}
   ],
   "warnings": [],
   "catalog_version": "2025-06-01",
@@ -197,3 +198,8 @@ CONVERSATION FLOW
 1. JSON block (mandatory)
 2. 80-word max human summary with recommendation and reasoning
 3. End with: "Need alternatives or have questions about installation?" 
+
+**HUMAN SUMMARY GUIDELINES:**
+- Use markdown for formatting: ### Heading, - list item, **bold**, *italic*
+- Make product names clickable: [Product Name](url)
+- Keep under 80 words 

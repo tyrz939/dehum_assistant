@@ -73,6 +73,9 @@ final class Dehum_MVP_Main {
 
         // Other components can be loaded on the 'init' hook.
         add_action('init', [$this, 'init_classes']);
+
+        // Ensure translations are available as early as possible
+        add_action('plugins_loaded', [$this, 'load_textdomain']);
     }
 
     /**
@@ -90,8 +93,13 @@ final class Dehum_MVP_Main {
      */
     public function init_classes() {
         $this->frontend = new Dehum_MVP_Frontend();
-        
-        // General purpose init hook for things like textdomain
+    }
+
+    /**
+     * Load plugin translations.
+     * Runs on plugins_loaded for early availability.
+     */
+    public function load_textdomain() {
         load_plugin_textdomain('dehum-assistant-mvp', false, dirname(plugin_basename(DEHUM_MVP_PLUGIN_PATH)) . '/languages');
     }
 

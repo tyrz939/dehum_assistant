@@ -3,7 +3,7 @@
  * Plugin Name: Dehumidifier Assistant MVP
  * Plugin URI: https://github.com/your-username/dehum-assistant
  * Description: Complete dehumidifier assistant with responsive chat widget, Python AI service integration, admin interface, and conversation logging
- * Version: 2.4.0
+ * Version: 2.4.1
  * Author: Your Name
  * License: MIT
  * Text Domain: dehum-assistant-mvp
@@ -47,14 +47,14 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Define Plugin Constants
-define('DEHUM_MVP_VERSION', '2.4.0');
+// Plugin Constants
+define('DEHUM_MVP_VERSION', '2.4.1');
 define('DEHUM_MVP_PLUGIN_PATH', plugin_dir_path(__FILE__));
 define('DEHUM_MVP_PLUGIN_URL', plugin_dir_url(__FILE__));
 
 // Rate limiting and security constants
 define('DEHUM_MVP_DAILY_MESSAGE_LIMIT', 50);
-define('DEHUM_MVP_MESSAGE_MAX_LENGTH', 400);
+define('DEHUM_MVP_MESSAGE_MAX_LENGTH', 1200);
 define('DEHUM_MVP_WEBHOOK_TIMEOUT', 30);
 define('DEHUM_MVP_ACTIVATION_NOTICE_DURATION', 30);
 

@@ -24,77 +24,10 @@ $current_page = $filters['paged'];
     <h1>💬 <?php _e('Chat Conversations', 'dehum-assistant-mvp'); ?></h1>
     
     <!-- Settings Form -->
+    <?php settings_errors(); ?>
     <form method="post" action="options.php" class="dehum-admin-settings">
         <?php settings_fields('dehum_mvp_options_group'); ?>
-        <h2><?php _e('AI Service Settings', 'dehum-assistant-mvp'); ?></h2>
-        
-        <!-- Python AI Service Settings (Primary) -->
-        <table class="form-table">
-            <tr valign="top">
-                <th scope="row"><label for="dehum_mvp_ai_service_url"><?php _e('Python AI Service URL', 'dehum-assistant-mvp'); ?></label></th>
-                <td>
-                    <input type="url" id="dehum_mvp_ai_service_url" name="dehum_mvp_ai_service_url" value="<?php echo esc_attr(get_option('dehum_mvp_ai_service_url')); ?>" class="regular-text" placeholder="http://localhost:8000" />
-                    <p class="description">
-                        <?php _e('Enter the URL of your Python AI service (without /chat endpoint).', 'dehum-assistant-mvp'); ?>
-                        <br><strong><?php _e('Recommended:', 'dehum-assistant-mvp'); ?></strong> <code>http://localhost:8000</code> <?php _e('for local development', 'dehum-assistant-mvp'); ?>
-                    </p>
-                </td>
-            </tr>
-            <tr valign="top">
-                <th scope="row"><label for="dehum_mvp_ai_service_key"><?php _e('AI Service API Key', 'dehum-assistant-mvp'); ?></label></th>
-                <td>
-                    <?php $has_api_key = !empty(get_option('dehum_mvp_ai_service_key_encrypted')); ?>
-                    <input type="password" id="dehum_mvp_ai_service_key" name="dehum_mvp_ai_service_key" value="" class="regular-text" placeholder="<?php echo $has_api_key ? esc_attr__('API key is set (enter new key to change)', 'dehum-assistant-mvp') : esc_attr__('Optional API key for authentication', 'dehum-assistant-mvp'); ?>" />
-                    <p class="description">
-                        <?php _e('Optional API key for authenticating with your AI service.', 'dehum-assistant-mvp'); ?>
-                        <?php if ($has_api_key): ?>
-                            <br><em><?php _e('API key is encrypted and stored securely. Leave blank to keep current key.', 'dehum-assistant-mvp'); ?></em>
-                        <?php endif; ?>
-                    </p>
-                </td>
-            </tr>
-        </table>
-        
-        <!-- Legacy n8n Settings (Collapsible) -->
-        <div class="dehum-legacy-settings" style="margin-top: 30px;">
-            <h3 style="cursor: pointer;" onclick="toggleLegacySettings()">
-                <?php _e('Legacy n8n Settings', 'dehum-assistant-mvp'); ?>
-                <span style="font-size: 12px; color: #666;">(<?php _e('click to expand', 'dehum-assistant-mvp'); ?>)</span>
-            </h3>
-            <div id="legacy-settings-content" style="display: none;">
-                <p style="color: #666; font-style: italic;"><?php _e('These settings are kept for backward compatibility. New installations should use the Python AI Service above.', 'dehum-assistant-mvp'); ?></p>
-                <table class="form-table">
-                    <tr valign="top">
-                        <th scope="row"><label for="dehum_mvp_n8n_webhook_url"><?php _e('n8n Webhook URL', 'dehum-assistant-mvp'); ?></label></th>
-                        <td>
-                            <input type="url" id="dehum_mvp_n8n_webhook_url" name="dehum_mvp_n8n_webhook_url" value="<?php echo esc_attr(get_option('dehum_mvp_n8n_webhook_url')); ?>" class="regular-text" placeholder="https://your-n8n-instance.com/webhook/..." />
-                            <p class="description"><?php _e('Enter the full webhook URL for your n8n workflow.', 'dehum-assistant-mvp'); ?></p>
-                        </td>
-                    </tr>
-                    <tr valign="top">
-                        <th scope="row"><label for="dehum_mvp_n8n_webhook_user"><?php _e('n8n Webhook Username', 'dehum-assistant-mvp'); ?></label></th>
-                        <td>
-                            <input type="text" id="dehum_mvp_n8n_webhook_user" name="dehum_mvp_n8n_webhook_user" value="<?php echo esc_attr(get_option('dehum_mvp_n8n_webhook_user')); ?>" class="regular-text" placeholder="<?php esc_attr_e('Username', 'dehum-assistant-mvp'); ?>" />
-                            <p class="description"><?php _e('The Basic Auth username for your n8n webhook.', 'dehum-assistant-mvp'); ?></p>
-                        </td>
-                    </tr>
-                    <tr valign="top">
-                        <th scope="row"><label for="dehum_mvp_n8n_webhook_pass"><?php _e('n8n Webhook Password', 'dehum-assistant-mvp'); ?></label></th>
-                        <td>
-                            <?php $has_password = !empty(get_option('dehum_mvp_n8n_webhook_pass_encrypted')); ?>
-                            <input type="password" id="dehum_mvp_n8n_webhook_pass" name="dehum_mvp_n8n_webhook_pass" value="" class="regular-text" placeholder="<?php echo $has_password ? esc_attr__('Password is set (enter new password to change)', 'dehum-assistant-mvp') : esc_attr__('Password', 'dehum-assistant-mvp'); ?>" />
-                            <p class="description">
-                                <?php _e('The Basic Auth password for your n8n webhook.', 'dehum-assistant-mvp'); ?>
-                                <?php if ($has_password): ?>
-                                    <br><em><?php _e('Password is encrypted and stored securely. Leave blank to keep current password.', 'dehum-assistant-mvp'); ?></em>
-                                <?php endif; ?>
-                            </p>
-                        </td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-        
+        <?php do_settings_sections('dehum-mvp-logs'); ?>
         <?php submit_button(); ?>
     </form>
     
@@ -104,6 +37,31 @@ $current_page = $filters['paged'];
         content.style.display = content.style.display === 'none' ? 'block' : 'none';
     }
     </script>
+
+    <h2 style="margin-top:40px;"><?php _e('Security', 'dehum-assistant-mvp'); ?></h2>
+    <table class="form-table">
+        <tr valign="top">
+            <th scope="row"><?php _e('Encryption Key', 'dehum-assistant-mvp'); ?></th>
+            <td>
+                <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
+                    <input type="hidden" name="action" value="dehum_mvp_rotate_key">
+                    <?php wp_nonce_field('dehum_mvp_rotate_key'); ?>
+                    <button type="submit" class="button" <?php disabled(!$is_sodium_available); ?>>
+                        <?php _e('Rotate Encryption Key', 'dehum-assistant-mvp'); ?>
+                    </button>
+                </form>
+                <p class="description">
+                    <?php _e('Generates a new encryption key for securing API credentials. This improves security over time.', 'dehum-assistant-mvp'); ?>
+                    <?php if (!$is_sodium_available): ?>
+                        <br>
+                        <strong style="color: #d63638;">
+                            <?php _e('Requires the PHP `libsodium` extension to be installed on your server.', 'dehum-assistant-mvp'); ?>
+                        </strong>
+                    <?php endif; ?>
+                </p>
+            </td>
+        </tr>
+    </table>
     
     <!-- Stats Summary -->
     <div class="dehum-stats-summary">
@@ -273,7 +231,11 @@ $current_page = $filters['paged'];
             </div>
             
             <div class="bulk-actions-top">
-                <form method="POST" id="bulk-delete-form" onsubmit="return confirmBulkDelete()">
+                <label class="master-select-all">
+                    <input type="checkbox" id="master-select-all" onclick="selectAllConversations(this.checked)">
+                    <?php _e('Select All', 'dehum-assistant-mvp'); ?>
+                </label>
+                <form method="POST" id="bulk-delete-form">
                     <?php wp_nonce_field(DEHUM_MVP_BULK_NONCE, 'bulk_nonce'); ?>
                     <input type="hidden" name="bulk_action" value="delete_selected">
                     <select id="bulk-action-selector">

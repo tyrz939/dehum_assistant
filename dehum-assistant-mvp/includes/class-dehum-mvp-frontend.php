@@ -27,6 +27,10 @@ class Dehum_MVP_Frontend {
         if (is_admin()) {
             return;
         }
+        // Respect access control: skip loading for anonymous users when chat is restricted
+        if (get_option('dehum_mvp_chat_logged_in_only') && !is_user_logged_in()) {
+            return;
+        }
 
         // Enqueue chat widget CSS
         wp_enqueue_style(
@@ -35,6 +39,40 @@ class Dehum_MVP_Frontend {
             [],
             DEHUM_MVP_VERSION
         );
+
+        // Prefer local icon font; fallback to Google CDN if the woff2 file is missing
+        $local_font = DEHUM_MVP_PLUGIN_PATH . 'assets/fonts/MaterialSymbolsOutlined.woff2';
+        if (file_exists($local_font)) {
+            wp_enqueue_style(
+                'dehum-mvp-material-symbols',
+                DEHUM_MVP_PLUGIN_URL . 'assets/css/material-symbols.css',
+                [],
+                DEHUM_MVP_VERSION
+            );
+        } else {
+            wp_enqueue_style(
+                'dehum-mvp-material-symbols',
+                'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined',
+                [],
+                null
+            );
+        }
+
+        // Inject theme CSS variables and button override
+        $theme_css = ':root {
+  --background: #ffffff;
+  --foreground: #1e1e1e;
+  --card: #ffffff;
+  --card-foreground: #1e1e1e;
+  --primary: #4054B2;
+  --secondary: #4054B2;
+  --primary-foreground: #ffffff;
+  --accent: #f3f4f6;
+  --accent-foreground: #1e1e1e;
+}
+.dehum-chat-button{background: var(--primary); color: var(--primary-foreground);}';
+
+        wp_add_inline_style('dehum-mvp-chat', $theme_css);
 
         // Enqueue chat widget JavaScript
         wp_enqueue_script(
@@ -50,7 +88,8 @@ class Dehum_MVP_Frontend {
             'ajaxUrl'    => admin_url('admin-ajax.php'),
             'nonce'      => wp_create_nonce(DEHUM_MVP_CHAT_NONCE),
             'isLoggedIn' => is_user_logged_in(),
-            'siteUrl'    => home_url()
+            'siteUrl'    => home_url(),
+            'maxLen'     => DEHUM_MVP_MESSAGE_MAX_LENGTH,
         ]);
     }
 
@@ -61,19 +100,15 @@ class Dehum_MVP_Frontend {
         if (is_admin()) {
             return;
         }
+        if (get_option('dehum_mvp_chat_logged_in_only') && !is_user_logged_in()) {
+            return;
+        }
         
         ?>
         <div id="dehum-mvp-chat-widget">
             <!-- Chat Button -->
-            <button id="dehum-mvp-chat-button" class="dehum-chat-button" aria-label="Open Dehumidifier Assistant">
-                <span class="dehum-button-content">
-                    <span class="dehum-ai-icon">
-                        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
-                            <path d="M12 1C5.925 1 1 5.925 1 12s4.925 11 11 11 11-4.925 11-11S18.075 1 12 1zM8.5 6c.825 0 1.5.675 1.5 1.5S9.325 9 8.5 9 7 8.325 7 7.5 7.675 6 8.5 6zm7 0c.825 0 1.5.675 1.5 1.5S16.325 9 15.5 9 14 8.325 14 7.5 14.675 6 15.5 6zM12 18c-2.5 0-4.5-1.5-5.5-3.5h2c.5 1 1.5 1.5 3.5 1.5s3-.5 3.5-1.5h2c-1 2-3 3.5-5.5 3.5z"/>
-                        </svg>
-                    </span>
-                    <span class="dehum-ai-text">AI</span>
-                </span>
+            <button id="dehum-mvp-chat-button" class="dehum-chat-button" aria-label="Open chat">
+                <span class="material-symbols-outlined" style="font-size:32px;line-height:1;">sms</span>
             </button>
             
             <!-- Chat Modal -->
@@ -81,7 +116,7 @@ class Dehum_MVP_Frontend {
                 <div class="dehum-chat-container">
                     <!-- Header -->
                     <div class="dehum-chat-header">
-                        <h3 id="chat-title">Dehumidifier Assistant</h3>
+                        <h3 id="chat-title">AI Dehumidifier Sizing Assistant</h3>
                         <div class="dehum-header-actions">
                             <button id="dehum-clear-btn" class="dehum-clear-btn" aria-label="Clear conversation" title="Clear conversation and start fresh">
                                 🗑️
@@ -94,7 +129,7 @@ class Dehum_MVP_Frontend {
                     <div id="dehum-chat-messages" class="dehum-chat-messages">
                         <div class="dehum-welcome">
                             <strong>Hi! I'm your dehumidifier assistant.</strong><br>
-                            I can help you choose the right dehumidifier, calculate sizing, and answer technical questions. What would you like to know?
+                            I can help you choose the right dehumidifier, answer technical questions, and calculate sizing for your space. For sizing, just tell me your room dimensions (length, width, height) and current humidity level – I'll recommend the perfect unit! What would you like to know?
                         </div>
                     </div>
                     
@@ -107,11 +142,13 @@ class Dehum_MVP_Frontend {
                                 rows="1"
                                 aria-label="Type your message"
                             ></textarea>
+                            <span id="dehum-char-count" class="dehum-char-count">0/<?php echo DEHUM_MVP_MESSAGE_MAX_LENGTH; ?></span>
                             <button id="dehum-send-btn" class="dehum-send-btn" aria-label="Send message">
                                 Send
                             </button>
                         </div>
                     </div>
+                    <div class="dehum-disclaimer" style="font-size: 0.7em; text-align: center; margin-top: 10px; color: #666;">Disclaimer: AI can be wrong. Please verify important information.</div>
                 </div>
             </div>
         </div>

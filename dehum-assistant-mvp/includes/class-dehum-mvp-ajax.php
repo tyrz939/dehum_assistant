@@ -36,12 +36,28 @@ class Dehum_MVP_Ajax {
         
         // Add individual session delete handler
         add_action('wp_ajax_dehum_mvp_delete_session', [$this, 'handle_delete_session_ajax']);
+        // New session sync handlers
+        add_action('wp_ajax_dehum_get_session', [$this, 'handle_get_session']);
+        add_action('wp_ajax_dehum_save_session', [$this, 'handle_save_session']);
+        add_action('wp_ajax_dehum_get_nonce', [$this, 'handle_get_nonce']);
+        
+        // New streaming support handlers
+        add_action('wp_ajax_dehum_get_ai_service_url', [$this, 'handle_get_ai_service_url']);
+        add_action('wp_ajax_nopriv_dehum_get_ai_service_url', [$this, 'handle_get_ai_service_url']);
+        add_action('wp_ajax_dehum_get_ai_service_auth', [$this, 'handle_get_ai_service_auth']);
+        add_action('wp_ajax_nopriv_dehum_get_ai_service_auth', [$this, 'handle_get_ai_service_auth']);
+        add_action('wp_ajax_dehum_mvp_save_conversation', [$this, 'handle_save_conversation']);
+        add_action('wp_ajax_nopriv_dehum_mvp_save_conversation', [$this, 'handle_save_conversation']);
     }
 
     /**
      * Handle the incoming chat message from the frontend.
      */
     public function handle_chat_message() {
+        // NEW: Access control toggle
+        if (get_option('dehum_mvp_chat_logged_in_only') && !is_user_logged_in()) {
+            wp_send_json_error(['message' => 'Chat is currently restricted to logged-in users only.'], 403);
+        }
         if (!wp_verify_nonce($_POST['nonce'], DEHUM_MVP_CHAT_NONCE)) {
             wp_send_json_error(['message' => 'Security check failed'], 403);
         }
@@ -50,10 +66,12 @@ class Dehum_MVP_Ajax {
         if (!$rate_limit_check['allowed']) {
             wp_send_json_error(['message' => $rate_limit_check['message'], 'rate_limited' => true], 429);
         }
+        $this->increment_rate_limit_counter();
 
         $user_input = sanitize_textarea_field($_POST['message']);
-        if (empty($user_input) || strlen($user_input) > DEHUM_MVP_MESSAGE_MAX_LENGTH) {
-            wp_send_json_error(['message' => 'Invalid message length']);
+        $length_func = function_exists('mb_strlen') ? 'mb_strlen' : 'strlen';
+        if (empty($user_input) || $length_func($user_input) > DEHUM_MVP_MESSAGE_MAX_LENGTH) {
+            wp_send_json_error(['message' => sprintf('Message exceeds %d characters.', DEHUM_MVP_MESSAGE_MAX_LENGTH)]);
         }
 
         $session_id = $this->get_or_create_session_id();
@@ -68,10 +86,9 @@ class Dehum_MVP_Ajax {
         }
 
         // Always use Python AI Service
-        $response = $this->call_ai_service($user_input);
+        $response = $this->call_ai_service($user_input, $session_id);
 
         if ($response && isset($response['success']) && $response['success']) {
-            $this->increment_rate_limit_counter();
             $this->db->log_conversation($session_id, $user_input, $response['response'], $this->get_user_ip());
 
             wp_send_json_success([
@@ -144,17 +161,18 @@ class Dehum_MVP_Ajax {
      * @param string $message The user's message.
      * @return array|false The decoded JSON response from the AI service or false on failure.
      */
-    private function call_ai_service($message) {
+    private function call_ai_service($message, $session_id = null) {
         $service_url = get_option('dehum_mvp_ai_service_url');
         if (empty($service_url)) {
             error_log('Dehum MVP: AI service URL is not set in settings.');
             return false;
         }
 
-        // Ensure the URL ends with the chat endpoint
+        // Use the regular endpoint for WordPress (wp_remote_post doesn't handle SSE properly)
         $service_url = rtrim($service_url, '/') . '/chat';
 
-        $session_id = $this->get_or_create_session_id();
+        // Reuse provided session ID if supplied to ensure consistent threading
+        $session_id = $session_id ?: $this->get_or_create_session_id();
         
         $body = wp_json_encode([
             'message'    => $message,
@@ -180,7 +198,21 @@ class Dehum_MVP_Ajax {
             'data_format' => 'body'
         ];
         
-        $response = wp_remote_post($service_url, $args);
+        $max_retries = 3;
+        $retry_delay = 1; // seconds
+        $response = false;
+        
+        for ($attempt = 1; $attempt <= $max_retries; $attempt++) {
+            $response = wp_remote_post($service_url, $args);
+            
+            if (!is_wp_error($response) && wp_remote_retrieve_response_code($response) === 200) {
+                break; // Success
+            }
+            
+            error_log('Dehum MVP: AI service attempt ' . $attempt . ' failed. Retrying in ' . $retry_delay . ' seconds.');
+            sleep($retry_delay);
+            $retry_delay *= 2; // Exponential backoff
+        }
         
         if (is_wp_error($response)) {
             error_log('Dehum MVP: AI service error: ' . $response->get_error_message());
@@ -278,17 +310,26 @@ class Dehum_MVP_Ajax {
      * @return string The encrypted credential.
      */
     public function encrypt_credential($credential) {
+        // Rewritten to use libsodium so encrypt/decrypt are consistent
         if (empty($credential)) {
             return '';
         }
-        
-        // Use WordPress auth key as encryption key
-        $key = defined('AUTH_KEY') ? AUTH_KEY : 'dehum_mvp_fallback_key';
-        $iv = openssl_random_pseudo_bytes(16);
-        $encrypted = openssl_encrypt($credential, 'AES-256-CBC', $key, 0, $iv);
-        
-        // Combine IV and encrypted data, then base64 encode
-        return base64_encode($iv . $encrypted);
+        // Ensure libsodium is available
+        if (!function_exists('sodium_crypto_secretbox')) {
+            error_log('Dehum MVP: libsodium not available for encryption');
+            return '';
+        }
+        // Fetch or create key
+        $key_b64 = get_option('dehum_mvp_encryption_key');
+        if (empty($key_b64)) {
+            $key_b64 = base64_encode(sodium_crypto_secretbox_keygen());
+            update_option('dehum_mvp_encryption_key', $key_b64);
+        }
+        $key = base64_decode($key_b64);
+        $nonce = random_bytes(SODIUM_CRYPTO_SECRETBOX_NONCEBYTES);
+        $cipher = sodium_crypto_secretbox($credential, $nonce, $key);
+        // Return base64 of nonce + cipher so decrypt_credential can split
+        return base64_encode($nonce . $cipher);
     }
 
     /**
@@ -297,22 +338,27 @@ class Dehum_MVP_Ajax {
      * @param string $encrypted_credential The encrypted credential.
      * @return string|false The decrypted credential or false on failure.
      */
-    private function decrypt_credential($encrypted_credential) {
-        if (empty($encrypted_credential)) {
-            return false;
+    private function decrypt_credential($encrypted_value) {
+        if (empty($encrypted_value)) {
+            return '';
         }
-        
-        $key = defined('AUTH_KEY') ? AUTH_KEY : 'dehum_mvp_fallback_key';
-        $data = base64_decode($encrypted_credential);
-        
-        if (strlen($data) < 16) {
-            return false;
+        $keys = [
+            get_option('dehum_mvp_encryption_key'),
+            get_option('dehum_mvp_old_encryption_key') // Previous key for rotation
+        ];
+        foreach ($keys as $key) {
+            if (empty($key)) continue;
+            try {
+                $decoded = base64_decode($encrypted_value);
+                $nonce = mb_substr($decoded, 0, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES, '8bit');
+                $ciphertext = mb_substr($decoded, SODIUM_CRYPTO_SECRETBOX_NONCEBYTES, null, '8bit');
+                return sodium_crypto_secretbox_open($ciphertext, $nonce, base64_decode($key));
+            } catch (Exception $e) {
+                // Try next key
+            }
         }
-        
-        $iv = substr($data, 0, 16);
-        $encrypted = substr($data, 16);
-        
-        return openssl_decrypt($encrypted, 'AES-256-CBC', $key, 0, $iv);
+        error_log('Dehum MVP: Decryption failed with all keys');
+        return '';
     }
 
     /**
@@ -366,6 +412,125 @@ class Dehum_MVP_Ajax {
             ]);
         } else {
             wp_send_json_error(['message' => __('Failed to delete session or session not found.', 'dehum-assistant-mvp')]);
+        }
+    }
+
+    public function handle_get_session() {
+        error_log('Dehum MVP: handle_get_session called');
+        // Verify API key from headers
+        $api_key = $this->decrypt_credential(get_option('dehum_mvp_ai_service_key_encrypted'));
+        error_log('Dehum MVP: Expected API key: ' . $api_key);
+        error_log('Dehum MVP: Received Authorization: ' . ($_SERVER['HTTP_AUTHORIZATION'] ?? 'none'));
+        if (empty($_SERVER['HTTP_AUTHORIZATION']) || $_SERVER['HTTP_AUTHORIZATION'] !== 'Bearer ' . $api_key) {
+            error_log('Dehum MVP: Authentication failed');
+            wp_send_json_error(['message' => 'Authentication failed'], 403);
+        }
+        // Verify nonce and permissions
+        error_log('Dehum MVP: Received nonce: ' . ($_POST['nonce'] ?? 'none'));
+        if (!wp_verify_nonce($_POST['nonce'], DEHUM_MVP_CHAT_NONCE)) {
+            error_log('Dehum MVP: Nonce verification failed');
+            wp_send_json_error(['message' => 'Security check failed'], 403);
+        }
+        $session_id = sanitize_text_field($_POST['session_id']);
+        if (empty($session_id)) {
+            wp_send_json_error(['message' => 'Session ID required']);
+        }
+        $history = $this->db->get_session_details($session_id);
+        wp_send_json_success(['history' => $history]);
+    }
+    public function handle_save_session() {
+        error_log('Dehum MVP: handle_save_session called');
+        // Verify API key from headers
+        $api_key = $this->decrypt_credential(get_option('dehum_mvp_ai_service_key_encrypted'));
+        error_log('Dehum MVP: Expected API key: ' . $api_key);
+        error_log('Dehum MVP: Received Authorization: ' . ($_SERVER['HTTP_AUTHORIZATION'] ?? 'none'));
+        if (empty($_SERVER['HTTP_AUTHORIZATION']) || $_SERVER['HTTP_AUTHORIZATION'] !== 'Bearer ' . $api_key) {
+            error_log('Dehum MVP: Authentication failed');
+            wp_send_json_error(['message' => 'Authentication failed'], 403);
+        }
+        // Verify nonce and permissions
+        error_log('Dehum MVP: Received nonce: ' . ($_POST['nonce'] ?? 'none'));
+        if (!wp_verify_nonce($_POST['nonce'], DEHUM_MVP_CHAT_NONCE)) {
+            error_log('Dehum MVP: Nonce verification failed');
+            wp_send_json_error(['message' => 'Security check failed'], 403);
+        }
+        $session_id = sanitize_text_field($_POST['session_id']);
+        $history = json_decode($_POST['history'], true); // Expect array of messages
+        if (empty($session_id) || !is_array($history)) {
+            wp_send_json_error(['message' => 'Invalid data']);
+        }
+        // Clear existing and insert new (or append)
+        $this->db->delete_session($session_id);
+        foreach ($history as $msg) {
+            $this->db->log_conversation($session_id, $msg['message'], $msg['response'], $msg['user_ip']);
+        }
+        wp_send_json_success(['message' => 'Session saved']);
+    }
+
+    public function handle_get_nonce() {
+        $api_key = $this->decrypt_credential(get_option('dehum_mvp_ai_service_key_encrypted'));
+        if (empty($_SERVER['HTTP_AUTHORIZATION']) || $_SERVER['HTTP_AUTHORIZATION'] !== 'Bearer ' . $api_key) {
+            wp_send_json_error(['message' => 'Authentication failed'], 403);
+        }
+        $nonce = wp_create_nonce(DEHUM_MVP_CHAT_NONCE);
+        wp_send_json_success(['nonce' => $nonce]);
+    }
+
+    /**
+     * Handle AJAX request to get AI service URL.
+     */
+    public function handle_get_ai_service_url() {
+        $url = get_option('dehum_mvp_ai_service_url');
+        wp_send_json_success(['url' => $url]);
+    }
+
+    /**
+     * Handle AJAX request to get AI service authentication.
+     */
+    public function handle_get_ai_service_auth() {
+        $api_key_encrypted = get_option('dehum_mvp_ai_service_key_encrypted');
+        if (empty($api_key_encrypted)) {
+            wp_send_json_success(['auth' => '']);
+            return;
+        }
+        
+        $decrypted_key = $this->decrypt_credential($api_key_encrypted);
+        if ($decrypted_key === false) {
+            wp_send_json_error(['message' => 'Failed to decrypt AI service authentication key.']);
+            return;
+        }
+        
+        wp_send_json_success(['auth' => 'Bearer ' . $decrypted_key]);
+    }
+
+    /**
+     * Handle AJAX request to save a conversation.
+     */
+    public function handle_save_conversation() {
+        // NEW: Access control toggle
+        if (get_option('dehum_mvp_chat_logged_in_only') && !is_user_logged_in()) {
+            wp_send_json_error(['message' => 'Chat is currently restricted to logged-in users only.'], 403);
+        }
+        
+        if (!wp_verify_nonce($_POST['nonce'], DEHUM_MVP_CHAT_NONCE)) {
+            wp_send_json_error(['message' => 'Security check failed'], 403);
+        }
+
+        $user_message = sanitize_textarea_field($_POST['message']);
+        $assistant_response = sanitize_textarea_field($_POST['response']);
+        $session_id = sanitize_text_field($_POST['session_id']);
+        
+        if (empty($user_message) || empty($assistant_response) || empty($session_id)) {
+            wp_send_json_error(['message' => 'Missing required data']);
+        }
+
+        // Log the conversation
+        $result = $this->db->log_conversation($session_id, $user_message, $assistant_response, $this->get_user_ip());
+        
+        if ($result) {
+            wp_send_json_success(['message' => 'Conversation saved']);
+        } else {
+            wp_send_json_error(['message' => 'Failed to save conversation']);
         }
     }
 } 

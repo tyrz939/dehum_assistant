@@ -7,6 +7,10 @@ import json
 from models import ChatRequest, ChatResponse
 from ai_agent import DehumidifierAgent
 from tools import DehumidifierTools
+import pytest
+from fastapi.testclient import TestClient
+from main import app
+import requests_mock
 
 async def test_basic_functionality():
     """Test basic functionality of the AI service"""
@@ -32,23 +36,18 @@ async def test_basic_functionality():
     print(f"   ✅ Room volume: {sizing_result['room_volume_m3']} m³")
     print(f"   ✅ Recommended capacity: {sizing_result['recommended_capacity']}")
     
-    # Test 3: Product recommendations
-    print("\n3. Testing Product Recommendations...")
-    recommendations = tools.recommend_products(
-        room_area_m2=sizing_result['room_area_m2'],
-        room_volume_m3=sizing_result['room_volume_m3'],
-        pool_required=False
-    )
-    print(f"   ✅ Found {len(recommendations)} product recommendations")
-    for i, rec in enumerate(recommendations):
-        print(f"   {i+1}. {rec.get('display_name', ', '.join(rec.get('names', rec.get('skus', []))))} - {rec['confidence_score']:.2f} confidence")
+    # Test 3: Product catalog
+    print("\n3. Testing Product Catalog...")
+    catalog = tools.get_catalog_with_effective_capacity()
+    print(f"   ✅ Found {len(catalog)} products in catalog")
+    for i, product in enumerate(catalog[:3]):  # Show first 3 products
+        print(f"   {i+1}. {product['name']} - {product['effective_capacity_lpd']:.1f} L/day")
     
     # Test 4: AI Agent initialization (without API call)
     print("\n4. Testing AI Agent Initialization...")
     agent = DehumidifierAgent()
     print(f"   ✅ Agent initialized with model: {agent.model}")
     print(f"   ✅ Health status: {agent.get_health_status()}")
-    print(f"   ✅ Available models: {agent.get_available_models()}")
     
     # Test 5: Dehumidifier load calculation
     print("\n5. Testing Dehumidifier Load Calculation (Heuristic)...")
@@ -68,6 +67,28 @@ async def test_basic_functionality():
     print("   python main.py")
     print("\nOr with uvicorn:")
     print("   uvicorn main:app --host 0.0.0.0 --port 8000 --reload")
+
+@pytest.mark.asyncio
+async def test_recommendations():
+    agent = DehumidifierAgent()
+    request = ChatRequest(message="Recommend a dehumidifier for a 50m2 room with 3m ceiling, 28C temperature, 60% current RH, target 50% RH, with a 20m2 pool at 28C water temp, wall-mount preferred.", session_id="test_rec")
+    response = await agent.process_chat(request)
+    assert response.recommendations is not None
+    assert len(response.recommendations) > 0
+
+@pytest.fixture
+def mock_requests():
+    with requests_mock.Mocker() as m:
+        yield m
+
+@pytest.mark.asyncio
+async def test_session_sync(mock_requests):
+    agent = DehumidifierAgent()
+    # Mock WP responses
+    mock_requests.post(agent.wp_ajax_url, json={"success": True, "data": {"history": [{"role": "user", "content": "Hello"}]}})
+    session = agent.get_or_create_session("test_sync")
+    assert len(session.conversation_history) == 1
+    assert session.conversation_history[0].content == "Hello"
 
 if __name__ == "__main__":
     asyncio.run(test_basic_functionality()) 

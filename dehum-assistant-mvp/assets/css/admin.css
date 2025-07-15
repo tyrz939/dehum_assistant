@@ -6,11 +6,11 @@
 
 /* Settings Section */
 .dehum-admin-settings {
-  background: white;
+  background: var(--card);
   padding: 20px;
-  border-radius: 8px;
+  border-radius: var(--radius, 8px);
   margin: 20px 0;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
 }
 
 .dehum-admin-settings h2 {
@@ -19,8 +19,8 @@
 
 /* Stats Summary */
 .dehum-stats-summary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  color: var(--primary-foreground);
   padding: 20px;
   border-radius: 8px;
   margin: 20px 0;
@@ -56,11 +56,11 @@
 
 /* Filters Section */
 .dehum-filters {
-  background: white;
+  background: var(--card);
   padding: 20px;
-  border-radius: 8px;
+  border-radius: var(--radius, 8px);
   margin: 20px 0;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
 }
 
 .dehum-filters-grid {
@@ -81,7 +81,7 @@
 .dehum-filter-field select {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 4px;
 }
 
@@ -101,7 +101,7 @@
   justify-content: space-between;
   align-items: center;
   padding-top: 15px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border);
 }
 
 .dehum-bulk-actions form {
@@ -116,8 +116,8 @@
 
 /* Advanced Delete Options */
 .dehum-advanced-delete {
-  background: #f8f9fa;
-  border: 1px solid #e1e5e9;
+  background: var(--muted);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 20px;
   margin-top: 15px;
@@ -125,7 +125,7 @@
 
 .dehum-advanced-delete h3 {
   margin-top: 0;
-  color: #d63638;
+  color: var(--destructive);
 }
 
 .advanced-delete-grid {
@@ -138,13 +138,13 @@
   background: white;
   padding: 15px;
   border-radius: 6px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
 }
 
 .delete-option h4 {
   margin-top: 0;
   margin-bottom: 10px;
-  color: #1d2327;
+  color: var(--foreground);
 }
 
 .date-inputs {
@@ -167,16 +167,16 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: white;
+  background: var(--card);
   padding: 15px 20px;
-  border-radius: 8px;
+  border-radius: var(--radius, 8px);
   margin: 20px 0 15px 0;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
 }
 
 .results-info {
   font-weight: 500;
-  color: #1d2327;
+  color: var(--foreground);
 }
 
 .bulk-actions-top {
@@ -199,14 +199,14 @@
 .select-actions button {
   background: none;
   border: none;
-  color: #2271b1;
+  color: var(--primary);
   cursor: pointer;
   text-decoration: underline;
   font-size: 13px;
 }
 
 .select-actions button:hover {
-  color: #135e96;
+  color: color-mix(in srgb, var(--primary) 80%, black);
 }
 
 #bulk-apply-btn:disabled {
@@ -218,9 +218,9 @@
 .dehum-empty-state {
   text-align: center;
   padding: 60px 20px;
-  background: #f8f9fa;
+  background: var(--muted);
   border-radius: 8px;
-  color: #6c757d;
+  color: var(--muted-foreground);
 }
 
 .dehum-empty-state .empty-icon {
@@ -234,17 +234,15 @@
 }
 
 .conversation-card {
-  background: white;
-  border: 1px solid #e1e5e9;
-  border-radius: 8px;
-  margin-bottom: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  transition: all 0.2s ease;
+  background: var(--popover);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 15px;
+  transition: box-shadow 0.2s;
 }
 
 .conversation-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-color: #c3c4c7;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--foreground) 10%, transparent);
 }
 
 .conversation-card.deleting {
@@ -253,16 +251,21 @@
 }
 
 .card-header {
-  padding: 16px 20px;
-  cursor: pointer;
+  background: var(--card);
+  padding: 12px 16px;
   display: flex;
   align-items: center;
   gap: 15px;
-  transition: background-color 0.2s ease;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--foreground) 8%, transparent);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .card-header:hover {
-  background-color: #f8f9fa;
+  background: var(--muted);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--foreground) 12%, transparent);
 }
 
 .conversation-checkbox {
@@ -281,7 +284,7 @@
 .conversation-preview {
   font-size: 15px;
   font-weight: 500;
-  color: #1d2327;
+  color: var(--foreground);
   margin-bottom: 6px;
   line-height: 1.4;
 }
@@ -295,7 +298,7 @@
 }
 
 .message-count {
-  background: #2271b1;
+  background: var(--primary);
   color: white;
   padding: 2px 8px;
   border-radius: 12px;
@@ -305,7 +308,7 @@
 
 .user-ip {
   font-family: monospace;
-  background: #f6f7f7;
+  background: var(--muted);
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 12px;
@@ -319,18 +322,12 @@
 }
 
 .delete-session-btn {
-  background: none;
-  border: none;
-  font-size: 16px;
-  cursor: pointer;
-  padding: 5px;
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
-  color: #d63638;
+  background: var(--destructive);
+  color: var(--destructive-foreground);
 }
 
 .delete-session-btn:hover {
-  background-color: #f8d7da;
+  background: color-mix(in srgb, var(--destructive) 85%, black);
 }
 
 .expand-icon {
@@ -355,14 +352,14 @@
 }
 
 .loading-state.error {
-  color: #d63638;
+  color: var(--destructive);
 }
 
 .loading-spinner {
   width: 20px;
   height: 20px;
-  border: 2px solid #f3f3f3;
-  border-top: 2px solid #2271b1;
+  border: 2px solid var(--border);
+  border-top: 2px solid var(--primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin: 0 auto 10px;
@@ -385,14 +382,14 @@
 
 .conversation-thread-header {
   padding-bottom: 15px;
-  border-bottom: 2px solid #f0f0f1;
+  border-bottom: 2px solid var(--border);
   margin-bottom: 20px;
 }
 
 .thread-info {
   font-size: 16px;
   font-weight: 600;
-  color: #1d2327;
+  color: var(--foreground);
   margin-bottom: 5px;
 }
 
@@ -430,16 +427,16 @@
   align-items: center;
   justify-content: center;
   font-size: 16px;
-  background: #f0f0f1;
+  background: var(--muted);
 }
 
 .user-bubble .bubble-avatar {
-  background: #2271b1;
+  background: var(--primary);
   color: white;
 }
 
 .ai-bubble .bubble-avatar {
-  background: #00a32a;
+  background: var(--secondary);
   color: white;
 }
 
@@ -448,7 +445,7 @@
 }
 
 .bubble-text {
-  background: #f8f9fa;
+  background: var(--muted);
   padding: 12px 16px;
   border-radius: 18px;
   line-height: 1.5;
@@ -456,14 +453,86 @@
   margin-bottom: 5px;
 }
 
+/* Formatted content within bubbles */
+.bubble-text h1,
+.bubble-text h2,
+.bubble-text h3 {
+  margin: 0.8em 0 0.5em 0;
+  font-weight: 600;
+}
+
+.bubble-text h1:first-child,
+.bubble-text h2:first-child,
+.bubble-text h3:first-child {
+  margin-top: 0;
+}
+
+.bubble-text h1 {
+  font-size: 1.4em;
+  border-bottom: 2px solid currentColor;
+  padding-bottom: 0.3em;
+}
+
+.bubble-text h2 {
+  font-size: 1.25em;
+}
+
+.bubble-text h3 {
+  font-size: 1.1em;
+}
+
+.bubble-text strong {
+  font-weight: 600;
+}
+
+.bubble-text em {
+  font-style: italic;
+}
+
+.bubble-text ul {
+  margin: 0.8em 0;
+  padding-left: 1.5em;
+}
+
+.bubble-text li {
+  margin: 0.3em 0;
+  line-height: 1.4;
+}
+
+.bubble-text a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.5);
+  transition: text-decoration-color 0.2s ease;
+}
+
+.bubble-text a:hover {
+  text-decoration-color: currentColor;
+}
+
+.ai-bubble .bubble-text a {
+  color: var(--primary);
+  text-decoration-color: rgba(64, 84, 178, 0.3);
+}
+
+.ai-bubble .bubble-text a:hover {
+  text-decoration-color: var(--primary);
+}
+
+.bubble-text br + br {
+  display: block;
+  content: "";
+  margin-top: 0.5em;
+}
+
 .user-bubble .bubble-text {
-  background: #2271b1;
+  background: var(--primary);
   color: white;
 }
 
 .ai-bubble .bubble-text {
-  background: #f8f9fa;
-  color: #1d2327;
+  background: var(--muted);
+  color: var(--foreground);
 }
 
 .bubble-time {
@@ -481,7 +550,7 @@
 }
 
 .conversation-thread-footer {
-  border-top: 2px solid #f0f0f1;
+  border-top: 2px solid var(--border);
   padding-top: 15px;
   margin-top: 20px;
   background: #fafafa;
@@ -501,11 +570,11 @@
 }
 
 .session-info strong {
-  color: #1d2327;
+  color: var(--foreground);
 }
 
 .session-info code {
-  background: #f6f7f7;
+  background: var(--muted);
   padding: 2px 6px;
   border-radius: 3px;
   font-family: monospace;
@@ -518,30 +587,30 @@
   padding: 20px;
   background: white;
   border-radius: 8px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
 }
 
 .dehum-pagination .page-numbers {
   display: inline-block;
   padding: 8px 12px;
   margin: 0 2px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 4px;
   text-decoration: none;
-  color: #2271b1;
+  color: var(--primary);
   background: white;
   transition: all 0.2s ease;
 }
 
 .dehum-pagination .page-numbers:hover {
   background: #f0f6fc;
-  border-color: #2271b1;
+  border-color: var(--primary);
 }
 
 .dehum-pagination .page-numbers.current {
-  background: #2271b1;
+  background: var(--primary);
   color: white;
-  border-color: #2271b1;
+  border-color: var(--primary);
 }
 
 .dehum-pagination .page-numbers.dots {
@@ -566,7 +635,7 @@
 .dehum-dashboard-stats .stat-number {
   font-size: 24px;
   font-weight: bold;
-  color: #1d2327;
+  color: var(--foreground);
   line-height: 1.2;
 }
 
@@ -580,7 +649,7 @@
 }
 
 .dehum-dashboard-stats .latest-conversation {
-  background: #f8f9fa;
+  background: var(--muted);
   padding: 12px;
   border-radius: 6px;
   margin-top: 15px;
@@ -607,11 +676,11 @@
 }
 
 .dehum-webhook-status.configured {
-  color: #00a32a;
+  color: var(--secondary);
 }
 
 .dehum-webhook-status.not-configured {
-  color: #d63638;
+  color: var(--destructive);
 }
 
 /* Responsive Design */

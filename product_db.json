@@ -11,7 +11,7 @@
       "price_aud": 2999,
       "performance_factor": 1.0,
       "capacity_lpd": 50,
-      "url": "https://example.com/products/SP500C_PRO"
+      "url": "https://www.dehumsaust.com.au/product/lgr-sp500c-dehumidifier/"
     },
     {
       "sku": "SP1000C_PRO",
@@ -23,7 +23,7 @@
       "price_aud": 3999,
       "performance_factor": 1.0,
       "capacity_lpd": 100,
-      "url": "https://example.com/products/SP1000C_PRO"
+      "url": "https://www.dehumsaust.com.au/product/suntec-100l-day-lgr-sp1000c-pro-wall-mounted-dehumidifier-with-humidity-wifi-control/"
     },
     {
       "sku": "SP1500C_PRO",
@@ -35,7 +35,7 @@
       "price_aud": 5500,
       "performance_factor": 1.0,
       "capacity_lpd": 150,
-      "url": "https://example.com/products/SP1500C_PRO"
+      "url": "https://www.dehumsaust.com.au/product/lgr-sp1500c-dehumidifier/"
     },
     {
       "sku": "IDHR60",
@@ -45,9 +45,9 @@
       "technology": "inverter",
       "pool_safe": true,
       "price_aud": 3900,
-      "performance_factor": 1.3,
+      "performance_factor": 1.2,
       "capacity_lpd": 60,
-      "url": "https://example.com/products/IDHR60"
+      "url": "https://www.dehumsaust.com.au/product/fairland-60l-day-inverter-dehumidifier-idhr60/"
     },
     {
       "sku": "IDHR96",
@@ -57,9 +57,9 @@
       "technology": "inverter",
       "pool_safe": true,
       "price_aud": 4600,
-      "performance_factor": 1.3,
+      "performance_factor": 1.2,
       "capacity_lpd": 96,
-      "url": "https://example.com/products/IDHR96"
+      "url": "https://www.dehumsaust.com.au/product/fairland-96l-day-inverter-dehumidifier-idhr96/"
     },
     {
       "sku": "IDHR120",
@@ -69,117 +69,69 @@
       "technology": "inverter",
       "pool_safe": true,
       "price_aud": 5400,
-      "performance_factor": 1.3,
+      "performance_factor": 1.2,
       "capacity_lpd": 120,
-      "url": "https://example.com/products/IDHR120"
+      "url": "https://www.dehumsaust.com.au/product/fairland-120l-day-inverter-dehumidifier-idhr120/"
     },
     {
-      "sku": "FD-SS60L",
-      "name": "LUKO FD-SS60L",
+      "sku": "DA-X140i",
+      "name": "LUKO DA-X140i",
       "type": "ducted",
-      "series": "FD-SS",
+      "series": "DA-X",
+      "technology": "panasonic_inverter",
+      "pool_safe": true,
+      "price_aud": null,
+      "performance_factor": 0.7,
+      "capacity_lpd": 140,
+      "url": "https://www.dehumsaust.com.au/ducted-dehumidifiers/"
+    },
+    {
+      "sku": "DA-X60i",
+      "name": "LUKO DA-X60i",
+      "type": "ducted",
+      "series": "DA-X",
       "technology": "panasonic_inverter",
       "pool_safe": true,
       "price_aud": null,
       "performance_factor": 1.0,
       "capacity_lpd": 60,
-      "url": "https://example.com/products/FD-SS60L"
+      "url": "https://www.dehumsaust.com.au/ducted-dehumidifiers/"
     },
     {
-      "sku": "FD-SS100L",
-      "name": "LUKO FD-SS100L",
-      "type": "ducted",
-      "series": "FD-SS",
-      "technology": "panasonic_inverter",
-      "pool_safe": true,
-      "price_aud": null,
-      "performance_factor": 1.0,
-      "capacity_lpd": 100,
-      "url": "https://example.com/products/FD-SS100L"
-    },
-    {
-      "sku": "FD-SS140L",
-      "name": "LUKO FD-SS140L",
-      "type": "ducted",
-      "series": "FD-SS",
-      "technology": "panasonic_inverter",
-      "pool_safe": true,
-      "price_aud": null,
-      "performance_factor": 1.0,
-      "capacity_lpd": 140,
-      "url": "https://example.com/products/FD-SS140L"
-    },
-    {
-      "sku": "FD-XX60L",
-      "name": "LUKO FD-XX60L",
-      "type": "ducted",
-      "series": "FD-XX",
-      "technology": "panasonic_inverter",
-      "pool_safe": true,
-      "price_aud": null,
-      "performance_factor": 1.0,
-      "capacity_lpd": 60,
-      "url": "https://example.com/products/FD-XX60L"
-    },
-    {
-      "sku": "FD-XX100L",
-      "name": "LUKO FD-XX100L",
-      "type": "ducted",
-      "series": "FD-XX",
-      "technology": "panasonic_inverter",
-      "pool_safe": true,
-      "price_aud": null,
-      "performance_factor": 1.0,
-      "capacity_lpd": 100,
-      "url": "https://example.com/products/FD-XX100L"
-    },
-    {
-      "sku": "FD-XX140L",
-      "name": "LUKO FD-XX140L",
-      "type": "ducted",
-      "series": "FD-XX",
-      "technology": "panasonic_inverter",
-      "pool_safe": true,
-      "price_aud": null,
-      "performance_factor": 1.0,
-      "capacity_lpd": 140,
-      "url": "https://example.com/products/FD-XX140L"
-    },
-    {
-      "sku": "FD-S100",
-      "name": "LUKO FD-S100",
-      "type": "ducted",
-      "series": "FD-S",
-      "technology": "standard",
-      "pool_safe": false,
-      "price_aud": null,
-      "performance_factor": 1.0,
-      "capacity_lpd": 100,
-      "url": "https://example.com/products/FD-S100"
-    },
-    {
-      "sku": "ST_SERIES",
-      "name": "SUNTEC ST Series",
+      "sku": "ST_601_PRO",
+      "name": "SUNTEC ST601 PRO",
       "type": "portable",
       "series": "ST",
       "technology": "portable",
       "pool_safe": false,
-      "price_aud": null,
+      "price_aud": 2799,
       "performance_factor": 1,
-      "capacity_lpd": 100,
-      "url": "https://example.com/products/ST_SERIES"
+      "capacity_lpd": 65,
+      "url": "https://www.dehumsaust.com.au/product/65l-day-lgr-st601-pro-stackable-mobile-dehumidifier/"
     },
     {
-      "sku": "CT_SERIES",
-      "name": "SUNTEC CT Series",
+      "sku": "ST_1001_PRO",
+      "name": "SUNTEC ST1001 PRO",
+      "type": "portable",
+      "series": "ST",
+      "technology": "portable",
+      "pool_safe": false,
+      "price_aud": 3499,
+      "performance_factor": 1,
+      "capacity_lpd": 100,
+      "url": "https://www.dehumsaust.com.au/product/100l-day-lgr-st1001-pro-stackable-mobile-dehumidifier/"
+    },
+    {
+      "sku": "CT_801_PRO",
+      "name": "SUNTEC CT 810 PRO",
       "type": "portable",
       "series": "CT",
       "technology": "portable",
       "pool_safe": false,
-      "price_aud": null,
+      "price_aud": 2999,
       "performance_factor": 1,
       "capacity_lpd": 90,
-      "url": "https://example.com/products/CT_SERIES"
+      "url": "https://www.dehumsaust.com.au/product/suntec-90l-day-lgr-ct801-pro-commercial-stackable-mobile-dehumidifier/"
     }
   ],
   "sizing_rules": {
@@ -188,11 +140,6 @@
     "pool_ratio_min": 1.0,
     "pool_ratio_max": 2.0,
     "default_ceiling_height": 2.7,
-    "water_temp_multipliers": {
-      "30": 1.0,
-      "33": 1.5,
-      "36": 2.0
-    },
     "application_multipliers": {
       "high_humidity": 1.25,
       "basement": 1.0,

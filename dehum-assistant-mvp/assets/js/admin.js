@@ -70,6 +70,8 @@ jQuery(document).ready(function ($) {
   // Update bulk action button state
   function updateBulkActionState() {
     const selectedCount = $('.session-checkbox:checked').length;
+    // Keep master checkbox state in sync
+    $('#master-select-all').prop('checked', selectedCount > 0 && selectedCount === $('.session-checkbox').length);
     const bulkAction = $('#bulk-action-selector').val();
     const applyBtn = $('#bulk-apply-btn');
 
@@ -93,6 +95,115 @@ jQuery(document).ready(function ($) {
       $('input[name="selected_sessions[]"]').not('.session-checkbox').remove();
     }
   }
+
+  // Intercept bulk delete form submission for AJAX-based deletion
+  $(document).on('submit', '#bulk-delete-form', function (e) {
+    const bulkAction = $('#bulk-action-selector').val();
+    if (bulkAction !== 'delete') {
+      return; // allow other actions / default submit
+    }
+    e.preventDefault(); // prevent full page reload
+
+    const confirmProceed = confirmBulkDelete();
+    if (!confirmProceed) return;
+
+    const selectedSessions = $('.session-checkbox:checked').map(function () {
+      return this.value;
+    }).get();
+
+    if (selectedSessions.length === 0) {
+      return;
+    }
+
+    const bulkNonce = $('#bulk-delete-form').find('input[name="bulk_nonce"]').val();
+
+    // Disable Apply button while processing
+    const applyBtn = $('#bulk-apply-btn');
+    applyBtn.prop('disabled', true).text('Deleting…');
+
+    $.ajax({
+      url: ajaxurl,
+      type: 'POST',
+      data: {
+        action: 'dehum_mvp_bulk_delete_sessions',
+        session_ids: selectedSessions,
+        nonce: bulkNonce
+      },
+      success: function (response) {
+        if (response.success) {
+          // Remove deleted cards from DOM
+          response.data.session_ids.forEach(function (id) {
+            $('[data-session="' + id + '"]').fadeOut(300, function () {
+              $(this).remove();
+              updateResultsCount();
+            });
+          });
+          showAdminNotice('success', response.data.message);
+        } else {
+          showAdminNotice('error', response.data.message || 'Bulk deletion failed.');
+        }
+        // Reset bulk UI
+        selectAllConversations(false);
+        applyBtn.prop('disabled', true).text('Apply');
+      },
+      error: function () {
+        showAdminNotice('error', 'Error occurred during bulk deletion.');
+        applyBtn.prop('disabled', false).text('Apply');
+      }
+    });
+  });
+
+  // Intercept quick-delete and advanced delete forms (delete_old, delete_by_date, delete_by_ip)
+  $(document).on('submit', '.quick-delete-actions form, #advanced-delete form', function (e) {
+    e.preventDefault();
+
+    const $form = $(this);
+    const bulkAction = $form.find('input[name="bulk_action"]').val();
+    const bulkNonce = $form.find('input[name="bulk_nonce"]').val();
+
+    if (!bulkAction) return;
+    if (!confirm('Are you sure? This action cannot be undone.')) return;
+
+    let ajaxData = {
+      nonce: bulkNonce
+    };
+
+    switch (bulkAction) {
+      case 'delete_old':
+        ajaxData.action = 'dehum_mvp_delete_old_conversations';
+        break;
+      case 'delete_by_date':
+        ajaxData.action = 'dehum_mvp_delete_by_date';
+        ajaxData.start_date = $form.find('input[name="delete_start_date"]').val();
+        ajaxData.end_date = $form.find('input[name="delete_end_date"]').val();
+        break;
+      case 'delete_by_ip':
+        ajaxData.action = 'dehum_mvp_delete_by_ip';
+        ajaxData.ip = $form.find('input[name="delete_ip"]').val();
+        break;
+      default:
+        return;
+    }
+
+    // Disable button to prevent multiple clicks
+    const $btn = $form.find('button[type="submit"]');
+    const originalText = $btn.text();
+    $btn.prop('disabled', true).text('Deleting…');
+
+    $.post(ajaxurl, ajaxData, function (response) {
+      if (response.success) {
+        showAdminNotice('success', response.data.message);
+        // Simple approach: reload list to reflect changes
+        location.reload();
+      } else {
+        showAdminNotice('error', response.data.message || 'Deletion failed.');
+        $btn.prop('disabled', false).text(originalText);
+      }
+    }).fail(function () {
+      showAdminNotice('error', 'Error occurred during deletion.');
+      $btn.prop('disabled', false).text(originalText);
+    });
+  });
 
   // Individual session deletion via AJAX
   function deleteSession(sessionId, conversationCard) {
@@ -201,7 +312,7 @@ jQuery(document).ready(function ($) {
       html += '<div class="chat-bubble user-bubble">';
       html += '<div class="bubble-avatar">👤</div>';
       html += '<div class="bubble-content">';
-      html += '<div class="bubble-text">' + $('<div>').text(msg.message).html() + '</div>';
+      html += '<div class="bubble-text">' + formatContent(msg.message) + '</div>';
       html += '<div class="bubble-time">' + msg.timestamp + '</div>';
       html += '</div>';
       html += '</div>';
@@ -210,7 +321,7 @@ jQuery(document).ready(function ($) {
       html += '<div class="chat-bubble ai-bubble">';
       html += '<div class="bubble-avatar">🤖</div>';
       html += '<div class="bubble-content">';
-      html += '<div class="bubble-text">' + $('<div>').text(msg.response).html() + '</div>';
+      html += '<div class="bubble-text">' + formatContent(msg.response) + '</div>';
       html += '<div class="bubble-time">' + msg.timestamp + '</div>';
       html += '</div>';
       html += '</div>';
@@ -229,6 +340,80 @@ jQuery(document).ready(function ($) {
 
     html += '</div>'; // Close conversation-thread
     container.html(html);
+  }
+
+  // Format content with markdown support (same as frontend)
+  function formatContent(text) {
+    // First escape any existing HTML to prevent XSS
+    let processed = escapeHtml(text);
+
+    // Split into lines for processing headings and lists
+    const lines = processed.split('\n');
+    const htmlLines = [];
+    let inList = false;
+
+    lines.forEach(line => {
+      let formatted = line;
+
+      // Headings
+      if (formatted.startsWith('### ')) {
+        formatted = `<h3>${formatted.slice(4)}</h3>`;
+      } else if (formatted.startsWith('## ')) {
+        formatted = `<h2>${formatted.slice(3)}</h2>`;
+      } else if (formatted.startsWith('# ')) {
+        formatted = `<h1>${formatted.slice(2)}</h1>`;
+      }
+
+      // Bold and italic (apply to all lines, including headings content)
+      formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+      // Lists
+      if (formatted.trim().startsWith('- ')) {
+        if (!inList) {
+          htmlLines.push('<ul>');
+          inList = true;
+        }
+        htmlLines.push(`<li>${formatted.trim().slice(2)}</li>`);
+      } else {
+        if (inList) {
+          htmlLines.push('</ul>');
+          inList = false;
+        }
+        htmlLines.push(formatted);
+      }
+    });
+
+    if (inList) {
+      htmlLines.push('</ul>');
+    }
+
+    // Join back with <br> only where there were empty lines or between paragraphs
+    processed = htmlLines.join('<br>');
+
+    // Convert markdown links
+    processed = processed.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, (match, label, url) => {
+      const safeUrl = escapeHtml(url);
+      return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+    });
+
+    // Convert plain URLs to clickable links
+    processed = processed.replace(/(^|[^"'])(https?:\/\/[^\s<>"']+)/g, (match, prefix, url) => {
+      // Don't convert URLs that are already inside href attributes
+      if (match.includes('href=')) return match;
+
+      const safeUrl = escapeHtml(url);
+      return `${prefix}<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+    });
+
+    return processed;
+  }
+
+  // Escape HTML to prevent XSS
+  function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   // Show admin notice
