@@ -60,6 +60,10 @@ class SessionInfo(BaseModel):
     message_count: int
     metadata: Optional[Dict[str, Any]] = None
     tool_cache: Dict[str, Any] = Field(default_factory=dict)  # per-session cache of tool results
+    # Add streaming state tracking
+    is_streaming: bool = False
+    streaming_start_time: Optional[datetime] = None
+    streaming_task_id: Optional[str] = None
 
 @dataclass
 class Product:

@@ -147,14 +147,39 @@ async def get_session_info(session_id: str):
 @app.post("/session/{session_id}/clear")
 async def clear_session(session_id: str):
     """
-    Clear conversation history for a session
+    Clear session conversation history and reset state
     """
     try:
         agent.clear_session(session_id)
-        return {"status": "success", "message": "Session cleared"}
+        return {"message": "Session cleared successfully", "session_id": session_id}
     except Exception as e:
         logger.error(f"Error clearing session: {str(e)}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail="Failed to clear session")
+
+@app.post("/session/{session_id}/abort")
+async def abort_session_streaming(session_id: str):
+    """
+    Force abort any stuck streaming operations for a session
+    """
+    try:
+        session = agent.sessions.get(session_id)
+        if session:
+            # Clear streaming state immediately
+            agent._set_streaming_state(session, False)
+            return {
+                "message": "Session streaming aborted successfully", 
+                "session_id": session_id,
+                "was_streaming": True
+            }
+        else:
+            return {
+                "message": "Session not found or not streaming", 
+                "session_id": session_id,
+                "was_streaming": False
+            }
+    except Exception as e:
+        logger.error(f"Error aborting session streaming: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to abort session streaming")
 
 
 @app.get("/health")

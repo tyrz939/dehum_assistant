@@ -18,12 +18,13 @@ import requests
 
 # Configuration constants
 MAX_CONVERSATION_HISTORY = 10
-DEFAULT_MAX_TOKENS = 1000
+DEFAULT_MAX_TOKENS = 10000
 THINKING_MODEL_MAX_TOKENS = 80000
 MAX_RETRIES = 3  # Increased for better reliability
 REASONING_EFFORT_LEVEL = "medium"
 RETRY_DELAY_BASE = 1.0  # Base delay for exponential backoff
 MAX_RETRY_DELAY = 60.0  # Maximum delay between retries
+STREAMING_TIMEOUT_SECONDS = 300  # 5 minutes max for streaming
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +119,7 @@ DECISION MAKING:
         return base_prompt + context_instructions
 
     def get_streaming_system_prompt(self) -> str:
-        """Get a system prompt optimized for streaming responses - stops after load calculation"""
+        """Get a system prompt optimized for streaming responses - smart about when to ask questions"""
         return """You are Dehumidifier Assistant, a professional dehumidifier sizing expert.
 
 CORE PRINCIPLES
@@ -126,21 +127,37 @@ CORE PRINCIPLES
 - Anti-hallucination: Base ALL responses on provided tool outputs only
 - Conciseness: Keep responses professional and focused
 
-STREAMING WORKFLOW
-1. Gather Information: If query lacks key details (room dimensions, humidity levels, temperature), ask for them explicitly
-2. Calculate Load: Use the calculate_dehum_load function with available parameters
-3. STOP AFTER LOAD CALCULATION: Only provide a brief summary of the load calculation results
+SMART WORKFLOW DECISION
+Analyze the user's request and determine the appropriate response:
+
+1. INCOMPLETE INFO - Ask questions if missing critical parameters:
+   - Room dimensions (length, width, height)
+   - Current humidity level
+   - Target humidity level
+   - Indoor temperature
+
+2. COMPLETE INFO - Proceed directly if user provided sufficient details:
+   - If you have room size, humidity levels, and temperature → Calculate load immediately
+   - After calculation, provide a professional summary that naturally leads to recommendations
+   - Use conversational language that acknowledges their specific situation
 
 For load calculations:
 - Extract numeric values from user input (e.g., "terrible humidity" = 90%, "high humidity" = 80%)
-- For pools: Include pool_area_m2 (calculate from dimensions) and waterTempC (use provided or default 28°C)
+- For pools: Include pool_area_m2 (calculate from dimensions) and waterTempC (use provided or default temperature)
 - Use defaults: ACH=0.5, peopleCount=0 if not specified
 
-RESPONSE FORMAT
-After calculating load, respond with:
-"Based on your [room type] specifications, I've calculated your dehumidification requirements."
+RESPONSE FORMAT FOR COMPLETED CALCULATIONS
+When summarizing load calculation results, provide a natural flowing response like:
+"I understand you have a [description of space] with [humidity situation]. Based on your specifications, I've calculated you need **[X] L/day** dehumidification capacity. Let me now analyze the best equipment options for your specific situation..."
 
-DO NOT provide product recommendations in this response - that will be handled separately.
+CRITICAL: When you receive a request to "provide a professional summary" of completed calculations:
+- This means calculations are DONE, user provided complete information
+- Summarize the load professionally and acknowledge their specific situation  
+- End with natural transition phrases like "Let me now analyze..." or "I'll find the best options..."
+- DO NOT ask questions like "Would you like recommendations?" or "Please specify type"
+- The system will automatically proceed to recommendations after your summary
+
+DO NOT ask unnecessary questions when summarizing completed calculations - the workflow will handle recommendations automatically.
 """
 
     async def process_chat(self, request: ChatRequest) -> ChatResponse:
@@ -192,6 +209,15 @@ DO NOT provide product recommendations in this response - that will be handled s
         try:
             session = self.get_or_create_session(request.session_id)
             
+            # Check if session is stuck in streaming state
+            if self._is_session_stuck_streaming(session):
+                logger.warning(f"Session {request.session_id} detected as stuck - providing abort option")
+                yield self._create_abort_response(request.session_id)
+                return
+            
+            # Set streaming state
+            self._set_streaming_state(session, True)
+            
             # Add user message to conversation history
             user_message = ChatMessage(
                 role=MessageRole.USER,
@@ -200,20 +226,27 @@ DO NOT provide product recommendations in this response - that will be handled s
             )
             session.conversation_history.append(user_message)
             
-            # Phase 1: Execute tools and send immediate response
-            tool_calls_list = await self._execute_tools_only(session)
-            initial_response = self._create_initial_response(request.session_id, tool_calls_list)
-            yield initial_response
-            
-            # Phase 2: Send thinking message if we need recommendations
+            # Phase 1: Execute tools and stream initial response
+            tool_calls_list = []
+            accumulated_initial = ""
+            async for chunk_response in self._execute_tools_and_stream_response(session, request.session_id):
+                if chunk_response.metadata.get("phase") == "initial_complete":
+                    # This is the final marker with complete data
+                    tool_calls_list = chunk_response.function_calls or []
+                    accumulated_initial = chunk_response.message
+                yield chunk_response
+                
+            # Phase 2: Stream thinking message if we need recommendations
+            accumulated_thinking = ""
             if self._needs_recommendations(tool_calls_list):
-                thinking_response = self._create_thinking_response(request.session_id)
-                yield thinking_response
+                async for thinking_chunk in self._stream_thinking_response(request.session_id):
+                    accumulated_thinking += thinking_chunk.message
+                    yield thinking_chunk
                 
                 # Phase 3: Generate and stream recommendations in real-time
-                accumulated_content = ""
+                accumulated_recommendations = ""
                 async for text_chunk in self._generate_recommendations_streaming(session, request.message):
-                    accumulated_content += text_chunk
+                    accumulated_recommendations += text_chunk
                     
                     # Send progressive updates
                     chunk_response = StreamingChatResponse(
@@ -228,30 +261,36 @@ DO NOT provide product recommendations in this response - that will be handled s
                 
                 # Send final marker with complete content
                 final_response = StreamingChatResponse(
-                    message=accumulated_content,
+                    message=accumulated_recommendations,
                     session_id=request.session_id,
                     timestamp=datetime.now(),
                     is_final=True,
-                    metadata={"model": self.thinking_model}
+                    metadata={"model": self.thinking_model, "content_already_streamed": True}
                 )
                 yield final_response
                 
                 # Store complete conversation
-                complete_content = f"{initial_response.message}\n\n{thinking_response.message}\n\n{accumulated_content}"
+                complete_content = f"{accumulated_initial}\n\n{accumulated_thinking}\n\n{accumulated_recommendations}"
             else:
                 # No recommendations needed, mark as final
                 final_response = self._create_final_response(request.session_id, "")
                 yield final_response
-                complete_content = initial_response.message
+                complete_content = accumulated_initial
             
             # Save to session history
             self._save_complete_response(session, complete_content, tool_calls_list)
             self._update_session(session)
             self._save_session_to_wp(request.session_id, session.conversation_history)
             
+            # Clear streaming state before finishing
+            self._set_streaming_state(session, False)
+            
         except Exception as e:
             logger.error(f"Error in streaming chat: {str(e)}")
             yield self._create_error_response(request.session_id, str(e))
+        finally:
+            # Always clear streaming state when done
+            self._set_streaming_state(session, False)
 
     async def _execute_tools_only(self, session: SessionInfo) -> List[Dict]:
         """Execute tools without AI model calls - now with context awareness"""
@@ -892,7 +931,59 @@ Please select the best combination(s) that meet the load requirement (≥{load_i
             session.conversation_history = []
             session.message_count = 0
             session.tool_cache.clear()
+            # Clear streaming state when clearing session
+            self._set_streaming_state(session, False)
     
+    # Streaming state management methods
+    def _is_session_stuck_streaming(self, session: SessionInfo) -> bool:
+        """Check if session is stuck in streaming state"""
+        if not session.is_streaming:
+            return False
+            
+        # Check if streaming has been going on too long
+        if session.streaming_start_time:
+            time_elapsed = datetime.now() - session.streaming_start_time
+            if time_elapsed.total_seconds() > STREAMING_TIMEOUT_SECONDS:
+                logger.warning(f"Session {session.session_id} streaming timeout ({time_elapsed.total_seconds()}s)")
+                return True
+                
+        # Session is actively streaming but not timed out - not stuck
+        return False
+    
+    def _set_streaming_state(self, session: SessionInfo, is_streaming: bool):
+        """Set streaming state for session"""
+        session.is_streaming = is_streaming
+        if is_streaming:
+            session.streaming_start_time = datetime.now()
+            session.streaming_task_id = f"stream_{session.session_id}_{int(datetime.now().timestamp())}"
+        else:
+            session.streaming_start_time = None
+            session.streaming_task_id = None
+        logger.debug(f"Session {session.session_id} streaming state: {is_streaming}")
+    
+    def _create_abort_response(self, session_id: str) -> StreamingChatResponse:
+        """Create response for stuck streaming session with retry option"""
+        # Clear the stuck session state immediately
+        session = self.sessions.get(session_id)
+        if session:
+            self._set_streaming_state(session, False)
+            
+        message = ("⚠️ **Session Recovery Needed**\n\n"
+                  "I detected that your previous request might still be processing. "
+                  "This can happen if you closed the chat during the 'thinking' phase.\n\n"
+                  "**What happened?** When you close the chat while I'm analyzing recommendations, "
+                  "the background process can continue running and lock the session.\n\n"
+                  "**Quick Fix:** Your session has been automatically cleared. "
+                  "Please **resend your message** and I'll help you immediately! 🚀")
+                  
+        return StreamingChatResponse(
+            message=message,
+            session_id=session_id,
+            timestamp=datetime.now(),
+            is_final=True,
+            metadata={"recovery": True, "retry_ready": True}
+        )
+
     def get_health_status(self) -> Dict[str, Any]:
         """Get health status of the agent"""
         return {
@@ -1092,3 +1183,157 @@ Please select the best combination(s) that meet the load requirement (≥{load_i
         # If we get here, all retries failed
         logger.error(f"API call failed after {MAX_RETRIES + 1} attempts. Last error: {str(last_error)}")
         raise last_error
+
+    async def _execute_tools_and_stream_response(self, session: SessionInfo, session_id: str) -> AsyncGenerator[StreamingChatResponse, None]:
+        """Execute tools and stream the AI's initial response"""
+        
+        # First execute tools (no streaming here as tools don't stream)
+        tool_calls_list = await self._execute_tools_only(session)
+        
+        # If we have tool results, stream the AI's response about them
+        if tool_calls_list:
+            accumulated_content = ""
+            
+            # Prepare messages including tool results for streaming response
+            messages = self._prepare_messages_with_tool_results(session, tool_calls_list)
+            
+            # Stream the AI's response about the tool results
+            async for chunk_text in self._stream_ai_response(messages):
+                accumulated_content += chunk_text
+                
+                # Send each chunk as streaming response
+                chunk_response = StreamingChatResponse(
+                    message=chunk_text,
+                    session_id=session_id,
+                    timestamp=datetime.now(),
+                    is_final=False,
+                    is_streaming_chunk=True,
+                    function_calls=tool_calls_list if len(accumulated_content) == len(chunk_text) else None,  # Include tools in first chunk
+                    metadata={"model": self.model, "phase": "initial"}
+                )
+                yield chunk_response
+            
+            # Send final marker for Phase 1
+            final_initial = StreamingChatResponse(
+                message=accumulated_content,
+                session_id=session_id,
+                timestamp=datetime.now(),
+                is_final=False,  # Not final overall, just end of Phase 1
+                function_calls=tool_calls_list,
+                metadata={"model": self.model, "phase": "initial_complete"}
+            )
+            yield final_initial
+            
+        else:
+            # No tools executed - handle follow-up case
+            session_obj = self.sessions.get(session_id)
+            if session_obj:
+                existing_load_data = self._get_latest_load_info(session_obj)
+                if existing_load_data:
+                    message = f"I'll help you find alternatives using your existing requirements of **{existing_load_data['latentLoad_L24h']} L/day** for your **{existing_load_data['room_area_m2']} m²** space."
+                else:
+                    message = "I've processed your request and I'm ready to help you find the right dehumidifier solution."
+            else:
+                message = "I've processed your request and I'm ready to help you find the right dehumidifier solution."
+            
+            # Stream this message character by character for consistency
+            accumulated = ""
+            for char in message:
+                accumulated += char
+                chunk_response = StreamingChatResponse(
+                    message=char,
+                    session_id=session_id,
+                    timestamp=datetime.now(),
+                    is_final=False,
+                    is_streaming_chunk=True,
+                    metadata={"model": self.model, "phase": "initial", "char_streaming": True}
+                )
+                yield chunk_response
+                # Small delay for visual effect
+                await asyncio.sleep(0.02)
+            
+            # Send final marker for Phase 1
+            final_initial = StreamingChatResponse(
+                message=accumulated,
+                session_id=session_id,
+                timestamp=datetime.now(),
+                is_final=False,
+                function_calls=[],  # No tools for follow-up case
+                metadata={"model": self.model, "phase": "initial_complete"}
+            )
+            yield final_initial
+
+    async def _stream_thinking_response(self, session_id: str) -> AsyncGenerator[StreamingChatResponse, None]:
+        """Stream the thinking message character by character"""
+        thinking_message = "🤔 Let me analyze the available options and find the best dehumidifier combinations for your specific requirements..."
+        
+        accumulated = ""
+        for char in thinking_message:
+            accumulated += char
+            
+            chunk_response = StreamingChatResponse(
+                message=char,
+                session_id=session_id,
+                timestamp=datetime.now(),
+                is_thinking=True,
+                is_final=False,
+                is_streaming_chunk=True,
+                metadata={"model": self.thinking_model, "phase": "thinking", "char_streaming": True}
+            )
+            yield chunk_response
+            
+            # Small delay for visual effect
+            await asyncio.sleep(0.03)
+        
+        # Send final thinking marker
+        final_thinking = StreamingChatResponse(
+            message=accumulated,
+            session_id=session_id,
+            timestamp=datetime.now(),
+            is_thinking=True,
+            is_final=False,
+            metadata={"model": self.thinking_model, "phase": "thinking_complete"}
+        )
+        yield final_thinking
+
+    async def _stream_ai_response(self, messages: List[Dict[str, str]]) -> AsyncGenerator[str, None]:
+        """Stream AI response token by token"""
+        params = self._get_completion_params(self.model, messages, DEFAULT_MAX_TOKENS)
+        params["stream"] = True
+        
+        try:
+            response = await litellm.acompletion(**params)
+            
+            async for chunk in response:
+                if hasattr(chunk.choices[0], 'delta') and hasattr(chunk.choices[0].delta, 'content'):
+                    content = chunk.choices[0].delta.content
+                    if content:
+                        yield content
+                        
+        except Exception as e:
+            logger.error(f"Error in streaming AI response: {str(e)}")
+            yield f"I apologize, but I'm experiencing technical difficulties. Error: {str(e)}"
+
+    def _prepare_messages_with_tool_results(self, session: SessionInfo, tool_calls_list: List[Dict]) -> List[Dict[str, str]]:
+        """Prepare messages including tool results for AI response using streaming prompt"""
+        # Use streaming system prompt for better workflow control
+        messages = [{"role": "system", "content": self.get_streaming_system_prompt()}]
+        
+        # Add recent conversation history
+        recent_history = session.conversation_history[-MAX_CONVERSATION_HISTORY:]
+        for msg in recent_history:
+            messages.append({
+                "role": msg.role.value,
+                "content": msg.content
+            })
+        
+        # Add tool results to message history for AI to respond to
+        for tool_call in tool_calls_list:
+            # Add the tool result as context for the AI to explain
+            tool_result_summary = f"Load calculation complete: {tool_call['result'].get('latentLoad_L24h', 'N/A')} L/day for {tool_call['result'].get('room_area_m2', 'N/A')} m² room"
+            messages.append({
+                "role": "user", 
+                "content": f"Please provide a professional summary of these dehumidification requirements and naturally lead into recommendations: {tool_result_summary}"
+            })
+        
+        return messages

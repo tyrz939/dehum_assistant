@@ -352,58 +352,111 @@
                     // Save incomplete state for interruption detection
                     this.saveIncompleteState('thinking', currentContent);
                   }
-                } else if (data.is_streaming_chunk) {
-                  // Real-time text chunk from OpenAI
-                  if (isThinking) {
-                    // Hide thinking indicator and start showing streaming content
-                    this.hideThinkingIndicator();
-                    isThinking = false;
+                } else if (data.is_streaming_chunk || data.metadata?.phase === 'initial_complete' || data.metadata?.phase === 'thinking_complete') {
+                  // Handle streaming chunks and phase completion markers
 
-                    // Create the message element for streaming content
-                    if (!assistantMessageElement) {
-                      assistantMessageElement = this.addMessage('assistant', currentContent, true);
-                      currentMessageIndex = this.conversation.length - 1;
+                  // Create message element if needed
+                  if (!assistantMessageElement) {
+                    this.hideTypingIndicator();
+                    assistantMessageElement = this.addMessage('assistant', '', true);
+                    currentMessageIndex = this.conversation.length - 1;
+                  }
+
+                  // Handle different phases
+                  if (data.metadata?.phase === 'initial' || data.metadata?.phase === 'initial_complete') {
+                    // Phase 1: Initial response streaming or completion
+                    if (data.is_streaming_chunk) {
+                      // Accumulate streaming content
+                      currentContent += data.message;
+                    } else if (data.metadata?.phase === 'initial_complete') {
+                      // Phase 1 complete - ensure we have the full content
+                      currentContent = data.message || currentContent;
+                    }
+                    this.updateMessage(assistantMessageElement, currentContent);
+
+                  } else if (data.metadata?.phase === 'thinking') {
+                    // Phase 2: Character-by-character thinking (but we use the indicator instead)
+                    // Don't update the main message, just ensure thinking indicator is shown
+                    if (!isThinking) {
+                      this.showThinkingIndicator();
+                      isThinking = true;
                     }
 
-                    // Update conversation state
-                    this.saveIncompleteState('streaming', currentContent);
+                  } else if (data.metadata?.phase === 'thinking_complete') {
+                    // Phase 2 complete - hide thinking indicator but preserve content
+                    this.hideThinkingIndicator();
+                    isThinking = false;
+                    // Keep the message showing currentContent from Phase 1
+                    this.updateMessage(assistantMessageElement, currentContent);
+
+                  } else {
+                    // Phase 3: Recommendations streaming
+                    if (isThinking) {
+                      // Hide thinking indicator when recommendations start
+                      this.hideThinkingIndicator();
+                      isThinking = false;
+                    }
+
+                    // Accumulate recommendations content
+                    streamingContent += data.message;
+                    // Combine Phase 1 + Phase 3 content with proper spacing
+                    const fullContent = currentContent + '\n\n' + streamingContent;
+                    this.updateMessage(assistantMessageElement, fullContent);
                   }
 
-                  // Accumulate streaming content and update message
-                  streamingContent += data.message;
-                  if (assistantMessageElement) {
-                    this.updateMessage(assistantMessageElement, currentContent + '\n\n' + streamingContent);
-                  }
+                  // Update conversation state with combined content
+                  const combinedContent = currentContent + (streamingContent ? '\n\n' + streamingContent : '');
+                  this.saveIncompleteState('streaming', combinedContent);
+
                 } else if (data.is_final) {
                   // Final message - streaming is complete
                   this.hideThinkingIndicator();
+                  this.streamingComplete = true;
 
-                  if (assistantMessageElement && streamingContent) {
-                    // Update with final content (already accumulated)
-                    this.updateMessage(assistantMessageElement, currentContent + '\n\n' + streamingContent);
+                  // Ensure final content combines everything
+                  const finalContent = currentContent + (streamingContent ? '\n\n' + streamingContent : '');
 
-                    // Mark as complete in conversation history
-                    if (currentMessageIndex >= 0 && currentMessageIndex < this.conversation.length) {
-                      this.conversation[currentMessageIndex].content = currentContent + '\n\n' + streamingContent;
-                      this.conversation[currentMessageIndex].phase = 'complete';
-                      this.conversation[currentMessageIndex].isComplete = true;
-                      this.saveConversation();
-                    }
-                  } else if (data.message && data.message.trim()) {
-                    // Create new message if no streaming occurred
-                    if (!assistantMessageElement) {
-                      assistantMessageElement = this.addMessage('assistant', currentContent + data.message, true);
-                    } else {
-                      this.updateMessage(assistantMessageElement, currentContent + '\n\n' + data.message);
-                    }
+                  // Mark as complete in conversation history
+                  if (currentMessageIndex >= 0 && currentMessageIndex < this.conversation.length) {
+                    this.conversation[currentMessageIndex].content = finalContent;
+                    this.conversation[currentMessageIndex].phase = 'complete';
+                    this.conversation[currentMessageIndex].isComplete = true;
+                    this.saveConversation();
+                  }
+
+                  // Update final display
+                  if (assistantMessageElement) {
+                    this.updateMessage(assistantMessageElement, finalContent);
                   }
 
                   // Clear incomplete state
                   this.clearIncompleteState();
-                  this.streamingComplete = true;
+
+                } else if (data.metadata?.phase === 'initial_complete' || data.metadata?.phase === 'thinking_complete') {
+                  // Phase completion markers - update current content but don't duplicate
+                  if (data.metadata.phase === 'initial_complete') {
+                    // Phase 1 complete
+                    if (!assistantMessageElement) {
+                      this.hideTypingIndicator();
+                      assistantMessageElement = this.addMessage('assistant', data.message, true);
+                      currentContent = data.message;
+                      currentMessageIndex = this.conversation.length - 1;
+                    } else if (currentContent !== data.message) {
+                      // Only update if content is different (avoid duplication)
+                      currentContent = data.message;
+                      this.updateMessage(assistantMessageElement, currentContent);
+                    }
+                  }
+                  // thinking_complete doesn't need content update - just phase transition
+
                 } else {
-                  // Initial response - show immediately
-                  if (!assistantMessageElement) {
+                  // Handle other phase responses (thinking character streaming, etc.)
+                  if (data.metadata?.char_streaming) {
+                    // Character-by-character streaming (thinking message)
+                    // Don't create message elements for individual characters during thinking
+                    return;
+                  } else if (!assistantMessageElement) {
+                    // Initial response for cases without streaming
                     this.hideTypingIndicator();
                     assistantMessageElement = this.addMessage('assistant', data.message, true);
                     currentContent = data.message;
@@ -415,9 +468,6 @@
                       this.conversation[currentMessageIndex].isComplete = false;
                       this.saveConversation();
                     }
-                  } else {
-                    currentContent += '\n\n' + data.message;
-                    this.updateMessage(assistantMessageElement, currentContent);
                   }
                 }
               } catch (e) {
