@@ -1,0 +1,36 @@
+SUNTEC SP500C PRO INSTALLATION MANUAL
+
+1. MOUNTING REQUIREMENTS
+   - Wall must support minimum 45kg
+   - Minimum 500mm clearance from ceiling
+   - Electrical supply: 240V 15A
+   - Adequate ventilation space required
+
+2. INSTALLATION STEPS
+   a) Mark mounting holes using supplied template
+   b) Drill holes with 12mm masonry bit  
+   c) Insert wall plugs and secure mounting bracket
+   d) Connect drain hose to condensate outlet
+   e) Wire electrical connection via isolator switch
+   f) Mount unit onto bracket
+
+3. COMMISSIONING
+   - Check all connections are secure
+   - Test operation on low speed first
+   - Verify humidity sensor calibration
+   - Set desired humidity level (recommended 50-60%)
+   - Check condensate drainage
+
+4. MAINTENANCE
+   - Clean air filter monthly
+   - Check drain hose for blockages
+   - Annual service recommended
+   - Replace humidity sensor every 3 years
+
+5. TROUBLESHOOTING
+   - Unit not starting: Check power supply and fuses
+   - Poor dehumidification: Clean filter, check refrigerant
+   - Excessive noise: Check mounting bolts, fan balance
+   - Water leakage: Inspect drain connections
+
+WARRANTY: 5 years parts, 2 years labour 

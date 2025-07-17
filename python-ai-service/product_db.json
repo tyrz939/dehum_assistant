@@ -11,7 +11,9 @@
       "price_aud": 2999,
       "performance_factor": 1.0,
       "capacity_lpd": 50,
-      "url": "https://www.dehumsaust.com.au/product/lgr-sp500c-dehumidifier/"
+      "url": "https://www.dehumsaust.com.au/product/lgr-sp500c-dehumidifier/",
+      "manual_text": "SP500C_PRO_manual.txt",
+      "brochure_text": "SP500C_PRO_brochure.txt"
     },
     {
       "sku": "SP1000C_PRO",
@@ -23,7 +25,9 @@
       "price_aud": 3999,
       "performance_factor": 1.0,
       "capacity_lpd": 100,
-      "url": "https://www.dehumsaust.com.au/product/suntec-100l-day-lgr-sp1000c-pro-wall-mounted-dehumidifier-with-humidity-wifi-control/"
+      "url": "https://www.dehumsaust.com.au/product/suntec-100l-day-lgr-sp1000c-pro-wall-mounted-dehumidifier-with-humidity-wifi-control/",
+      "manual_text": "",
+      "brochure_text": ""
     },
     {
       "sku": "SP1500C_PRO",
@@ -35,7 +39,9 @@
       "price_aud": 5500,
       "performance_factor": 1.0,
       "capacity_lpd": 150,
-      "url": "https://www.dehumsaust.com.au/product/lgr-sp1500c-dehumidifier/"
+      "url": "https://www.dehumsaust.com.au/product/lgr-sp1500c-dehumidifier/",
+      "manual_text": "",
+      "brochure_text": ""
     },
     {
       "sku": "IDHR60",
@@ -47,7 +53,9 @@
       "price_aud": 3900,
       "performance_factor": 1.2,
       "capacity_lpd": 60,
-      "url": "https://www.dehumsaust.com.au/product/fairland-60l-day-inverter-dehumidifier-idhr60/"
+      "url": "https://www.dehumsaust.com.au/product/fairland-60l-day-inverter-dehumidifier-idhr60/",
+      "manual_text": "",
+      "brochure_text": ""
     },
     {
       "sku": "IDHR96",
@@ -59,7 +67,9 @@
       "price_aud": 4600,
       "performance_factor": 1.2,
       "capacity_lpd": 96,
-      "url": "https://www.dehumsaust.com.au/product/fairland-96l-day-inverter-dehumidifier-idhr96/"
+      "url": "https://www.dehumsaust.com.au/product/fairland-96l-day-inverter-dehumidifier-idhr96/",
+      "manual_text": "",
+      "brochure_text": ""
     },
     {
       "sku": "IDHR120",
@@ -71,7 +81,9 @@
       "price_aud": 5400,
       "performance_factor": 1.2,
       "capacity_lpd": 120,
-      "url": "https://www.dehumsaust.com.au/product/fairland-120l-day-inverter-dehumidifier-idhr120/"
+      "url": "https://www.dehumsaust.com.au/product/fairland-120l-day-inverter-dehumidifier-idhr120/",
+      "manual_text": "",
+      "brochure_text": ""
     },
     {
       "sku": "DA-X140i",
@@ -83,7 +95,9 @@
       "price_aud": null,
       "performance_factor": 0.7,
       "capacity_lpd": 140,
-      "url": "https://www.dehumsaust.com.au/ducted-dehumidifiers/"
+      "url": "https://www.dehumsaust.com.au/ducted-dehumidifiers/",
+      "manual_text": "",
+      "brochure_text": ""
     },
     {
       "sku": "DA-X60i",
@@ -95,7 +109,9 @@
       "price_aud": null,
       "performance_factor": 1.0,
       "capacity_lpd": 60,
-      "url": "https://www.dehumsaust.com.au/ducted-dehumidifiers/"
+      "url": "https://www.dehumsaust.com.au/ducted-dehumidifiers/",
+      "manual_text": "",
+      "brochure_text": ""
     },
     {
       "sku": "ST_601_PRO",
@@ -107,7 +123,9 @@
       "price_aud": 2799,
       "performance_factor": 1,
       "capacity_lpd": 65,
-      "url": "https://www.dehumsaust.com.au/product/65l-day-lgr-st601-pro-stackable-mobile-dehumidifier/"
+      "url": "https://www.dehumsaust.com.au/product/65l-day-lgr-st601-pro-stackable-mobile-dehumidifier/",
+      "manual_text": "",
+      "brochure_text": ""
     },
     {
       "sku": "ST_1001_PRO",
@@ -119,7 +137,9 @@
       "price_aud": 3499,
       "performance_factor": 1,
       "capacity_lpd": 100,
-      "url": "https://www.dehumsaust.com.au/product/100l-day-lgr-st1001-pro-stackable-mobile-dehumidifier/"
+      "url": "https://www.dehumsaust.com.au/product/100l-day-lgr-st1001-pro-stackable-mobile-dehumidifier/",
+      "manual_text": "",
+      "brochure_text": ""
     },
     {
       "sku": "CT_801_PRO",
@@ -131,7 +151,9 @@
       "price_aud": 2999,
       "performance_factor": 1,
       "capacity_lpd": 90,
-      "url": "https://www.dehumsaust.com.au/product/suntec-90l-day-lgr-ct801-pro-commercial-stackable-mobile-dehumidifier/"
+      "url": "https://www.dehumsaust.com.au/product/suntec-90l-day-lgr-ct801-pro-commercial-stackable-mobile-dehumidifier/",
+      "manual_text": "",
+      "brochure_text": ""
     }
   ],
   "sizing_rules": {

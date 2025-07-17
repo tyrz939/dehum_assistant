@@ -21,14 +21,21 @@ class DehumidifierTools:
     def load_product_database(self) -> List[Dict[str, Any]]:
         """Load product database from JSON file"""
         try:
-            # Try to load from parent directory first (where product_db.json is located)
+            # Try to load from current directory first (for deployment)
+            current_dir_path = os.path.join(os.path.dirname(__file__), "product_db.json")
+            if os.path.exists(current_dir_path):
+                with open(current_dir_path, 'r') as f:
+                    data = json.load(f)
+                    return data.get("products", [])
+            
+            # Fallback to parent directory (for development)
             product_db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "product_db.json")
             if os.path.exists(product_db_path):
                 with open(product_db_path, 'r') as f:
                     data = json.load(f)
                     return data.get("products", [])
             
-            # Fallback to current directory
+            # Final fallback to working directory
             with open("product_db.json", 'r') as f:
                 data = json.load(f)
                 return data.get("products", [])
@@ -265,9 +272,70 @@ class DehumidifierTools:
             })
         return catalog
     
+    def get_product_manual(self, sku: str, type: str = "manual") -> Dict[str, Any]:
+        """
+        Retrieve the manual or brochure text for a specific product
+        
+        Args:
+            sku: The product SKU to look up
+            type: "manual" or "brochure" (default: "manual")
+            
+        Returns:
+            Dictionary containing text content and SKU, or error if not found
+        """
+        try:
+            # Find product by SKU
+            product = None
+            for p in self.products:
+                if p.get("sku") == sku:
+                    product = p
+                    break
+            
+            if not product:
+                return {"error": "Product not found"}
+            
+            # Get the appropriate text field
+            if type == "manual":
+                text_content = product.get("manual_text", "Text not available")
+            elif type == "brochure":
+                text_content = product.get("brochure_text", "Text not available")
+            else:
+                return {"error": "Invalid type. Must be 'manual' or 'brochure'"}
+            
+            # If text_content looks like a file path, try to read from file
+            if text_content and text_content.endswith('.txt') and not text_content.startswith('Text not'):
+                try:
+                    # Try local product_docs first (for deployment)
+                    local_file_path = os.path.join(os.path.dirname(__file__), "product_docs", text_content)
+                    if os.path.exists(local_file_path):
+                        with open(local_file_path, 'r', encoding='utf-8') as f:
+                            text_content = f.read()
+                    else:
+                        # Fallback to parent directory (for development)
+                        parent_file_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "product_docs", text_content)
+                        if os.path.exists(parent_file_path):
+                            with open(parent_file_path, 'r', encoding='utf-8') as f:
+                                text_content = f.read()
+                        else:
+                            text_content = f"File not found: {text_content}"
+                except Exception as file_error:
+                    text_content = f"Error reading file {text_content}: {str(file_error)}"
+            
+            return {
+                "text": text_content,
+                "sku": sku,
+                "product_name": product.get("name", sku),
+                "type": type
+            }
+            
+        except Exception as e:
+            logger.error(f"Error retrieving product {type} for SKU {sku}: {str(e)}")
+            return {"error": f"Error retrieving {type}: {str(e)}"}
+
     def get_available_tools(self) -> List[str]:
         """Get list of available tool names"""
         return [
             "calculate_sizing",
-            "calculate_dehum_load"
+            "calculate_dehum_load",
+            "get_product_manual"
         ]

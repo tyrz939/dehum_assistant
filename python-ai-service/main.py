@@ -23,12 +23,17 @@ from logging.handlers import RotatingFileHandler
 # Load environment variables from .env file
 load_dotenv()
 
-# Configure logging
+# Configure logging for the entire application
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        RotatingFileHandler('ai_service.log', maxBytes=1000000, backupCount=5),
+        logging.StreamHandler() # Also print to console
+    ]
+)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-handler = RotatingFileHandler('ai_service.log', maxBytes=1000000, backupCount=5)
-handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-logger.addHandler(handler)
+
 
 app = FastAPI(
     title="Dehumidifier Assistant AI Service",

@@ -300,11 +300,13 @@
           user_id: dehumMVP.isLoggedIn ? 'wp_user' : null
         };
 
-        let assistantMessageElement = null;
+        let summaryElement = null;
+        let recsElement = null;
         let currentContent = '';
+        let recsContent = '';
         let isThinking = false;
-        let streamingContent = ''; // For accumulating streaming text chunks
         let currentMessageIndex = -1; // Track current message in conversation history
+        let currentPhase = null;
 
         // Make streaming request
         const response = await fetch(streamUrl, {
@@ -352,69 +354,58 @@
                     // Save incomplete state for interruption detection
                     this.saveIncompleteState('thinking', currentContent);
                   }
-                } else if (data.is_streaming_chunk || data.metadata?.phase === 'initial_complete' || data.metadata?.phase === 'thinking_complete') {
-                  // Handle streaming chunks and phase completion markers
+                } else if (data.is_streaming_chunk) {
+                  const phase = data.metadata?.phase || 'default';
 
-                  // Create message element if needed
-                  if (!assistantMessageElement) {
+                  // Create new message element if phase changed or no current element
+                  if (phase !== currentPhase || (phase === 'initial_summary' && !summaryElement) || (phase === 'recommendations' && !recsElement)) {
                     this.hideTypingIndicator();
-                    assistantMessageElement = this.addMessage('assistant', '', true);
+                    if (phase === 'initial_summary') {
+                      summaryElement = this.addMessage('assistant', '', true);
+                    } else if (phase === 'recommendations') {
+                      recsElement = this.addMessage('assistant', '', true);
+                    }
                     currentMessageIndex = this.conversation.length - 1;
+                    currentPhase = phase;
                   }
 
-                  // Handle different phases
-                  if (data.metadata?.phase === 'initial' || data.metadata?.phase === 'initial_complete') {
-                    // Phase 1: Initial response streaming or completion
-                    if (data.is_streaming_chunk) {
-                      // Accumulate streaming content
-                      currentContent += data.message;
-                    } else if (data.metadata?.phase === 'initial_complete') {
-                      // Phase 1 complete - ensure we have the full content
-                      currentContent = data.message || currentContent;
-                    }
-                    this.updateMessage(assistantMessageElement, currentContent);
-
-                  } else if (data.metadata?.phase === 'thinking') {
-                    // Phase 2: Character-by-character thinking (but we use the indicator instead)
-                    // Don't update the main message, just ensure thinking indicator is shown
-                    if (!isThinking) {
-                      this.showThinkingIndicator();
-                      isThinking = true;
-                    }
-
-                  } else if (data.metadata?.phase === 'thinking_complete') {
-                    // Phase 2 complete - hide thinking indicator but preserve content
-                    this.hideThinkingIndicator();
-                    isThinking = false;
-                    // Keep the message showing currentContent from Phase 1
-                    this.updateMessage(assistantMessageElement, currentContent);
-
-                  } else {
-                    // Phase 3: Recommendations streaming
+                  // Append chunk to appropriate element without echoing summary in recs
+                  if (phase === 'initial_summary') {
+                    currentContent += data.message;
+                    this.updateMessage(summaryElement, currentContent);
+                  } else if (phase === 'recommendations') {
                     if (isThinking) {
-                      // Hide thinking indicator when recommendations start
                       this.hideThinkingIndicator();
                       isThinking = false;
                     }
-
-                    // Accumulate recommendations content
-                    streamingContent += data.message;
-                    // Combine Phase 1 + Phase 3 content with proper spacing
-                    const fullContent = currentContent + '\n\n' + streamingContent;
-                    this.updateMessage(assistantMessageElement, fullContent);
+                    recsContent += data.message;
+                    this.updateMessage(recsElement, recsContent);  // Only recs content
                   }
 
-                  // Update conversation state with combined content
-                  const combinedContent = currentContent + (streamingContent ? '\n\n' + streamingContent : '');
-                  this.saveIncompleteState('streaming', combinedContent);
+                  // Save state
+                  const saveContent = phase === 'initial_summary' ? currentContent : recsContent;
+                  this.saveIncompleteState(phase, saveContent);
 
                 } else if (data.is_final) {
                   // Final message - streaming is complete
                   this.hideThinkingIndicator();
                   this.streamingComplete = true;
 
-                  // Ensure final content combines everything
-                  const finalContent = currentContent + (streamingContent ? '\n\n' + streamingContent : '');
+                  // If we didn't get any partial content before the final message,
+                  // use the data.message directly so the user sees something.
+                  if (!currentContent && !recsContent && data.message) {
+                    currentContent = data.message;
+                  }
+
+                  // Ensure there's a message element to update / create if it doesn't exist
+                  if (!summaryElement) {
+                    this.hideTypingIndicator();
+                    summaryElement = this.addMessage('assistant', currentContent, true);
+                    currentMessageIndex = this.conversation.length - 1;
+                  }
+
+                  // Ensure final content combines everything for history only
+                  const finalContent = currentContent + (recsContent ? '\n\n' + recsContent : '');
 
                   // Mark as complete in conversation history
                   if (currentMessageIndex >= 0 && currentMessageIndex < this.conversation.length) {
@@ -424,11 +415,6 @@
                     this.saveConversation();
                   }
 
-                  // Update final display
-                  if (assistantMessageElement) {
-                    this.updateMessage(assistantMessageElement, finalContent);
-                  }
-
                   // Clear incomplete state
                   this.clearIncompleteState();
 
@@ -436,15 +422,15 @@
                   // Phase completion markers - update current content but don't duplicate
                   if (data.metadata.phase === 'initial_complete') {
                     // Phase 1 complete
-                    if (!assistantMessageElement) {
+                    if (!summaryElement) {
                       this.hideTypingIndicator();
-                      assistantMessageElement = this.addMessage('assistant', data.message, true);
+                      summaryElement = this.addMessage('assistant', data.message, true);
                       currentContent = data.message;
                       currentMessageIndex = this.conversation.length - 1;
                     } else if (currentContent !== data.message) {
                       // Only update if content is different (avoid duplication)
                       currentContent = data.message;
-                      this.updateMessage(assistantMessageElement, currentContent);
+                      this.updateMessage(summaryElement, currentContent);
                     }
                   }
                   // thinking_complete doesn't need content update - just phase transition
@@ -455,10 +441,10 @@
                     // Character-by-character streaming (thinking message)
                     // Don't create message elements for individual characters during thinking
                     return;
-                  } else if (!assistantMessageElement) {
+                  } else if (!summaryElement) {
                     // Initial response for cases without streaming
                     this.hideTypingIndicator();
-                    assistantMessageElement = this.addMessage('assistant', data.message, true);
+                    summaryElement = this.addMessage('assistant', data.message, true);
                     currentContent = data.message;
                     currentMessageIndex = this.conversation.length - 1;
 
@@ -478,7 +464,7 @@
         }
 
         // Save complete conversation to WordPress
-        const finalContent = streamingContent ? (currentContent + '\n\n' + streamingContent) : currentContent;
+        const finalContent = currentContent + (recsContent ? '\n' + recsContent : '');  // Single newline for minimal spacing
         await this.saveConversationToWordPress(message, finalContent);
 
         return { session_id: this.currentSessionId, response: finalContent };
@@ -900,9 +886,7 @@
       }
     },
 
-    /**
-     * Save an incomplete state (e.g., 'thinking', 'streaming')
-     */
+    /* Save an incomplete state (e.g., 'thinking', 'streaming') */
     saveIncompleteState(phase, content) {
       if (this.conversation.length > 0) {
         const lastMessage = this.conversation[this.conversation.length - 1];
@@ -917,17 +901,13 @@
       this.saveConversation();
     },
 
-    /**
-     * Clear all incomplete states
-     */
+    /* Clear all incomplete states */
     clearIncompleteState() {
       this.conversation = this.conversation.filter(msg => msg.phase === 'complete');
       this.saveConversation();
     },
 
-    /**
-     * Check for interrupted analysis on chat initialization
-     */
+    /* Check for interrupted analysis on chat initialization */
     checkForInterruption() {
       const incompleteMessages = this.conversation.filter(msg => !msg.isComplete || msg.phase !== 'complete');
 
@@ -940,9 +920,7 @@
       }
     },
 
-    /**
-     * Show interruption message with retry button
-     */
+    /* Show interruption message with retry button */
     showInterruptionMessage(incompleteMessage) {
       const interruptionHtml = `
         <div class="dehum-message dehum-message--interruption">
@@ -961,9 +939,7 @@
       this.scrollToBottom();
     },
 
-    /**
-     * Retry analysis after interruption
-     */
+    /* Retry analysis after interruption */
     retryAnalysis() {
       // Remove interruption message
       $('.dehum-message--interruption').remove();

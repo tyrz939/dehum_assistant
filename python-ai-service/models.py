@@ -13,6 +13,7 @@ class MessageRole(str, Enum):
     USER = "user"
     ASSISTANT = "assistant"
     SYSTEM = "system"
+    TOOL = "tool" # Add TOOL role
 
 class ChatMessage(BaseModel):
     """Individual chat message"""
@@ -20,6 +21,10 @@ class ChatMessage(BaseModel):
     content: str
     timestamp: Optional[datetime] = None
     metadata: Optional[Dict[str, Any]] = None
+    # Add optional fields for tool calls
+    tool_calls: Optional[List[Dict[str, Any]]] = None
+    tool_call_id: Optional[str] = None
+    name: Optional[str] = None
 
 class ChatRequest(BaseModel):
     """Request model for chat endpoint"""
