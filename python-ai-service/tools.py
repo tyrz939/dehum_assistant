@@ -47,21 +47,22 @@ class DehumidifierTools:
             logger.error("Invalid JSON in product database. Using empty product list.")
             return []
     
-    def calculate_dehum_load(self, length: float, width: float, height: float, 
-                           currentRH: float, targetRH: float, indoorTemp: float,
-                           ach: float = 0.5, peopleCount: int = 0, 
+    def calculate_dehum_load(self, currentRH: float, targetRH: float, indoorTemp: float,
+                           length: float = None, width: float = None, height: float = None,
+                           volume_m3: float = None, ach: float = 0.6, peopleCount: int = 0, 
                            pool_area_m2: float = 0, waterTempC: float = None) -> Dict[str, Any]:
         """
         Calculate latent moisture load for a room based on sizing spec v0.1
         
         Args:
-            length: Room length in meters
-            width: Room width in meters
-            height: Ceiling height in meters
             currentRH: Current relative humidity %
             targetRH: Target relative humidity %
             indoorTemp: Indoor temperature °C
-            ach: Air changes per hour (default 0.5)
+            length: Room length in meters (optional if volume_m3 provided)
+            width: Room width in meters (optional if volume_m3 provided)
+            height: Ceiling height in meters (optional if volume_m3 provided)
+            volume_m3: Room volume in cubic meters (alternative to L×W×H)
+            ach: Air changes per hour (default 0.8)
             peopleCount: Number of occupants (default 0)
             pool_area_m2: Pool surface area in square meters (default 0)
             waterTempC: Pool water temperature in °C (optional)
@@ -80,8 +81,23 @@ class DehumidifierTools:
             if indoorTemp < 0 or indoorTemp > 50:
                 raise ValueError("indoorTemp must be between 0 and 50°C")
             
-            # Step 1: Calculate room volume
-            volume = length * width * height
+            # Step 1: Determine volume and dimensions
+            if volume_m3 is not None:
+                # Volume provided directly - fabricate cube-root dimensions for downstream compatibility
+                if volume_m3 <= 0:
+                    raise ValueError("volume_m3 must be greater than 0")
+                volume = volume_m3
+                edge = volume_m3 ** (1/3)  # Cube root for fabricated dimensions
+                length = width = height = edge
+            elif length is not None and width is not None and height is not None:
+                # Traditional L×W×H provided
+                if length <= 0 or width <= 0 or height <= 0:
+                    raise ValueError("length, width, and height must be greater than 0")
+                volume = length * width * height
+            else:
+                raise ValueError("Either volume_m3 OR all three dimensions (length, width, height) must be provided")
+            
+            print("VOLUME: ", volume)
             
             # Step 2: Calculate moisture difference (simplified psychrometric calculation)
             # Using approximate formula: moisture capacity increases ~7% per °C
@@ -131,11 +147,15 @@ class DehumidifierTools:
             
             # Create calculation notes
             notes = []
-            notes.append(f"Room: {length}×{width}×{height}m = {volume:.1f}m³")
+            if volume_m3 is not None:
+                notes.append(f"Room: {volume:.1f}m³ (given volume, fabricated dimensions {edge:.1f}×{edge:.1f}×{edge:.1f}m)")
+            else:
+                notes.append(f"Room: {length}×{width}×{height}m = {volume:.1f}m³")
+            notes.append(f"Volume: {volume:.1f}m³, ACH: {ach}")
             notes.append(f"RH reduction: {currentRH}% → {targetRH}% at {indoorTemp}°C")
             notes.append(f"Moisture difference: {moisture_difference:.1f} g/kg")
             notes.append(f"Air mass: {air_mass:.1f} kg")
-            notes.append(f"ACH: {ach}, Infiltration load: {infiltration_load_L24h:.1f} L/day")
+            notes.append(f"Infiltration load: {infiltration_load_L24h:.1f} L/day")
             
             if peopleCount > 0:
                 notes.append(f"Occupants: {peopleCount} people, {occupant_load_L24h:.1f} L/day")
@@ -155,11 +175,19 @@ class DehumidifierTools:
             
         except Exception as e:
             logger.error(f"Error calculating dehumidifier load: {str(e)}")
+            # Handle case where dimensions may be None
+            try:
+                error_volume = volume_m3 if volume_m3 is not None else (length * width * height if all(x is not None for x in [length, width, height]) else 0)
+                error_area = length * width if all(x is not None for x in [length, width]) else 0
+            except:
+                error_volume = 0
+                error_area = 0
+            
             return {
                 "error": f"Calculation error: {str(e)}",
-                "volume": length * width * height,
+                "volume": error_volume,
                 "latentLoad_L24h": 0,
-                "room_area_m2": length * width,
+                "room_area_m2": error_area,
                 "calculationNotes": f"Error in calculation: {str(e)}"
             }
 

@@ -116,7 +116,7 @@ class Dehum_MVP_Frontend {
                 <div class="dehum-chat-container">
                     <!-- Header -->
                     <div class="dehum-chat-header">
-                        <h3 id="chat-title">AI Dehumidifier Sizing Assistant</h3>
+                        <h3 id="chat-title">Dehumidifier Sizing Assistant (ALPHA TEST)</h3>
                         <div class="dehum-header-actions">
                             <button id="dehum-clear-btn" class="dehum-clear-btn" aria-label="Clear conversation" title="Clear conversation and start fresh">
                                 🗑️

@@ -17,6 +17,7 @@ class Config:
     
     # Service Configuration
     DEFAULT_MODEL: str = os.getenv("DEFAULT_MODEL")
+    TEMPERATURE: float = float(os.getenv("TEMPERATURE", "0.3"))
     SERVICE_HOST: str = os.getenv("SERVICE_HOST", "0.0.0.0")
     SERVICE_PORT: int = int(os.getenv("PORT", 8000))
     

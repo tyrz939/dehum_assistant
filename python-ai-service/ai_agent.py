@@ -1,3 +1,4 @@
+### TLDR Update of Code Changes
 """
 Dehumidifier Assistant AI Agent
 Handles OpenAI integration, function calling, and conversation management
@@ -19,20 +20,21 @@ from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponen
 from engine import LLMEngine
 from tool_executor import ToolExecutor
 from session_store import InMemorySessionStore, WordPressSessionStore
+import re
+import tiktoken
 
 # Configuration constants
-MAX_CONVERSATION_HISTORY = 10
-DEFAULT_MAX_TOKENS = 10000
-THINKING_MODEL_MAX_TOKENS = 80000
+MAX_CONVERSATION_HISTORY = 5
+DEFAULT_MAX_TOKENS = 80000
 MAX_RETRIES = 3
-REASONING_EFFORT_LEVEL = "medium"
 RETRY_DELAY_BASE = 1.0
 MAX_RETRY_DELAY = 60.0
 STREAMING_TIMEOUT_SECONDS = 300
 
 MODEL_TOKEN_LIMITS = {
-    "o4": 100000,
     "gpt-4": 16384,
+    "gpt-4o": 128000,
+    "gpt-4-turbo": 128000,
 }
 
 logger = logging.getLogger(__name__)
@@ -44,10 +46,14 @@ class DehumidifierAgent:
         self.sessions: Dict[str, SessionInfo] = {}
         self.tools = DehumidifierTools()
         self.model = self._validate_model(config.DEFAULT_MODEL, "DEFAULT_MODEL")
-        self.thinking_model = self._validate_model(config.THINKING_MODEL, "THINKING_MODEL")
+        self.temperature = config.TEMPERATURE
         self.wp_ajax_url = config.WORDPRESS_URL + "/wp-admin/admin-ajax.php"
         self.wp_api_key = os.getenv("WP_API_KEY")
+        
+        # Initialize debug mode before setup methods that use it
+        self.debug_mode = os.getenv('DEBUG', '').lower() == 'true'
         self._setup_litellm()
+        self._init_token_encoder()
         
         self.engine = LLMEngine(
             model=self.model,
@@ -61,6 +67,56 @@ class DehumidifierAgent:
         else:
             self.session_store = InMemorySessionStore()
         
+    def _init_token_encoder(self):
+        """Initialize tiktoken encoder based on the model"""
+        try:
+            if self.model.startswith('gpt-4o') or self.model.startswith('gpt-4-turbo'):
+                self.encoder = tiktoken.encoding_for_model("gpt-4")  # gpt-4o uses gpt-4 encoding
+            elif self.model.startswith('gpt-4'):
+                self.encoder = tiktoken.encoding_for_model("gpt-4")
+            elif self.model.startswith('gpt-3.5'):
+                self.encoder = tiktoken.encoding_for_model("gpt-3.5-turbo")
+            else:
+                # Fallback to cl100k_base encoding for unknown models
+                self.encoder = tiktoken.get_encoding("cl100k_base")
+        except Exception as e:
+            logger.warning(f"Failed to initialize tiktoken encoder: {e}, using cl100k_base")
+            self.encoder = tiktoken.get_encoding("cl100k_base")
+    
+    def _count_tokens(self, messages: List[Dict]) -> int:
+        """Count tokens in messages using tiktoken"""
+        try:
+            token_count = 0
+            for message in messages:
+                # Count tokens for role and content
+                if isinstance(message.get('content'), str):
+                    token_count += len(self.encoder.encode(message['content']))
+                token_count += len(self.encoder.encode(message.get('role', '')))
+                
+                # Count tokens for tool calls if present
+                if 'tool_calls' in message:
+                    for tool_call in message['tool_calls']:
+                        if isinstance(tool_call, dict):
+                            token_count += len(self.encoder.encode(str(tool_call)))
+                
+                # Add some overhead tokens per message (based on OpenAI's token counting)
+                token_count += 4  # Every message has some overhead
+            
+            # Add some tokens for the conversation structure
+            token_count += 2  # priming tokens
+            return token_count
+        except Exception as e:
+            logger.warning(f"Token counting failed: {e}")
+            return 0
+    
+    def _count_response_tokens(self, content: str) -> int:
+        """Count tokens in a response string"""
+        try:
+            return len(self.encoder.encode(content))
+        except Exception as e:
+            logger.warning(f"Response token counting failed: {e}")
+            return 0
+        
     def _validate_model(self, model: str, env_var_name: str) -> str:
         if model is None:
             raise ValueError(f"{env_var_name} environment variable is required but not set")
@@ -71,8 +127,7 @@ class DehumidifierAgent:
         if not api_key:
             logger.warning("OPENAI_API_KEY not found in environment variables")
         
-        debug_mode = os.getenv('DEBUG', '').lower() == 'true'
-        if debug_mode:
+        if self.debug_mode:
             os.environ['LITELLM_LOG'] = 'DEBUG'
         litellm.set_verbose = False
         
@@ -83,7 +138,7 @@ class DehumidifierAgent:
             return name + "|" + str(args)
             
     def _get_temperature(self, model: str) -> float:
-        return 1.0 if model.startswith('o') else 0.3
+        return self.temperature
         
     def _cap_max_tokens(self, model: str, requested: int) -> int:
         for prefix, limit in MODEL_TOKEN_LIMITS.items():
@@ -95,12 +150,9 @@ class DehumidifierAgent:
         params = {
             "model": model,
             "messages": messages,
-            "max_tokens": self._cap_max_tokens(model, max_tokens),
+            "max_tokens": self._cap_max_tokens(model, DEFAULT_MAX_TOKENS),
         }
-        if not model.startswith('o4'):
-            params["temperature"] = self._get_temperature(model)
-        if model.startswith('o4'):
-            params["extra_body"] = {"reasoning_effort": REASONING_EFFORT_LEVEL}
+        params["temperature"] = self._get_temperature(model)
         return params
         
     def _load_prompt_from_file(self, filename: str) -> str:
@@ -114,9 +166,6 @@ class DehumidifierAgent:
 
     def get_system_prompt(self) -> str:
         return self._load_prompt_from_file("system_prompt.txt")
-
-    def get_streaming_system_prompt(self) -> str:
-        return self._load_prompt_from_file("streaming_system_prompt.txt")
 
     async def process_chat(self, request: ChatRequest) -> ChatResponse:
         session = self.get_or_create_session(request.session_id)
@@ -145,18 +194,7 @@ class DehumidifierAgent:
         )
     
     async def process_chat_streaming(self, request: ChatRequest) -> AsyncGenerator[StreamingChatResponse, None]:
-        """Stream assistant response back to the client in small chunks.
-
-        For now we generate the full response with the non-streaming logic (which
-        already handles tool-calls, catalogue recommendations, etc.) and then
-        yield it to the caller in ~150-character chunks so the WordPress chat
-        widget can progressively render the answer.  This keeps the business
-        logic unchanged while restoring a good user-experience.
-
-        When the underlying OpenAI call is later migrated to native token level
-        streaming we can swap the chunking implementation without impacting the
-        frontend contract.
-        """
+        """Stream assistant response back to the client in small chunks."""
 
         session = self.get_or_create_session(request.session_id)
         user_message = ChatMessage(role=MessageRole.USER, content=request.message, timestamp=datetime.now())
@@ -165,7 +203,7 @@ class DehumidifierAgent:
         try:
             # Phase 1: Initial response with tools
             messages = self._prepare_messages_streaming(session)  # Use streaming-specific prompt
-            initial_response = await self._get_initial_response(messages, session)
+            initial_response = await self._get_initial_completion(messages)
             content = initial_response["content"]
             tool_calls = initial_response.get("tool_calls", [])
 
@@ -179,7 +217,7 @@ class DehumidifierAgent:
                     "tool_calls": tool_calls
                 }
                 messages.append(assistant_msg)
-                tool_results, follow_up_generator = await self._process_tool_calls(tool_calls, messages, session)
+                tool_results, follow_up_generator = await self._process_tool_calls(tool_calls, messages, session, request.message)
 
             # Create assistant message in history (but mark as streaming/incomplete)
             assistant_message = ChatMessage(
@@ -229,37 +267,8 @@ class DehumidifierAgent:
                     accumulated_summary = content
             assistant_message.content = accumulated_summary
 
-            accumulated_recommendations = ""
-            full_content = content
-
-            # Check if we need recommendations phase
-            if self._needs_recommendations(tool_results):  # Change to tool_results (executed)
-                # Phase 2: Thinking message
-                async for thinking_chunk in self._stream_thinking_response(request.session_id):
-                    yield thinking_chunk
-                
-                # Phase 3: Streaming recommendations
-                # Yield a starter for new bubble
-                yield StreamingChatResponse(
-                    message="",
-                    session_id=request.session_id,
-                    timestamp=datetime.now(),
-                    is_streaming_chunk=False,
-                    metadata={"phase": "recommendations"}
-                )
-                async for text_chunk in self._generate_recommendations_streaming(session, request.message):
-                    accumulated_recommendations += text_chunk
-                    yield StreamingChatResponse(
-                        message=text_chunk,
-                        session_id=request.session_id,
-                        timestamp=datetime.now(),
-                        is_streaming_chunk=True,
-                        metadata={"phase": "recommendations"}
-                    )
-                full_content = f"{content}\n\n{accumulated_recommendations}"
-
             # Finalize with full_content
-            assistant_message.content = full_content
+            assistant_message.content = accumulated_summary
             self._update_session(session)
 
             yield StreamingChatResponse(
@@ -278,7 +287,7 @@ class DehumidifierAgent:
     
     async def _get_ai_response(self, messages: List[Dict[str, str]], session: SessionInfo) -> Dict[str, Any]:
         last_user_content = self._get_last_user_message(messages)
-        initial_response = await self._make_initial_api_call(messages)
+        initial_response = await self._get_initial_completion(messages)
         content = initial_response["content"]
         tool_calls = initial_response["tool_calls"]
         
@@ -292,23 +301,21 @@ class DehumidifierAgent:
                 "tool_calls": tool_calls
             }
             messages.append(assistant_msg)
-            tool_calls_list, new_content = await self._process_tool_calls(tool_calls, messages, session)
+            tool_calls_list, new_content = await self._process_tool_calls(tool_calls, messages, session, last_user_content)
             content = new_content or content
         
-        if tool_calls_list and self._has_load_calculation(tool_calls_list):
-            thinking_message = "\n\n🤔 Let me analyze available options...\n\n"
-            content_with_thinking = (content or "") + thinking_message
-            catalog_recommendations = "".join([chunk async for chunk in self._generate_catalog_recommendations_only(session, last_user_content, "")])
-            final_content = content_with_thinking + catalog_recommendations
-        else:
-            final_content = content
-        
-        return {"content": final_content, "tool_calls": tool_calls_list, "recommendations": [], "metadata": {"model": self.model}}
+        return {"content": content, "tool_calls": tool_calls_list, "recommendations": [], "metadata": {"model": self.model}}
     
-    async def _get_initial_response(self, messages: List[Dict], session: SessionInfo) -> Dict:
+    async def _get_initial_completion(self, messages: List[Dict]) -> Dict:
         tools = self._get_tool_definitions()
         params = self._get_completion_params(self.model, messages, DEFAULT_MAX_TOKENS)
         params.update({"tools": tools, "tool_choice": "auto", "stream": True})
+        
+        # Count input tokens
+        input_tokens = self._count_tokens(messages)
+        if self.debug_mode:
+            print(f"DEBUG: Input tokens: {input_tokens}")
+        
         accumulated_content = ""
         tool_call_dicts = {}  # Use dict with index as key to merge deltas
         async for chunk in await self._make_api_call_with_retry(**params):
@@ -332,7 +339,20 @@ class DehumidifierAgent:
                             tool_call_dicts[index]["function"]["name"] += tc_delta.function.name
                         if tc_delta.function.arguments:
                             tool_call_dicts[index]["function"]["arguments"] += tc_delta.function.arguments
+        
         tool_calls = list(tool_call_dicts.values())
+        
+        # Count output tokens
+        output_tokens = self._count_response_tokens(accumulated_content)
+        for tool_call in tool_calls:
+            # Count tokens in tool call arguments
+            if tool_call.get("function", {}).get("arguments"):
+                output_tokens += self._count_response_tokens(tool_call["function"]["arguments"])
+        
+        if self.debug_mode:
+            print(f"DEBUG: Output tokens: {output_tokens}")
+            print(f"DEBUG: Total tokens: {input_tokens + output_tokens}")
+        
         return {"content": accumulated_content, "tool_calls": tool_calls}
     
     def _get_last_user_message(self, messages: List[Dict[str, str]]) -> str:
@@ -341,114 +361,78 @@ class DehumidifierAgent:
                 return msg.get("content", "") or ""
         return ""
     
-    async def _make_initial_api_call(self, messages: List[Dict[str, str]]):
-        tools = self._get_tool_definitions()
-        params = self._get_completion_params(self.model, messages, DEFAULT_MAX_TOKENS)
-        params.update({"tools": tools, "tool_choice": "auto", "stream": True})
-        
-        accumulated_content = ""
-        tool_call_dicts = {}  # Use dict with index as key to merge deltas
-        async for chunk in await self._make_api_call_with_retry(**params):
-            delta = chunk.choices[0].delta
-            if delta.content:
-                accumulated_content += delta.content or ""
-            if delta.tool_calls:
-                for tc_delta in delta.tool_calls:
-                    index = tc_delta.index
-                    if index not in tool_call_dicts:
-                        tool_call_dicts[index] = {
-                            "id": tc_delta.id,
-                            "type": tc_delta.type,
-                            "function": {
-                                "name": tc_delta.function.name or "",
-                                "arguments": tc_delta.function.arguments or ""
-                            }
-                        }
-                    else:
-                        if tc_delta.function.name:
-                            tool_call_dicts[index]["function"]["name"] += tc_delta.function.name
-                        if tc_delta.function.arguments:
-                            tool_call_dicts[index]["function"]["arguments"] += tc_delta.function.arguments
-        tool_calls = list(tool_call_dicts.values())
-        return {"content": accumulated_content, "tool_calls": tool_calls}
-                
-    async def _process_tool_calls(self, tool_calls, messages: List[Dict], session: SessionInfo) -> Tuple[List[Dict], AsyncGenerator[str, None]]:
+    async def _process_tool_calls(self, tool_calls, messages: List[Dict], session: SessionInfo, last_user_content: str) -> Tuple[List[Dict], AsyncGenerator[str, None]]:
         tool_results = []
         for tc in tool_calls:
             func_name = tc["function"]["name"]
-            func_args_str = tc["function"]["arguments"]
             try:
-                func_args = json.loads(func_args_str)
+                func_args = json.loads(tc["function"]["arguments"])
             except json.JSONDecodeError:
-                logger.error(f"Invalid JSON in tool arguments: {func_args_str}")
+                logger.error(f"Invalid JSON in tool arguments: {tc['function']['arguments']}")
                 continue  # Skip invalid tool calls
             result = self._execute_tool_function(func_name, func_args, session)
             tool_results.append({"name": func_name, "arguments": func_args, "result": result})
             messages.append({"role": "tool", "tool_call_id": tc["id"], "name": func_name, "content": json.dumps(result)})
+
+        # If load calculation was performed, inject catalog JSON and recommendation instructions
+        load_info = self._get_latest_load_info(session)
+        if load_info:
+            preferred_types = self._detect_preferred_types(last_user_content)
+            catalog = self.tools.get_catalog_with_effective_capacity(include_pool_safe_only=load_info["pool_required"])
+            if preferred_types:
+                catalog = [p for p in catalog if p.get("type") in preferred_types]
+
+            temp, rh = self._extract_temp_rh(session.conversation_history)
+            print(self._extract_temp_rh(session.conversation_history))
+            derate_factor = min(1.0, max(0.3, (temp / 30) ** 1.5 * (rh / 80) ** 2))
+            for p in catalog:
+                if "effective_capacity_lpd" in p:
+                    p["effective_capacity_lpd"] = round(p["effective_capacity_lpd"] * derate_factor, 1)
+            
+            catalog_data = {
+                "required_load_lpd": load_info["latentLoad_L24h"],
+                "room_area_m2": load_info["room_area_m2"],
+                "pool_area_m2": load_info["pool_area_m2"],
+                "pool_required": load_info["pool_required"],
+                "preferred_types": preferred_types,
+                "catalog": catalog,
+            }
+
+            catalog_json = json.dumps(catalog_data, ensure_ascii=False)
+
+            # Add catalog to context
+            messages.append({"role": "system", "content": f"AVAILABLE_PRODUCT_CATALOG_JSON = {catalog_json}"})
+
+
         
         params = self._get_completion_params(self.model, messages, DEFAULT_MAX_TOKENS)
         params["stream"] = True  # Enable streaming for follow-up
         
+        # Count input tokens for follow-up call
+        follow_up_input_tokens = self._count_tokens(messages)
+        if self.debug_mode:
+            print(f"DEBUG: Follow-up input tokens: {follow_up_input_tokens}")
+        
         async def stream_follow_up_content():
+            follow_up_content = ""
             async for chunk in await self._make_api_call_with_retry(**params):
                 if chunk.choices[0].delta.content:
-                    yield chunk.choices[0].delta.content
+                    content_chunk = chunk.choices[0].delta.content
+                    follow_up_content += content_chunk
+                    yield content_chunk
+            
+            # Count output tokens for follow-up
+            if self.debug_mode and follow_up_content:
+                follow_up_output_tokens = self._count_response_tokens(follow_up_content)
+                print(f"DEBUG: Follow-up output tokens: {follow_up_output_tokens}")
+                print(f"DEBUG: Follow-up total tokens: {follow_up_input_tokens + follow_up_output_tokens}")
         
         return tool_results, stream_follow_up_content()
     
-    async def _generate_catalog_recommendations_only(self, session: SessionInfo, last_user_content: str, fallback_content: str) -> AsyncGenerator[str, None]:
-        load_info = self._get_latest_load_info(session)
-        if not load_info:
-            yield fallback_content
-            return
-        
-        preferred_types = self._detect_preferred_types(last_user_content)
-        catalog = self.tools.get_catalog_with_effective_capacity(include_pool_safe_only=load_info["pool_required"])
-        if preferred_types: catalog = [p for p in catalog if p.get("type") in preferred_types]
-        
-        catalog_data = {
-            "required_load_lpd": load_info["latentLoad_L24h"],
-            "room_area_m2": load_info["room_area_m2"],
-            "pool_area_m2": load_info["pool_area_m2"],
-            "pool_required": load_info["pool_required"],
-            "preferred_types": preferred_types,
-            "catalog": catalog,
-        }
-
-        catalog_json = json.dumps(catalog_data, ensure_ascii=False)
-
-        catalog_request = (
-            "Using ONLY the products provided in the JSON catalog below, "
-            f"recommend exactly 2-3 unique, non-repeating options that can handle roughly {load_info['latentLoad_L24h']} L/day latent load. Output the list only once, without repetition. "
-            "Each option should use as few units as possible (prefer single unit if viable, or minimal combinations to meet/exceed load with little margin; slight undershoot OK if within 10%, max overshoot 20%). "
-            "Be dynamic with combos (e.g., for 330L/day: 2x150 + 1x50 or 1x150 + 2x100, if same brand). "
-            "Stick to the same brand per recommendation (no mixing brands in one option). "
-            "Prioritize pool-safe if pool_required is true, and match preferred_types if specified. "
-            "Format as a spaced Markdown list with detailed reasons:\n\n"
-            "- **Option 1: Brand Name**\n  - Units: Xx SKU: name (type, capacity L/day, price AUD)\n  - Total Capacity: Y L/day (Z% margin)\n  - Reason: Detailed explanation why this combo fits, pros/cons.\n  - Pool-safe: yes/no\n  - [View Product](url)\n\n"
-        )
-
-        thinking_messages = [
-            {"role": "system", "content": self.get_system_prompt()},
-            {"role": "system", "content": f"AVAILABLE_PRODUCT_CATALOG_JSON = {catalog_json}"},
-            {"role": "user", "content": last_user_content},
-            {"role": "assistant", "content": f"Calculated latent load: {load_info['latentLoad_L24h']} L/day"},
-            {"role": "user", "content": catalog_request},
-        ]
-
-        params = self._get_completion_params(self.thinking_model, thinking_messages, THINKING_MODEL_MAX_TOKENS)
-        params["stream"] = True
-        async for chunk in await self._make_api_call_with_retry(**params):
-            if chunk.choices[0].delta.content:
-                yield chunk.choices[0].delta.content
-
     def _get_tool_definitions(self) -> List[Dict[str, Any]]:
         return [
-            {"type": "function", "function": { "name": "calculate_dehum_load", "description": "Calculate latent moisture load for a room based on sizing spec v0.1", "parameters": { "type": "object", "properties": { "length": {"type": "number"}, "width": {"type": "number"}, "height": {"type": "number"}, "currentRH": {"type": "number"}, "targetRH": {"type": "number"}, "indoorTemp": {"type": "number"}, "ach": {"type": "number"}, "peopleCount": {"type": "number"}, "pool_area_m2": {"type": "number"}, "waterTempC": {"type": "number"}}, "required": ["length", "width", "height", "currentRH", "targetRH", "indoorTemp"]}}}
+            {"type": "function", "function": { "name": "calculate_dehum_load", "description": "Calculate latent moisture load for a room. Provide either (length, width, height) OR volume_m3", "parameters": { "type": "object", "properties": { "currentRH": {"type": "number"}, "targetRH": {"type": "number"}, "indoorTemp": {"type": "number"}, "length": {"type": "number"}, "width": {"type": "number"}, "height": {"type": "number"}, "volume_m3": {"type": "number"}, "ach": {"type": "number"}, "peopleCount": {"type": "number"}, "pool_area_m2": {"type": "number"}, "waterTempC": {"type": "number"}}, "required": ["currentRH", "targetRH", "indoorTemp"]}}}
         ]
-    
-    def _has_load_calculation(self, tool_calls_list: List[Dict]) -> bool:
-        return any(call.get("name") == "calculate_dehum_load" for call in tool_calls_list)
     
     def _get_latest_load_info(self, session: SessionInfo) -> Optional[Dict[str, Any]]:
         for cache_key, result in reversed(list(session.tool_cache.items())):
@@ -468,6 +452,105 @@ class DehumidifierAgent:
         if "portable" in text_lower: types.append("portable")
         return types
     
+    def _extract_temp_rh(self, history: List[ChatMessage]) -> Tuple[float, float]:
+        user_texts = [m.content.lower() for m in history if m.role == MessageRole.USER]
+        full_text = ' '.join(user_texts)
+
+        # Find temp
+        temp_pattern = r'(\d+(?:-\d+)?)\s*(?:°?c|degrees?|temp(?:erature)?|celsius|c)'
+        temps = re.findall(temp_pattern, full_text)
+        temp = 30.0
+        if temps:
+            last_temp_str = temps[-1]
+            if '-' in last_temp_str:
+                parts = last_temp_str.split('-')
+                if len(parts) == 2:
+                    try:
+                        high = float(parts[1])
+                        temp = high  # peak
+                    except ValueError:
+                        pass
+            else:
+                try:
+                    temp = float(last_temp_str)
+                except ValueError:
+                    pass
+
+        # Find RH - look for both current and target values
+        current_rh = None
+        target_rh = None
+        
+        # First, look for explicit "from X to Y" patterns - these are most reliable
+        from_to_patterns = [
+            r'(?:from|reduce\s+from|starting\s+at)\s*(\d+)\s*%\s*(?:to|down\s+to|target\s+of)\s*(\d+)\s*%',
+            r'(\d+)\s*%\s*(?:to|down\s+to)\s*(\d+)\s*%'
+        ]
+        
+        for pattern in from_to_patterns:
+            matches = re.findall(pattern, full_text)
+            if matches:
+                try:
+                    current_rh = float(matches[-1][0])  # First number is current
+                    target_rh = float(matches[-1][1])   # Second number is target
+                    break
+                except ValueError:
+                    pass
+        
+        # If no from_to pattern found, look for explicit current RH indicators
+        if current_rh is None:
+            current_patterns = [
+                r'current(?:\s+humidity|\s+rh|\s+relative\s+humidity)?\s*(?:is\s*|:\s*)?(\d+)\s*%',
+                r'(?:currently|now)\s*(?:at\s*)?(\d+)\s*%',
+                r'(\d+)\s*%\s*(?:current|currently|now|right\s+now)',
+                r'(?:starts?\s+at|starting\s+at|beginning\s+at)\s*(\d+)\s*%'
+            ]
+            
+            for pattern in current_patterns:
+                matches = re.findall(pattern, full_text)
+                if matches:
+                    try:
+                        current_rh = float(matches[-1])
+                        break
+                    except ValueError:
+                        pass
+        
+        # Look for explicit target RH indicators
+        if target_rh is None:
+            target_patterns = [
+                r'target(?:\s+humidity|\s+rh|\s+relative\s+humidity)?\s*(?:is\s*|of\s*|:\s*)?(\d+)\s*%',
+                r'(?:want|need|desire)\s*(?:to\s+get\s+)?\s*(?:to\s*|down\s+to\s*)?(\d+)\s*%',
+                r'(\d+)\s*%\s*(?:target|goal|desired|aim)',
+                r'(?:bring\s+(?:it\s+)?down\s+to|reduce\s+to|get\s+to)\s*(\d+)\s*%'
+            ]
+            
+            for pattern in target_patterns:
+                matches = re.findall(pattern, full_text)
+                if matches:
+                    try:
+                        target_rh = float(matches[-1])
+                        break
+                    except ValueError:
+                        pass
+        
+        # Fall back to generic RH pattern if no specific patterns found
+        if current_rh is None and target_rh is None:
+            rh_pattern = r'(\d+)\s*(?:%|rh|humidity|relative\s+humidity)'
+            rhs = re.findall(rh_pattern, full_text)
+            if rhs:
+                try:
+                    # If only one RH value found, assume it's current (worst case)
+                    current_rh = float(rhs[-1])
+                except ValueError:
+                    pass
+        
+        # Set rh based on current_rh if available, else default to 80.0 (ignore target for derate)
+        rh = current_rh if current_rh is not None else 80.0
+        
+        # Debug output
+        print(f"DEBUG: Extracted current_rh={current_rh}, target_rh={target_rh}, using rh={rh}")
+
+        return temp, rh
+    
     def get_session_info(self, session_id: str) -> SessionInfo:
         if session_id not in self.sessions: raise ValueError(f"Session {session_id} not found")
         return self.sessions[session_id]
@@ -475,7 +558,7 @@ class DehumidifierAgent:
     def clear_session(self, session_id: str):
         if session_id in self.sessions:
             session = self.sessions[session_id]
-            session.conversation_history, session.message_count, session.tool_cache = [], 0, {}
+            (session.conversation_history, session.message_count, session.tool_cache) = [], 0, {}
             self._set_streaming_state(session, False)
     
     def _is_session_stuck_streaming(self, session: SessionInfo) -> bool:
@@ -499,7 +582,7 @@ class DehumidifierAgent:
         return {"active_sessions": len(self.sessions), "model": self.model, "tools_loaded": len(self.tools.get_available_tools()), "status": "healthy"}
     
     def get_available_models(self) -> List[str]:
-        return [self.model, self.thinking_model]
+        return [self.model]
 
     @staticmethod
     def _is_retryable_error_static(error: Exception) -> bool:
@@ -558,7 +641,7 @@ class DehumidifierAgent:
             return session
         
         new_session = SessionInfo(
-                    session_id=session_id,
+            session_id=session_id,
             conversation_history=[],
             created_at=datetime.now(),
             last_activity=datetime.now(),
@@ -570,8 +653,8 @@ class DehumidifierAgent:
     def _create_error_response(self, session_id: str, error: str) -> StreamingChatResponse:
         return StreamingChatResponse(
             message=f"I apologize, but an error occurred: {error}",
-                session_id=session_id,
-                timestamp=datetime.now(),
+            session_id=session_id,
+            timestamp=datetime.now(),
             is_final=True,
             metadata={"error": error}
         )
@@ -585,86 +668,37 @@ class DehumidifierAgent:
         return result
 
     def _prepare_messages_streaming(self, session: SessionInfo) -> List[Dict]:
-        messages = [{"role": "system", "content": self.get_streaming_system_prompt()}]
+        messages = [{"role": "system", "content": self.get_system_prompt()}]
         for msg in session.conversation_history[-MAX_CONVERSATION_HISTORY:]:
             messages.append({"role": msg.role.value, "content": msg.content})
-        return messages
-
-    def _needs_recommendations(self, tool_calls_list: List[Any]) -> bool:
-        return any(tc.get("name") == "calculate_dehum_load" for tc in tool_calls_list if isinstance(tc, dict))
-
-    async def _stream_thinking_response(self, session_id: str) -> AsyncGenerator[StreamingChatResponse, None]:
-        thinking_message = "🤔 Let me analyze the available options..."
-        for char in thinking_message:
-            yield StreamingChatResponse(
-                message=char,
-                session_id=session_id,
-                timestamp=datetime.now(),
-                is_thinking=True,
-                is_final=False
-            )
-            await asyncio.sleep(0.03)
-        yield StreamingChatResponse(
-            message=thinking_message,
-            session_id=session_id,
-            timestamp=datetime.now(),
-            is_thinking=True,
-            is_final=False,
-            metadata={"phase": "thinking_complete"}
-        )
-
-    async def _generate_recommendations_streaming(self, session: SessionInfo, last_user_content: str) -> AsyncGenerator[str, None]:
-        load_info = self._get_latest_load_info(session)
-        if not load_info:
-            yield ""
-            return
         
-        preferred_types = self._detect_preferred_types(last_user_content)
-        catalog = self.tools.get_catalog_with_effective_capacity(include_pool_safe_only=load_info["pool_required"])
-        if preferred_types: catalog = [p for p in catalog if p.get("type") in preferred_types]
+        # Inject catalog and recommendation instructions if prior load info exists
+        load_info = self._get_latest_load_info(session)
+        if load_info:
+            user_contents = " ".join([m.content for m in session.conversation_history if m.role == MessageRole.USER])
+            preferred_types = self._detect_preferred_types(user_contents)
+            catalog = self.tools.get_catalog_with_effective_capacity(include_pool_safe_only=load_info["pool_required"])
+            if preferred_types:
+                catalog = [p for p in catalog if p.get("type") in preferred_types]
             
-        catalog_data = {
-            "required_load_lpd": load_info["latentLoad_L24h"],
-            "room_area_m2": load_info["room_area_m2"],
-            "pool_area_m2": load_info["pool_area_m2"],
-            "pool_required": load_info["pool_required"],
-            "preferred_types": preferred_types,
-            "catalog": catalog,
-        }
+            temp, rh = self._extract_temp_rh(session.conversation_history)
+            derate_factor = min(1.0, max(0.3, (temp / 30) ** 1.5 * (rh / 80) ** 2))
+            for p in catalog:
+                if "effective_capacity_lpd" in p:
+                    p["effective_capacity_lpd"] = round(p["effective_capacity_lpd"] * derate_factor, 1)
+            
+            catalog_data = {
+                "required_load_lpd": load_info["latentLoad_L24h"],
+                "room_area_m2": load_info["room_area_m2"],
+                "pool_area_m2": load_info["pool_area_m2"],
+                "pool_required": load_info["pool_required"],
+                "preferred_types": preferred_types,
+                "catalog": catalog,
+            }
 
-        catalog_json = json.dumps(catalog_data, ensure_ascii=False)
+            catalog_json = json.dumps(catalog_data, ensure_ascii=False)
+            messages.append({"role": "system", "content": f"AVAILABLE_PRODUCT_CATALOG_JSON = {catalog_json}"})
+            
 
-        catalog_request = (
-            "Using ONLY the products provided in the JSON catalog below, "
-            f"recommend exactly 2-3 unique, non-repeating options that can handle roughly {load_info['latentLoad_L24h']} L/day latent load. Output the list only once, without repetition. "
-            "Each option should use as few units as possible (prefer single unit if viable, or minimal combinations to meet/exceed load with little margin; slight undershoot OK if within 10%, max overshoot 20%). "
-            "Be dynamic with combos (e.g., for 330L/day: 2x150 + 1x50 or 1x150 + 2x100, if same brand). "
-            "Stick to the same brand per recommendation (no mixing brands in one option). "
-            "Prioritize pool-safe if pool_required is true, and match preferred_types if specified. "
-            "Format as a spaced Markdown list with detailed reasons:\n\n"
-            "- **Option 1: Brand Name**\n  - Units: Xx SKU: name (type, capacity L/day, price AUD)\n  - Total Capacity: Y L/day (Z% margin)\n  - Reason: Detailed explanation why this combo fits, pros/cons.\n  - Pool-safe: yes/no\n  - [View Product](url)\n\n"
-        )
-
-        thinking_messages = [
-            {"role": "system", "content": self.get_system_prompt()},
-            {"role": "system", "content": f"AVAILABLE_PRODUCT_CATALOG_JSON = {catalog_json}"},
-            {"role": "user", "content": last_user_content},
-            {"role": "assistant", "content": f"Calculated latent load: {load_info['latentLoad_L24h']} L/day"},
-            {"role": "user", "content": catalog_request},
-        ]
-
-        params = self._get_completion_params(self.thinking_model, thinking_messages, THINKING_MODEL_MAX_TOKENS)
-        params["stream"] = True
-        async for chunk in await self._make_api_call_with_retry(**params):
-            if chunk.choices[0].delta.content:
-                yield chunk.choices[0].delta.content
-
-    def _save_session_to_wp(self, session_id: str, history: List[ChatMessage]):
-        # Implement WP save logic from old file
-        pass  # Placeholder
-
-    def get_tool_definitions(self) -> List[Dict]:
-        return [
-            {"type": "function", "function": {"name": "get_product_manual", "parameters": {"type": "object", "properties": {"sku": {"type": "string"}}}}},
-            # Add other tools
-        ]
+        
+        return messages

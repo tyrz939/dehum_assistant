@@ -386,6 +386,9 @@
                   const saveContent = phase === 'initial_summary' ? currentContent : recsContent;
                   this.saveIncompleteState(phase, saveContent);
 
+                  // Scroll to bottom after each chunk update (with timeout for DOM render)
+                  setTimeout(() => this.scrollToBottom(), 0);
+
                 } else if (data.is_final) {
                   // Final message - streaming is complete
                   this.hideThinkingIndicator();
@@ -415,6 +418,9 @@
                     this.saveConversation();
                   }
 
+                  // Scroll to bottom after final update (with timeout)
+                  setTimeout(() => this.scrollToBottom(), 0);
+
                   // Clear incomplete state
                   this.clearIncompleteState();
 
@@ -434,6 +440,9 @@
                     }
                   }
                   // thinking_complete doesn't need content update - just phase transition
+
+                  // Scroll to bottom after phase completion (with timeout)
+                  setTimeout(() => this.scrollToBottom(), 0);
 
                 } else {
                   // Handle other phase responses (thinking character streaming, etc.)
@@ -455,6 +464,9 @@
                       this.saveConversation();
                     }
                   }
+
+                  // Scroll to bottom after other updates (with timeout)
+                  setTimeout(() => this.scrollToBottom(), 0);
                 }
               } catch (e) {
                 console.error('Error parsing streaming data:', e);
@@ -884,6 +896,8 @@
       if (contentDiv.length) {
         contentDiv.html(this.formatContent(newContent));
       }
+      // Scroll to bottom after updating the message content (with timeout for DOM render)
+      setTimeout(() => this.scrollToBottom(), 0);
     },
 
     /* Save an incomplete state (e.g., 'thinking', 'streaming') */
