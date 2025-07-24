@@ -49,8 +49,10 @@ class DehumidifierTools:
     
     def calculate_dehum_load(self, currentRH: float, targetRH: float, indoorTemp: float,
                            length: float = None, width: float = None, height: float = None,
-                           volume_m3: float = None, ach: float = 0.6, peopleCount: int = 0, 
-                           pool_area_m2: float = 0, waterTempC: float = None) -> Dict[str, Any]:
+                           volume_m3: float = None, ach: float = 1, peopleCount: int = 0, 
+                           pool_area_m2: float = 0, waterTempC: float = None,
+                           pool_activity: str = "none", vent_factor: float = 1.0,
+                           additional_loads_lpd: float = 0) -> Dict[str, Any]:
         """
         Calculate latent moisture load for a room based on sizing spec v0.1
         
@@ -62,10 +64,13 @@ class DehumidifierTools:
             width: Room width in meters (optional if volume_m3 provided)
             height: Ceiling height in meters (optional if volume_m3 provided)
             volume_m3: Room volume in cubic meters (alternative to L×W×H)
-            ach: Air changes per hour (default 0.8)
+            ach: Air changes per hour (default 1)
             peopleCount: Number of occupants (default 0)
             pool_area_m2: Pool surface area in square meters (default 0)
-            waterTempC: Pool water temperature in °C (optional)
+            waterTempC: Pool water temperature in °C (optional, default 28°C)
+            pool_activity: Pool activity level ("none" default=0.100 C, "low"=0.118, "medium"=0.136, "high"=0.156 kg/m²/h/kPa)
+            vent_factor: Multiplier for infiltration load (default 1.0, e.g., 1.2 for poor ventilation)
+            additional_loads_lpd: Additional latent loads in L/day (default 0, e.g., from plants/showers)
             
         Returns:
             Dictionary containing volume, latentLoad_L24h, and calculationNotes
@@ -97,18 +102,23 @@ class DehumidifierTools:
             else:
                 raise ValueError("Either volume_m3 OR all three dimensions (length, width, height) must be provided")
             
-            print("VOLUME: ", volume)
+            # Define saturation vapor pressure function (Magnus formula, kPa)
+            def saturation_vp(T):
+                return 0.61094 * math.exp((17.625 * T) / (T + 243.04))
             
-            # Step 2: Calculate moisture difference (simplified psychrometric calculation)
-            # Using approximate formula: moisture capacity increases ~7% per °C
-            # At 20°C, 100% RH ≈ 17.3 g/kg dry air
-            saturation_pressure_20c = 17.3  # g/kg at 20°C, 100% RH
-            temp_factor = 1.07 ** (indoorTemp - 20)  # 7% increase per °C
-            max_moisture_capacity = saturation_pressure_20c * temp_factor
+            # Atmospheric pressure (kPa, standard sea level)
+            P_atm = 101.325
             
-            current_moisture = (currentRH / 100) * max_moisture_capacity
-            target_moisture = (targetRH / 100) * max_moisture_capacity
-            moisture_difference = current_moisture - target_moisture  # g/kg
+            # Step 2: Calculate humidity ratios (kg/kg dry air)
+            # Current conditions
+            P_v_current = (currentRH / 100) * saturation_vp(indoorTemp)
+            W_current = 0.62198 * P_v_current / (P_atm - P_v_current)
+            
+            # Target conditions
+            P_v_target = (targetRH / 100) * saturation_vp(indoorTemp)
+            W_target = 0.62198 * P_v_target / (P_atm - P_v_target)
+            
+            delta_W = W_current - W_target  # kg/kg
             
             # Step 3: Calculate air mass (approximate air density at room temperature)
             # Air density ≈ 1.2 kg/m³ at 20°C, decreases with temperature
@@ -117,8 +127,9 @@ class DehumidifierTools:
             
             # Step 4: Calculate infiltration load
             # ACH determines how much outside air enters
-            infiltration_load_gph = ach * air_mass * moisture_difference  # g/h
-            infiltration_load_L24h = (infiltration_load_gph * 24) / 1000  # L/day
+            infiltration_load_kgph = ach * air_mass * delta_W  # kg/h
+            infiltration_load_L24h = infiltration_load_kgph * 24  # L/day (1 kg ≈ 1 L)
+            infiltration_load_L24h *= vent_factor  # Apply vent factor
             
             # Step 5: Calculate occupant load
             # Typical latent load per person: 50-120 g/h depending on activity
@@ -128,19 +139,35 @@ class DehumidifierTools:
             # Step 6: Calculate pool load (if applicable)
             pool_load_L24h = 0
             if pool_area_m2 > 0:
-                # Pool evaporation rate depends on water temperature and air conditions
-                # Simplified formula: ~4-6 L/m²/day for typical pool conditions
-                # Higher water temperature increases evaporation
-                base_evap_rate = 5.0  # L/m²/day
-                if waterTempC is not None:
-                    # Increase evaporation rate by ~10% per °C above 25°C
-                    temp_adjustment = 1 + max(0, (waterTempC - 25) * 0.1)
-                    base_evap_rate *= temp_adjustment
+                # Room partial VP (kPa)
+                P_a = P_v_current  # From current RH/temp
                 
-                pool_load_L24h = pool_area_m2 * base_evap_rate
+                # Water temp (default 28°C if not provided)
+                T_w = waterTempC if waterTempC is not None else 28.0
+                
+                # Water saturation VP (kPa)
+                P_w = saturation_vp(T_w)
+                
+                # Delta P (no negative evaporation)
+                delta_P = max(P_w - P_a, 0)
+                
+                # Evaporation coefficient (kg/m²/h/kPa) based on activity
+                activity_coeffs = {
+                    "none": 0.100,  # Still water
+                    "low": 0.118,   # Light use
+                    "medium": 0.136,  # Moderate activity
+                    "high": 0.156   # Jets/heavy use
+                }
+                C = activity_coeffs.get(pool_activity.lower(), 0.100)
+                
+                # Evaporation rate (kg/h)
+                W = pool_area_m2 * C * delta_P
+                
+                # Convert to L/day (1 kg ≈ 1 L)
+                pool_load_L24h = round(W * 24, 1)
             
             # Step 7: Aggregate loads
-            total_load_L24h = max(0, infiltration_load_L24h) + occupant_load_L24h + pool_load_L24h
+            total_load_L24h = max(0, infiltration_load_L24h) + occupant_load_L24h + pool_load_L24h + additional_loads_lpd
             
             # Round to 1 decimal place
             total_load_L24h = round(total_load_L24h, 1)
@@ -153,16 +180,19 @@ class DehumidifierTools:
                 notes.append(f"Room: {length}×{width}×{height}m = {volume:.1f}m³")
             notes.append(f"Volume: {volume:.1f}m³, ACH: {ach}")
             notes.append(f"RH reduction: {currentRH}% → {targetRH}% at {indoorTemp}°C")
-            notes.append(f"Moisture difference: {moisture_difference:.1f} g/kg")
+            notes.append(f"Humidity ratio difference: {delta_W:.4f} kg/kg")
             notes.append(f"Air mass: {air_mass:.1f} kg")
-            notes.append(f"Infiltration load: {infiltration_load_L24h:.1f} L/day")
+            notes.append(f"Infiltration load: {infiltration_load_L24h:.1f} L/day (vent_factor={vent_factor})")
             
             if peopleCount > 0:
                 notes.append(f"Occupants: {peopleCount} people, {occupant_load_L24h:.1f} L/day")
             
             if pool_area_m2 > 0:
-                pool_temp_note = f" at {waterTempC}°C" if waterTempC is not None else ""
-                notes.append(f"Pool: {pool_area_m2}m²{pool_temp_note}, {pool_load_L24h:.1f} L/day")
+                pool_temp_note = f" at {T_w}°C" if waterTempC is not None else " at default 28°C"
+                notes.append(f"Pool: {pool_area_m2}m²{pool_temp_note}, evap load: {pool_load_L24h:.1f} L/day (activity={pool_activity}, C={C} kg/m²/h/kPa)")
+            
+            if additional_loads_lpd > 0:
+                notes.append(f"Additional loads: {additional_loads_lpd:.1f} L/day")
             
             notes.append(f"Total latent load: {total_load_L24h} L/day")
             
