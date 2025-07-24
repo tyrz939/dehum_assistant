@@ -49,7 +49,7 @@ class DehumidifierTools:
     
     def calculate_dehum_load(self, currentRH: float, targetRH: float, indoorTemp: float,
                            length: float = None, width: float = None, height: float = None,
-                           volume_m3: float = None, ach: float = 1, peopleCount: int = 0, 
+                           volume_m3: float = None, ach: float = 0.6, peopleCount: int = 0, 
                            pool_area_m2: float = 0, waterTempC: float = None,
                            pool_activity: str = "none", vent_factor: float = 1.0,
                            additional_loads_lpd: float = 0) -> Dict[str, Any]:
@@ -64,7 +64,7 @@ class DehumidifierTools:
             width: Room width in meters (optional if volume_m3 provided)
             height: Ceiling height in meters (optional if volume_m3 provided)
             volume_m3: Room volume in cubic meters (alternative to L×W×H)
-            ach: Air changes per hour (default 1)
+            ach: Air changes per hour (default 0.6)
             peopleCount: Number of occupants (default 0)
             pool_area_m2: Pool surface area in square meters (default 0)
             waterTempC: Pool water temperature in °C (optional, default 28°C)
