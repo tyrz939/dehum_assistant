@@ -350,6 +350,9 @@ class Dehum_MVP_Admin {
         echo '<button type="submit" class="button">' . __( 'Reset Rate Limits', 'dehum-assistant-mvp' ) . '</button>';
         echo '</form>';
 
+        // Add diagnostic section
+        $this->render_diagnostic_section();
+
         $filters = [
             'search'       => isset($_GET['search']) ? sanitize_text_field($_GET['search']) : '',
             'date_filter'  => isset($_GET['date_filter']) ? sanitize_text_field($_GET['date_filter']) : '',
@@ -371,6 +374,55 @@ class Dehum_MVP_Admin {
         // Pass data to the view
         extract($data);
         require_once DEHUM_MVP_PLUGIN_PATH . 'includes/views/view-logs-page.php';
+    }
+
+    /**
+     * Render diagnostic section to help debug conversation storage issues.
+     */
+    private function render_diagnostic_section() {
+        global $wpdb;
+        $table_name = $this->db->get_conversations_table_name();
+        
+        // Check if table exists
+        $table_exists = $wpdb->get_var($wpdb->prepare("SHOW TABLES LIKE %s", $table_name)) === $table_name;
+        
+        // Get table stats
+        $total_conversations = $table_exists ? $wpdb->get_var("SELECT COUNT(*) FROM $table_name") : 0;
+        $recent_conversations = $table_exists ? $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM $table_name WHERE timestamp >= %s", 
+            date('Y-m-d H:i:s', strtotime('-1 hour'))
+        )) : 0;
+        
+        // Check settings
+        $ai_service_url = get_option('dehum_mvp_ai_service_url');
+        $logged_in_only = get_option('dehum_mvp_chat_logged_in_only', 0);
+        $has_api_key = !empty(get_option('dehum_mvp_ai_service_key_encrypted'));
+        
+        echo '<div class="notice notice-info" style="margin-bottom: 20px;">';
+        echo '<h3>' . __('🔍 Conversation Storage Diagnostics', 'dehum-assistant-mvp') . '</h3>';
+        
+        echo '<table class="widefat">';
+        echo '<tr><td><strong>Database Table:</strong></td><td>' . ($table_exists ? '✅ Exists' : '❌ Missing') . ' (' . esc_html($table_name) . ')</td></tr>';
+        echo '<tr><td><strong>Total Conversations:</strong></td><td>' . number_format($total_conversations) . '</td></tr>';
+        echo '<tr><td><strong>Recent (1 hour):</strong></td><td>' . number_format($recent_conversations) . '</td></tr>';
+        echo '<tr><td><strong>AI Service URL:</strong></td><td>' . (!empty($ai_service_url) ? '✅ Configured' : '❌ Not set') . '</td></tr>';
+        echo '<tr><td><strong>API Key:</strong></td><td>' . ($has_api_key ? '✅ Set' : '⚠️ Not set (optional)') . '</td></tr>';
+        echo '<tr><td><strong>Access Control:</strong></td><td>' . ($logged_in_only ? '⚠️ Logged-in users only' : '✅ Open to all users') . '</td></tr>';
+        echo '</table>';
+        
+        if ($logged_in_only) {
+            echo '<p style="color: #d63638;"><strong>⚠️ Warning:</strong> Chat is restricted to logged-in users only. Anonymous users cannot save conversations.</p>';
+        }
+        
+        if (!$table_exists) {
+            echo '<p style="color: #d63638;"><strong>❌ Critical:</strong> Conversations table is missing. Try deactivating and reactivating the plugin.</p>';
+        } elseif ($recent_conversations === 0) {
+            echo '<p style="color: #d63638;"><strong>⚠️ Issue:</strong> No conversations recorded in the last hour. Check browser console for JavaScript errors when testing chat.</p>';
+        } else {
+            echo '<p style="color: #00a32a;"><strong>✅ Status:</strong> Conversation storage appears to be working normally.</p>';
+        }
+        
+        echo '</div>';
     }
 
     /**

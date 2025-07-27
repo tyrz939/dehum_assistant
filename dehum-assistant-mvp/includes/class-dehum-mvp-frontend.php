@@ -128,8 +128,10 @@ class Dehum_MVP_Frontend {
                     <!-- Messages -->
                     <div id="dehum-chat-messages" class="dehum-chat-messages">
                         <div class="dehum-welcome">
-                            <strong>Hi! I'm your dehumidifier assistant.</strong><br>
-                            I can help you choose the right dehumidifier, answer technical questions, and calculate sizing for your space. For sizing, just tell me your room dimensions (length, width, height) and current humidity level – I'll recommend the perfect unit! What would you like to know?
+                            <strong>Welcome! I'm your dehumidifier sizing assistant.</strong><br>
+                            To get started, is this for a pool room or a regular space?<br>
+                            Please provide the size of the space (length × width × height in meters, or total m³), your current room humidity (RH%), and your target humidity (RH%).<br>
+                            I'll calculate the ideal dehumidifier size for you!
                         </div>
                     </div>
                     

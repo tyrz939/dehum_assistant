@@ -11,10 +11,6 @@ class Config:
     # OpenAI Configuration
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     
-    # Alternative AI Provider Keys
-    ANTHROPIC_API_KEY: Optional[str] = os.getenv("ANTHROPIC_API_KEY")
-    GOOGLE_API_KEY: Optional[str] = os.getenv("GOOGLE_API_KEY")
-    
     # Service Configuration
     DEFAULT_MODEL: str = os.getenv("DEFAULT_MODEL")
     TEMPERATURE: float = float(os.getenv("TEMPERATURE", "0.3"))

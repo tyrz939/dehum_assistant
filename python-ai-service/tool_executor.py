@@ -64,11 +64,7 @@ class ToolExecutor:
 
     def _invoke(self, func_name: str, func_args: Dict[str, Any]):
         """Call the real python implementation behind `func_name`."""
-        if func_name == "calculate_dehumidifier_sizing":
-            if "waterTempC" in func_args:
-                func_args["water_temp_c"] = func_args.pop("waterTempC")
-            return self._tools.calculate_sizing(**func_args)
-        elif func_name == "calculate_dehum_load":
+        if func_name == "calculate_dehum_load":
             return self._tools.calculate_dehum_load(**func_args)
         else:
             raise ValueError(f"Unknown function: {func_name}") 

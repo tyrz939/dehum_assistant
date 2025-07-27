@@ -248,29 +248,8 @@ class DehumidifierAgent:
         load_info = self._get_latest_load_info(session)
         if load_info:
             preferred_types = self._detect_preferred_types(last_user_content)
-            catalog = self.tools.get_catalog_with_effective_capacity(include_pool_safe_only=load_info["pool_required"])
-            if preferred_types:
-                catalog = [p for p in catalog if p.get("type") in preferred_types]
-
-            temp = load_info['indoorTemp']
-            rh = load_info['targetRH']
-            derate_factor = min(1.0, max(0.3, 0.5 + 0.5 * (temp / 30) ** 1.5 * (rh / 80) ** 2))
-            for p in catalog:
-                if "effective_capacity_lpd" in p:
-                    p["effective_capacity_lpd"] = round(p["effective_capacity_lpd"] * derate_factor, 1)
-            
-            catalog_data = {
-                "required_load_lpd": load_info["latentLoad_L24h"],
-                "room_area_m2": load_info["room_area_m2"],
-                "pool_area_m2": load_info["pool_area_m2"],
-                "pool_required": load_info["pool_required"],
-                "preferred_types": preferred_types,
-                "catalog": catalog,
-            }
-
-            catalog_json = json.dumps(catalog_data, ensure_ascii=False)
-
-            messages.append({"role": "system", "content": f"AVAILABLE_PRODUCT_CATALOG_JSON = {catalog_json}\nWhen recommending products, always include the 'url' field as a clickable link in the format: [View](url) for each product, as specified in the FORMAT section."})
+            catalog_message = self._prepare_catalog_message(load_info, preferred_types)
+            messages.append(catalog_message)
 
 
         
@@ -318,6 +297,41 @@ class DehumidifierAgent:
         if "wall" in text_lower: types.append("wall_mount")
         if "portable" in text_lower: types.append("portable")
         return types
+    
+    def _prepare_catalog_message(self, load_info: Dict[str, Any], preferred_types: List[str]) -> Dict[str, str]:
+        """
+        Prepare a catalog system message with derated product capacities.
+        
+        Args:
+            load_info: Load calculation information from session
+            preferred_types: List of preferred product types
+            
+        Returns:
+            System message dict with catalog JSON
+        """
+        catalog = self.tools.get_catalog_with_effective_capacity(include_pool_safe_only=load_info["pool_required"])
+        if preferred_types:
+            catalog = [p for p in catalog if p.get("type") in preferred_types]
+
+        temp = load_info['indoorTemp']
+        rh = load_info['targetRH']
+        derate_factor = self.tools.calculate_derate_factor(temp, rh)
+
+        for p in catalog:
+            if "effective_capacity_lpd" in p:
+                p["effective_capacity_lpd"] = round(p["effective_capacity_lpd"] * derate_factor, 1)
+        
+        catalog_data = {
+            "required_load_lpd": load_info["latentLoad_L24h"],
+            "room_area_m2": load_info["room_area_m2"],
+            "pool_area_m2": load_info["pool_area_m2"],
+            "pool_required": load_info["pool_required"],
+            "preferred_types": preferred_types,
+            "catalog": catalog,
+        }
+
+        catalog_json = json.dumps(catalog_data, ensure_ascii=False)
+        return {"role": "system", "content": f"AVAILABLE_PRODUCT_CATALOG_JSON = {catalog_json}\nWhen recommending products, always include the 'url' field as a clickable link in the format: [View](url) for each product, as specified in the FORMAT section."}
     
     def get_session_info(self, session_id: str) -> SessionInfo:
         return self.sessions[session_id]
@@ -428,28 +442,8 @@ class DehumidifierAgent:
         if load_info:
             user_contents = " ".join([m.content for m in session.conversation_history if m.role == MessageRole.USER])
             preferred_types = self._detect_preferred_types(user_contents)
-            catalog = self.tools.get_catalog_with_effective_capacity(include_pool_safe_only=load_info["pool_required"])
-            if preferred_types:
-                catalog = [p for p in catalog if p.get("type") in preferred_types]
-            
-            temp = load_info['indoorTemp']
-            rh = load_info['targetRH']
-            derate_factor = min(1.0, max(0.3, 0.5 + 0.5 * (temp / 30) ** 1.5 * (rh / 80) ** 2))
-            for p in catalog:
-                if "effective_capacity_lpd" in p:
-                    p["effective_capacity_lpd"] = round(p["effective_capacity_lpd"] * derate_factor, 1)
-            
-            catalog_data = {
-                "required_load_lpd": load_info["latentLoad_L24h"],
-                "room_area_m2": load_info["room_area_m2"],
-                "pool_area_m2": load_info["pool_area_m2"],
-                "pool_required": load_info["pool_required"],
-                "preferred_types": preferred_types,
-                "catalog": catalog,
-            }
-
-            catalog_json = json.dumps(catalog_data, ensure_ascii=False)
-            messages.append({"role": "system", "content": f"AVAILABLE_PRODUCT_CATALOG_JSON = {catalog_json}\nWhen recommending products, always include the 'url' field as a clickable link in the format: [View](url) for each product, as specified in the FORMAT section."})
+            catalog_message = self._prepare_catalog_message(load_info, preferred_types)
+            messages.append(catalog_message)
             
 
         

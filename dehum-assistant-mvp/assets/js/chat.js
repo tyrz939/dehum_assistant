@@ -208,7 +208,7 @@
           console.log('Streaming failed, falling back to regular API:', error);
           return this.callAPI(message);
         })
-        .then(response => {
+        .then(async response => {
           // Only handle response if streaming didn't already handle it
           if (response && !this.streamingComplete) {
             this.hideTypingIndicator();
@@ -218,6 +218,16 @@
             if (response.session_id) {
               this.currentSessionId = response.session_id;
               this.saveSessionId();
+            }
+
+            // IMPORTANT: Save conversation when using fallback API
+            // The WordPress AJAX handler already logs it, but we call this for consistency
+            // and to ensure admin logs are updated
+            try {
+              await this.saveConversationToWordPress(message, response.response);
+            } catch (error) {
+              console.warn('Failed to save conversation via WordPress AJAX (this may be expected if handled by WordPress):', error);
+              // Don't interrupt user experience - this is just for admin logging
             }
           }
         })
@@ -859,12 +869,12 @@
       return '';
     },
 
-    /**
+        /**
      * Save conversation to WordPress for admin logging
      */
     async saveConversationToWordPress(userMessage, assistantResponse) {
       try {
-        await $.ajax({
+        const response = await $.ajax({
           url: dehumMVP.ajaxUrl,
           type: 'POST',
           data: {
@@ -875,9 +885,27 @@
             nonce: dehumMVP.nonce
           }
         });
+        
+        if (response.success) {
+          console.log('Conversation saved to WordPress successfully');
+        } else {
+          console.error('WordPress rejected conversation save:', response.data?.message || 'Unknown error');
+        }
       } catch (error) {
         console.error('Failed to save conversation to WordPress:', error);
-        // Don't throw - this is just for logging
+        
+        // Log additional debugging info
+        if (error.status === 403) {
+          console.error('403 Error - Possible causes:');
+          console.error('1. Chat may be restricted to logged-in users only (check admin settings)');
+          console.error('2. Nonce verification failed');
+          console.error('3. User does not have required permissions');
+        } else if (error.status === 429) {
+          console.error('429 Error - Rate limited');
+        }
+        
+        // Re-throw so calling code can handle appropriately
+        throw error;
       }
     },
 

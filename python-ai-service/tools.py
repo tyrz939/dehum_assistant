@@ -221,92 +221,7 @@ class DehumidifierTools:
                 "calculationNotes": f"Error in calculation: {str(e)}"
             }
 
-    def calculate_sizing(self, room_length_m: float, room_width_m: float, ceiling_height_m: float, 
-                        humidity_level: str, has_pool: bool = False, pool_area_m2: float = 0) -> Dict[str, Any]:
-        """
-        Calculate optimal dehumidifier capacity based on room dimensions and conditions
-        
-        Args:
-            room_length_m: Room length in meters
-            room_width_m: Room width in meters  
-            ceiling_height_m: Ceiling height in meters
-            humidity_level: Current humidity level (low/medium/high/extreme)
-            has_pool: Whether the space has a pool
-            pool_area_m2: Pool area in square meters if applicable
-            
-        Returns:
-            Dictionary containing sizing calculation results
-        """
-        try:
-            # Calculate basic dimensions
-            room_area_m2 = room_length_m * room_width_m
-            room_volume_m3 = room_area_m2 * ceiling_height_m
-            
-            # Base capacity calculation (simplified industry standard)
-            # Starting point: 1 liter per day per square meter for normal conditions
-            base_capacity_lpd = room_area_m2 * 1.0
-            
-            # Humidity level multipliers
-            humidity_multipliers = {
-                "low": 0.8,      # 40-50% RH
-                "medium": 1.0,   # 50-60% RH  
-                "high": 1.4,     # 60-70% RH
-                "extreme": 1.8   # 70%+ RH
-            }
-            
-            multiplier = humidity_multipliers.get(humidity_level.lower(), 1.0)
-            adjusted_capacity_lpd = base_capacity_lpd * multiplier
-            
-            # Pool adjustment
-            pool_capacity_lpd = 0
-            if has_pool and pool_area_m2 > 0:
-                # Pool evaporation: approximately 4-6 L/day per m² of pool surface
-                pool_capacity_lpd = pool_area_m2 * 5.0
-                
-            total_capacity_lpd = adjusted_capacity_lpd + pool_capacity_lpd
-            
-            # Determine capacity category
-            if total_capacity_lpd <= 30:
-                capacity_category = "Small (up to 30L/day)"
-            elif total_capacity_lpd <= 60:
-                capacity_category = "Medium (30-60L/day)"
-            elif total_capacity_lpd <= 100:
-                capacity_category = "Large (60-100L/day)"
-            else:
-                capacity_category = "Industrial (100L+/day)"
-            
-            calculation_notes = [
-                f"Room area: {room_area_m2:.1f} m²",
-                f"Room volume: {room_volume_m3:.1f} m³",
-                f"Humidity level: {humidity_level.title()}",
-                f"Base capacity: {base_capacity_lpd:.1f} L/day",
-                f"Adjusted for humidity: {adjusted_capacity_lpd:.1f} L/day"
-            ]
-            
-            if has_pool:
-                calculation_notes.append(f"Pool evaporation: {pool_capacity_lpd:.1f} L/day")
-            
-            calculation_notes.append(f"Total recommended capacity: {total_capacity_lpd:.1f} L/day")
-            
-            return {
-                "room_area_m2": room_area_m2,
-                "room_volume_m3": room_volume_m3,
-                "pool_area_m2": pool_area_m2 if has_pool else 0,
-                "room_height_m": ceiling_height_m,
-                "humidity_level": humidity_level,
-                "recommended_capacity": capacity_category,
-                "recommended_capacity_lpd": total_capacity_lpd,
-                "calculation_notes": "; ".join(calculation_notes)
-            }
-            
-        except Exception as e:
-            logger.error(f"Error calculating sizing: {str(e)}")
-            return {
-                "error": f"Calculation error: {str(e)}",
-                "room_area_m2": room_length_m * room_width_m,
-                "room_volume_m3": room_length_m * room_width_m * ceiling_height_m,
-                "recommended_capacity": "Unable to calculate - please contact support"
-            }
+
     
     def get_catalog_with_effective_capacity(self, include_pool_safe_only: bool = False) -> List[Dict[str, Any]]:
         """Return product catalog with pre-computed effective capacity (capacity_lpd × performance_factor)."""
@@ -390,10 +305,22 @@ class DehumidifierTools:
             logger.error(f"Error retrieving product {type} for SKU {sku}: {str(e)}")
             return {"error": f"Error retrieving {type}: {str(e)}"}
 
+    def calculate_derate_factor(self, temp: float, rh: float) -> float:
+        """
+        Calculate derating factor for dehumidifier capacity based on temperature and humidity.
+        
+        Args:
+            temp: Indoor temperature in °C
+            rh: Target relative humidity in %
+            
+        Returns:
+            Derating factor between 0.1 and 1.0
+        """
+        return min(1.0, max(0.1, 0.4 + 0.7 * (temp / 30) ** 2.2 * (rh / 85) ** 2.8))
+
     def get_available_tools(self) -> List[str]:
         """Get list of available tool names"""
         return [
-            "calculate_sizing",
             "calculate_dehum_load",
             "get_product_manual"
         ]
