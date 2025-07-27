@@ -85,8 +85,26 @@ flask_sessions/
 conversation_logs/
 templates/
 app.py
-requirements.txt
 cleanup_commands.txt
 test_*.php
 test_*.ps1
 test_*.sh
+
+# ================================================
+# Python build / virtualenv / tooling additions
+# ================================================
+# Testing & coverage artifacts
+.pytest_cache/
+htmlcov/
+.coverage*
+
+# Packaging metadata
+*.egg-info/
+dist/
+build/
+
+# Jupyter & IPython
+.ipynb_checkpoints/
+
+# Project-local VSCode settings (already ignored globally, but keep nested ones safe)
+**/.vscode/
