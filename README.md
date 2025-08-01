@@ -1,14 +1,13 @@
 # Dehumidifier Assistant
 
-This repository contains the full codebase for the Dehumidifier Assistant, a comprehensive business tool designed to qualify leads, provide accurate sizing calculations, and seamlessly hand off complex cases to human experts. The project is architected as a three-tier system, combining a WordPress plugin for the user interface, a Python AI service for intelligence, and n8n workflows for business automation.
+This repository contains the full codebase for the Dehumidifier Assistant, a comprehensive business tool designed to qualify leads, provide accurate sizing calculations, and seamlessly hand off complex cases to human experts. The project is architected as a two-tier system, combining a WordPress plugin for the user interface with a Python AI service for intelligence.
 
 ## Core Architecture
 
-The system is divided into three distinct layers:
+The system is currently built as a two-tier architecture:
 
 -   **WordPress Plugin (`dehum-assistant-mvp`)**: Handles the frontend chat interface, Elementor integration, conversation logging, and the admin dashboard. This layer is responsible for all user interactions and data presentation.
 -   **Python AI Service (`python-ai-service`)**: The intelligence layer of the application. It features a model-agnostic AI agent with tools for dehumidifier sizing, product lookups, and technical reference. This service is built with FastAPI and supports various AI models, including OpenAI, Claude, and Gemini, through LiteLLM.
--   **n8n Workflows**: The business intelligence layer that automates lead scoring, email workflows, and CRM integration. These workflows are triggered by the Python AI service to streamline business operations.
 
 ```mermaid
 graph TD
@@ -17,26 +16,26 @@ graph TD
     end
 
     subgraph WordPress["WordPress Plugin (UI Layer)"]
-        B[Chat Widget / Elementor] --> C[WP Database]
+        B[Chat Widget / Elementor] 
+        C[WP Database<br/>Conversation Logs]
+        D[Admin Dashboard]
     end
 
     subgraph Python["Python AI Service (Intelligence Layer)"]
-        D[FastAPI Service] --> E{AI Agent w/ Tools}
-        E --> F[Sizing & Product Tools]
+        E[FastAPI Service] 
+        F{AI Agent w/ Tools}
+        G[Sizing Calculator]
+        H[Product Recommendations]
+        E --> F
+        F --> G
+        F --> H
     end
 
-    subgraph N8N["n8n (Business Intelligence)"]
-        G[n8n Workflows] --> H[Lead Scoring / Email / CRM]
-    end
-
-    subgraph External["External Systems"]
-        I[CRM / Email / Analytics]
-    end
-
-    A -->|"Sends Message"| B
-    B -->|"HTTP Request"| D
-    E -->|"Triggers Webhook"| G
-    H -->|"API Calls"| I
+    A -->|"Chat Message"| B
+    B -->|"HTTP Request"| E
+    F -->|"AI Response"| B
+    B --> C
+    C --> D
 ```
 
 ## Features
