@@ -23,22 +23,42 @@ class Dehum_MVP_Database {
     }
 
     /**
-     * Create the conversations table on plugin activation.
-     * Schema: id, session_id, message, response, user_ip, timestamp
+     * Ensure the conversations table exists, creating or upgrading it if needed.
+     * Called on admin_init for persistence.
      */
-    public function create_conversations_table() {
+    public function ensure_table_exists() {
+        $current_db_version = get_option('dehum_mvp_db_version', '0');
+        if (version_compare($current_db_version, '1.1', '<')) {
+            $this->create_or_upgrade_table();
+            update_option('dehum_mvp_db_version', '1.1');
+        }
+        // Future upgrades can be added here, e.g., if ($current_db_version < '1.2') { ... }
+    }
+
+    /**
+     * Create or upgrade the conversations table using direct SQL for reliability.
+     */
+    private function create_or_upgrade_table() {
         global $wpdb;
-        
         $table_name = $this->get_conversations_table_name();
         $charset_collate = $wpdb->get_charset_collate();
-        
-        $sql = "CREATE TABLE $table_name (
+
+        // MariaDB compatibility: override collate if needed
+        $server_info = $wpdb->db_server_info();
+        $original_collate = $wpdb->collate;
+        if (stripos($server_info, 'mariadb') !== false && $wpdb->collate === 'utf8mb4_unicode_520_ci') {
+            $wpdb->collate = 'utf8mb4_unicode_ci';
+            $charset_collate = $wpdb->get_charset_collate(); // Refresh
+        }
+
+        // Direct CREATE IF NOT EXISTS for strict mode compatibility
+        $sql = "CREATE TABLE IF NOT EXISTS $table_name (
             id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
             session_id varchar(255) NOT NULL,
             message text NOT NULL,
             response text NOT NULL,
             user_ip varchar(45) DEFAULT NULL,
-            timestamp datetime DEFAULT CURRENT_TIMESTAMP,
+            timestamp timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             KEY session_id (session_id),
             KEY timestamp (timestamp),
@@ -48,13 +68,20 @@ class Dehum_MVP_Database {
             KEY timestamp_session (timestamp, session_id),
             FULLTEXT KEY search_content (message, response)
         ) $charset_collate;";
-        
-        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
-        dbDelta($sql);
-        
-        update_option('dehum_mvp_db_version', '1.1');
-        
-        // Ensure composite indexes exist for existing installations
+
+        $result = $wpdb->query($sql);
+        if ($result === false) {
+            error_log('Dehum MVP: Table creation failed - ' . $wpdb->last_error);
+        } else {
+            error_log('Dehum MVP: Table created/verified successfully.');
+        }
+
+        // Restore collate if overridden
+        if ($original_collate !== $wpdb->collate) {
+            $wpdb->collate = $original_collate;
+        }
+
+        // Add composite indexes if missing (unchanged)
         $this->add_composite_indexes();
     }
 
@@ -309,10 +336,6 @@ class Dehum_MVP_Database {
         );
     }
 
-
-
-
-
     /**
      * Build the WHERE clause for DB queries based on filters.
      *
@@ -372,4 +395,4 @@ class Dehum_MVP_Database {
         $where_clause = !empty($where_conditions) ? 'WHERE ' . implode(' AND ', $where_conditions) : '';
         return [$where_clause, $where_params];
     }
-} 
+}

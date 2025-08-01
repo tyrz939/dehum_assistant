@@ -118,7 +118,7 @@ final class Dehum_MVP_Main {
         require_once $db_file;
         
         $db = new Dehum_MVP_Database();
-        $db->create_conversations_table();
+        $db->ensure_table_exists();
 
         set_transient('dehum_mvp_activation_notice', true, DEHUM_MVP_ACTIVATION_NOTICE_DURATION);
         update_option('dehum_mvp_version', defined('DEHUM_MVP_VERSION') ? DEHUM_MVP_VERSION : '2.3.0');
@@ -140,9 +140,6 @@ final class Dehum_MVP_Main {
         Dehum_MVP_Ajax::migrate_credentials();
         
         // Check for database upgrades
-        $current_db_version = get_option('dehum_mvp_db_version', '1.0');
-        if (version_compare($current_db_version, '1.1', '<')) {
-            $this->database->create_conversations_table(); // This will run the upgrade
-        }
+        $this->database->ensure_table_exists();
     }
 } 

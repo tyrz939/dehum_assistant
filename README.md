@@ -1,95 +1,96 @@
 # Dehumidifier Assistant
 
-A conversational AI assistant for dehumidifier sizing and selection. Currently running as a Flask application with plans for WordPress plugin integration.
+This repository contains the full codebase for the Dehumidifier Assistant, a comprehensive business tool designed to qualify leads, provide accurate sizing calculations, and seamlessly hand off complex cases to human experts. The project is architected as a three-tier system, combining a WordPress plugin for the user interface, a Python AI service for intelligence, and n8n workflows for business automation.
 
-## 🎯 Current Status
+## Core Architecture
 
-**PRODUCTION SYSTEM:** Flask application serving real users (active conversation logs)
-**NEXT PHASE:** Building minimal viable WordPress plugin for broader deployment
+The system is divided into three distinct layers:
 
-## ✨ Current Features
+-   **WordPress Plugin (`dehum-assistant-mvp`)**: Handles the frontend chat interface, Elementor integration, conversation logging, and the admin dashboard. This layer is responsible for all user interactions and data presentation.
+-   **Python AI Service (`python-ai-service`)**: The intelligence layer of the application. It features a model-agnostic AI agent with tools for dehumidifier sizing, product lookups, and technical reference. This service is built with FastAPI and supports various AI models, including OpenAI, Claude, and Gemini, through LiteLLM.
+-   **n8n Workflows**: The business intelligence layer that automates lead scoring, email workflows, and CRM integration. These workflows are triggered by the Python AI service to streamline business operations.
 
-- **Smart Conversation Memory**: Remembers context throughout chat sessions
-- **Demo Mode**: Works without API key for testing and demonstrations  
-- **Professional Chat Interface**: Optimized for all device sizes
-- **Product Catalog Integration**: Real dehumidifier sizing recommendations
-- **Comprehensive Logging**: All conversations logged for business intelligence
+```mermaid
+graph TD
+    subgraph "User"
+        A[User Interaction]
+    end
 
-## 🚀 Quick Start
+    subgraph "WordPress Plugin (UI Layer)"
+        B[Chat Widget / Elementor] --> C[WP Database (Logs Convo)]
+    end
 
-### Flask Application
+    subgraph "Python AI Service (Intelligence Layer)"
+        D[FastAPI Service] --> E{AI Agent w/ Tools};
+        E --> F[Sizing & Product Tools];
+    end
 
-```bash
-# Install dependencies
-pip install -r requirements.txt
+    subgraph "n8n (Business Intelligence)"
+        G[n8n Workflows] --> H[Lead Scoring / Email / CRM]
+    end
 
-# Set environment variables (optional - demo mode if not set)
-export OPENAI_API_KEY="your-openai-api-key"
-export SECRET_KEY="your-secret-key"
+    subgraph "External Systems"
+        I[CRM / Email / Analytics]
+    end
 
-# Run the application
-python app.py
+    A -- "Sends Message" --> B;
+    B -- "HTTP Request" --> D;
+    E -- "Triggers Webhook" --> G;
+    H -- "API Calls" --> I;
 ```
 
-The app will be available at `http://localhost:5001`
+## Features
 
-## 📁 Project Structure
+-   **AI-Powered Chat**: A responsive chat widget with AI-driven assistance.
+-   **Professional Admin Interface**: Tools for viewing and managing conversation logs.
+-   **Advanced Sizing Calculations**: Accurate dehumidifier sizing based on detailed room and environmental parameters.
+-   **Product Recommendations**: Intelligent product matching from a predefined catalog.
+-   **Session Management**: Persistent conversation history and context.
+-   **Elementor Integration**: Easily place the chat widget anywhere on a WordPress site.
+-   **Business Automation**: Automated lead scoring, email notifications, and CRM integration.
 
-```
-dehum_assistant/
-├── app.py                      # Main Flask application (PRODUCTION)
-├── requirements.txt            # Python dependencies  
-├── prompt_template.txt         # AI system prompt
-├── product_db.json            # Product catalog
-├── templates/
-│   ├── index.html             # Main chat interface
-│   └── popup.html             # WordPress popup version  
-├── conversation_logs/         # Active user conversations
-├── flask_sessions/           # User session data
-├── PROJECT_ROADMAP.md        # Development roadmap
-└── README.md                 # This file
-```
+## Quick Start
 
-## 🎯 Roadmap
+### WordPress Plugin
 
-See [PROJECT_ROADMAP.md](PROJECT_ROADMAP.md) for the complete development plan including:
-- WordPress plugin MVP development
-- n8n workflow integration
-- Lead qualification system
-- Advanced business features
+1.  **Installation**:
+    *   Navigate to the `dehum-assistant-mvp` directory.
+    *   Zip the contents of the directory.
+    *   Upload the zip file to your WordPress site via the plugin installer.
+    *   Alternatively, you can manually copy the directory to `wp-content/plugins`.
+2.  **Activation**:
+    *   Activate the plugin from the WordPress admin dashboard.
+    *   Configure the AI service URL and other settings in the plugin's admin page.
 
-## 🎨 Templates
+### Python AI Service
 
-- **`index.html`**: Standalone chat interface
-- **`popup.html`**: WordPress integration template
+1.  **Environment Setup**:
+    *   Navigate to the `python-ai-service` directory.
+    *   Create and activate a virtual environment.
+    *   Install the required dependencies: `pip install -r requirements.txt`.
+2.  **Configuration**:
+    *   Create a `.env` file from the `env.example` template.
+    *   Add your OpenAI API key and any other necessary configurations.
+3.  **Running the Service**:
+    *   Start the service with `uvicorn main:app --host 0.0.0.0 --port 8000 --reload`.
+    *   The service will be available at `http://localhost:8000`.
 
-These templates will be used as reference for the upcoming WordPress plugin MVP.
+## Project Structure
 
-## 🔧 Configuration
+The repository is organized into two main directories:
 
-### Environment Variables
-```bash
-OPENAI_API_KEY=sk-...          # OpenAI API key (optional - demo mode without)
-SECRET_KEY=your-secret-key     # Flask session secret
-FLASK_ENV=production          # Environment setting
-PORT=5001                     # Port to run on
-```
+-   `dehum-assistant-mvp/`: Contains the WordPress plugin, including all PHP, CSS, and JS files.
+-   `python-ai-service/`: Contains the FastAPI application, including the AI agent, tools, and configuration.
 
-## 📊 Active Usage
+## Roadmap
 
-Check `conversation_logs/` directory for real user interactions. The Flask app is currently serving live traffic and should remain operational during WordPress plugin development.
+For detailed information on the project's future development plans, please refer to the following documents:
 
-## 🛡️ Security Features
+-   [PROJECT_ROADMAP.md](PROJECT_ROADMAP.md)
+-   [FUTURE_ROADMAP.md](FUTURE_ROADMAP.md)
 
-- Input validation and rate limiting
-- Session-based conversation memory
-- Comprehensive error handling and logging
-- Demo mode fallback for reliability
+These files outline the upcoming features, implementation priorities, and long-term vision for the project.
 
-## 📄 License
+## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-**Status: Flask app is production-ready and actively serving users. WordPress plugin MVP development ready to begin.**
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

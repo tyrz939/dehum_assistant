@@ -27,6 +27,7 @@ yarn-error.log*
 # Development & Testing
 *.dev.yml
 *.local.yml
+docker-compose.yml
 debug.log
 error_log
 access_log

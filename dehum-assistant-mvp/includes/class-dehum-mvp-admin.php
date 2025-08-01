@@ -28,9 +28,20 @@ class Dehum_MVP_Admin {
     }
 
     /**
+     * Ensure database table exists on admin_init for persistence.
+     * Called on every admin page load to handle edge cases like manual deletions.
+     */
+    public function ensure_database_table() {
+        $this->db->ensure_table_exists();
+    }
+
+    /**
      * Add the WordPress admin hooks.
      */
     private function add_admin_hooks() {
+        // Ensure database table exists on every admin init for persistence
+        add_action('admin_init', [$this, 'ensure_database_table']);
+        
         // Main settings/logs page
         add_action('admin_menu', [$this, 'add_admin_menu']);
         add_action('admin_init', [$this, 'register_settings']);
@@ -130,13 +141,8 @@ class Dehum_MVP_Admin {
         register_setting('dehum_mvp_options_group', 'dehum_mvp_chat_icon', ['type'=>'string','sanitize_callback'=>'sanitize_text_field', 'default'=>'sms']);
         register_setting('dehum_mvp_options_group', 'dehum_mvp_theme_css', ['type'=>'string','sanitize_callback'=>'wp_kses_post']);
 
-        // NEW: Access control setting
+        // Access control setting
         register_setting('dehum_mvp_options_group', 'dehum_mvp_chat_logged_in_only', ['type' => 'boolean', 'sanitize_callback' => 'intval', 'default' => 0]);
-        
-        // Legacy n8n settings (kept for backward compatibility)
-        register_setting('dehum_mvp_options_group', 'dehum_mvp_n8n_webhook_url', ['type' => 'string', 'sanitize_callback' => 'esc_url_raw']);
-        register_setting('dehum_mvp_options_group', 'dehum_mvp_n8n_webhook_user', ['type' => 'string']);
-        register_setting('dehum_mvp_options_group', 'dehum_mvp_n8n_webhook_pass', ['type' => 'string', 'sanitize_callback' => [$this, 'encrypt_password_callback']]);
 
         // Add settings sections and fields
         add_settings_section(
@@ -199,56 +205,8 @@ class Dehum_MVP_Admin {
             'dehum-mvp-logs',
             'dehum_mvp_access_section'
         );
-
-        add_settings_section(
-            'dehum_mvp_legacy_section',
-            __('Legacy n8n Settings', 'dehum-assistant-mvp'),
-            [$this, 'legacy_section_callback'],
-            'dehum-mvp-logs'
-        );
-
-        add_settings_field(
-            'dehum_mvp_n8n_webhook_url',
-            __('n8n Webhook URL', 'dehum-assistant-mvp'),
-            [$this, 'n8n_webhook_url_callback'],
-            'dehum-mvp-logs',
-            'dehum_mvp_legacy_section'
-        );
-
-        add_settings_field(
-            'dehum_mvp_n8n_webhook_user',
-            __('n8n Webhook Username', 'dehum-assistant-mvp'),
-            [$this, 'n8n_webhook_user_callback'],
-            'dehum-mvp-logs',
-            'dehum_mvp_legacy_section'
-        );
-
-        add_settings_field(
-            'dehum_mvp_n8n_webhook_pass',
-            __('n8n Webhook Password', 'dehum-assistant-mvp'),
-            [$this, 'n8n_webhook_pass_callback'],
-            'dehum-mvp-logs',
-            'dehum_mvp_legacy_section'
-        );
     }
 
-    /**
-     * Sanitize and encrypt the webhook password.
-     *
-     * @param string $password The plain text password.
-     * @return string Empty string (we store encrypted version separately).
-     */
-    public function encrypt_password_callback($password) {
-        if (!empty($password)) {
-            // Create AJAX instance to access encryption method
-            $ajax = new Dehum_MVP_Ajax($this->db);
-            $encrypted = $ajax->encrypt_credential($password);
-            update_option('dehum_mvp_n8n_webhook_pass_encrypted', $encrypted);
-        }
-        // Always return empty string to prevent storing plain text
-        return '';
-    }
-    
     /**
      * Sanitize and encrypt the AI service API key.
      *
@@ -261,6 +219,8 @@ class Dehum_MVP_Admin {
             $ajax = new Dehum_MVP_Ajax($this->db);
             $encrypted = $ajax->encrypt_credential($api_key);
             update_option('dehum_mvp_ai_service_key_encrypted', $encrypted);
+            // Invalidate options cache to ensure fresh reads on subsequent requests
+            wp_cache_delete('alloptions', 'options');
         }
         // Always return empty string to prevent storing plain text
         return '';
@@ -293,13 +253,10 @@ class Dehum_MVP_Admin {
     public function admin_activation_notice() {
         if (get_transient('dehum_mvp_activation_notice')) {
             $ai_service_url = get_option('dehum_mvp_ai_service_url');
-            $legacy_webhook_url = get_option('dehum_mvp_n8n_webhook_url');
             
-            // Check which service is configured
+            // Check AI service configuration
             if (!empty($ai_service_url)) {
                 $service_status = '<span style="color:green;">✅ Python AI Service is configured.</span>';
-            } elseif (!empty($legacy_webhook_url)) {
-                $service_status = '<span style="color:orange;">⚠️ Legacy n8n webhook detected. Consider upgrading to Python AI Service.</span>';
             } else {
                 $service_status = '<span style="color:red;">❌ Action Required: AI Service URL is not set.</span>';
             }
@@ -693,32 +650,5 @@ class Dehum_MVP_Admin {
     public function chat_access_callback() {
         $value = get_option('dehum_mvp_chat_logged_in_only', 0);
         echo '<label><input type="checkbox" name="dehum_mvp_chat_logged_in_only" value="1" ' . checked($value, 1, false) . ' /> ' . __('Only logged-in users can use the chat (testing mode)', 'dehum-assistant-mvp') . '</label>';
-    }
-
-    public function legacy_section_callback() {
-        echo '<p style="color: #666; font-style: italic;">' . __('These settings are kept for backward compatibility. New installations should use the Python AI Service above.', 'dehum-assistant-mvp') . '</p>';
-    }
-
-    public function n8n_webhook_url_callback() {
-        $value = get_option('dehum_mvp_n8n_webhook_url');
-        echo '<input type="url" id="dehum_mvp_n8n_webhook_url" name="dehum_mvp_n8n_webhook_url" value="' . esc_attr($value) . '" class="regular-text" placeholder="https://your-n8n-instance.com/webhook/..." />';
-        echo '<p class="description">' . __('Enter the full webhook URL for your n8n workflow.', 'dehum-assistant-mvp') . '</p>';
-    }
-
-    public function n8n_webhook_user_callback() {
-        $value = get_option('dehum_mvp_n8n_webhook_user');
-        echo '<input type="text" id="dehum_mvp_n8n_webhook_user" name="dehum_mvp_n8n_webhook_user" value="' . esc_attr($value) . '" class="regular-text" placeholder="' . esc_attr__('Username', 'dehum-assistant-mvp') . '" />';
-        echo '<p class="description">' . __('The Basic Auth username for your n8n webhook.', 'dehum-assistant-mvp') . '</p>';
-    }
-
-    public function n8n_webhook_pass_callback() {
-        $has_password = !empty(get_option('dehum_mvp_n8n_webhook_pass_encrypted'));
-        echo '<input type="password" id="dehum_mvp_n8n_webhook_pass" name="dehum_mvp_n8n_webhook_pass" value="" class="regular-text" placeholder="' . ($has_password ? esc_attr__('Password is set (enter new password to change)', 'dehum-assistant-mvp') : esc_attr__('Password', 'dehum-assistant-mvp')) . '" />';
-        echo '<p class="description">';
-        echo __('The Basic Auth password for your n8n webhook.', 'dehum-assistant-mvp');
-        if ($has_password) {
-            echo '<br><em>' . __('Password is encrypted and stored securely. Leave blank to keep current password.', 'dehum-assistant-mvp') . '</em>';
-        }
-        echo '</p>';
     }
 } 
