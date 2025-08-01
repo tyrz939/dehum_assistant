@@ -12,31 +12,31 @@ The system is divided into three distinct layers:
 
 ```mermaid
 graph TD
-    subgraph "User"
+    subgraph User["User"]
         A[User Interaction]
     end
 
-    subgraph "WordPress Plugin (UI Layer)"
-        B[Chat Widget / Elementor] --> C[WP Database (Logs Convo)]
+    subgraph WordPress["WordPress Plugin (UI Layer)"]
+        B[Chat Widget / Elementor] --> C[WP Database]
     end
 
-    subgraph "Python AI Service (Intelligence Layer)"
-        D[FastAPI Service] --> E{AI Agent w/ Tools};
-        E --> F[Sizing & Product Tools];
+    subgraph Python["Python AI Service (Intelligence Layer)"]
+        D[FastAPI Service] --> E{AI Agent w/ Tools}
+        E --> F[Sizing & Product Tools]
     end
 
-    subgraph "n8n (Business Intelligence)"
+    subgraph N8N["n8n (Business Intelligence)"]
         G[n8n Workflows] --> H[Lead Scoring / Email / CRM]
     end
 
-    subgraph "External Systems"
+    subgraph External["External Systems"]
         I[CRM / Email / Analytics]
     end
 
-    A -- "Sends Message" --> B;
-    B -- "HTTP Request" --> D;
-    E -- "Triggers Webhook" --> G;
-    H -- "API Calls" --> I;
+    A -->|"Sends Message"| B
+    B -->|"HTTP Request"| D
+    E -->|"Triggers Webhook"| G
+    H -->|"API Calls"| I
 ```
 
 ## Features
