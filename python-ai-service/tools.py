@@ -76,7 +76,7 @@ class DehumidifierTools:
     
     def calculate_dehum_load(self, currentRH: float, targetRH: float, indoorTemp: float,
                            length: float = None, width: float = None, height: float = None,
-                           volume_m3: float = None, ach: float = 0.6, peopleCount: int = 0, 
+                           volume_m3: float = None, ach: float = 0.5, peopleCount: int = 0, 
                            pool_area_m2: float = 0, waterTempC: float = None,
                            pool_activity: str = "none", vent_factor: float = 1.0,
                            additional_loads_lpd: float = 0, air_velocity_mps: float = 0.1) -> Dict[str, Any]:
@@ -91,7 +91,7 @@ class DehumidifierTools:
             width: Room width in meters (optional if volume_m3 provided)
             height: Ceiling height in meters (optional if volume_m3 provided)
             volume_m3: Room volume in cubic meters (alternative to L×W×H)
-            ach: Air changes per hour (default 0.6)
+            ach: Air changes per hour (default 0.5)
             peopleCount: Number of occupants (default 0)
             pool_area_m2: Pool surface area in square meters (default 0)
             waterTempC: Pool water temperature in °C (optional, default 28°C)
@@ -178,8 +178,10 @@ class DehumidifierTools:
                 # Water saturation VP (kPa)
                 P_w = saturation_vp(T_w)
                 
-                # Delta P (no negative evaporation)
+                # Delta P (no negative evaporation) with reasonable upper limit
                 delta_P = max(P_w - P_a, 0)
+                # Cap delta_P to prevent unrealistic evaporation rates for very hot pools
+                delta_P = min(delta_P, 2.5)  # Max 2.5 kPa difference (reasonable physical limit for residential pools)
                 
                 # Base evaporation coefficient (kg/m²/h/kPa) based on activity (ASHRAE-aligned)
                 activity_coeffs = {
@@ -195,7 +197,8 @@ class DehumidifierTools:
                 
                 # Convection boost if water warmer than air (buoyancy enhancement)
                 temp_diff = max(T_w - indoorTemp, 0)
-                C *= (1 + 0.08 * temp_diff)  # +32% at +4°C, matches real-world boosts
+                # Reduced from 0.08 to 0.04 to prevent excessive sensitivity to temperature differences
+                C *= (1 + 0.04 * temp_diff)  # +16% at +4°C, more reasonable boost
                 
                 # Evaporation rate (kg/h)
                 W = pool_area_m2 * C * delta_P
@@ -226,7 +229,7 @@ class DehumidifierTools:
             
             if pool_area_m2 > 0:
                 pool_temp_note = f" at {T_w}°C" if waterTempC is not None else " at default 28°C"
-                notes.append(f"Pool: {pool_area_m2}m²{pool_temp_note}, evap load: {pool_load_L24h:.1f} L/day (activity={pool_activity}, C={C:.3f} kg/m²/h/kPa, velocity={air_velocity_mps}m/s, convection boost={1 + 0.08 * temp_diff:.2f})")
+                notes.append(f"Pool: {pool_area_m2}m²{pool_temp_note}, evap load: {pool_load_L24h:.1f} L/day (activity={pool_activity}, C={C:.3f} kg/m²/h/kPa, velocity={air_velocity_mps}m/s, convection boost={1 + 0.04 * temp_diff:.2f})")
             
             if additional_loads_lpd > 0:
                 notes.append(f"Additional loads: {additional_loads_lpd:.1f} L/day")
