@@ -7,40 +7,25 @@ This repository contains the full codebase for the Dehumidifier Assistant, a com
 The system is currently built as a two-tier architecture:
 
 -   **WordPress Plugin (`dehum-assistant-mvp`)**: Handles the frontend chat interface, Elementor integration, conversation logging, and the admin dashboard. This layer is responsible for all user interactions and data presentation.
--   **Python AI Service (`python-ai-service`)**: The intelligence layer of the application. It features a model-agnostic AI agent with tools for dehumidifier sizing, product lookups, and technical reference. This service is built with FastAPI and supports various AI models, including OpenAI, Claude, and Gemini, through LiteLLM.
+-   **Python AI Service (`python-ai-service`)**: The intelligence layer of the application. It features a model-agnostic AI agent with tools for dehumidifier sizing, product lookups, and technical reference, now including a Retrieval-Augmented Generation (RAG) pipeline for answering questions from a knowledge base. This service is built with FastAPI and supports various AI models, including OpenAI, Claude, and Gemini, through LiteLLM.
 
-```mermaid
-graph TD
-    subgraph User["User"]
-        A[User Interaction]
-    end
+Here is a simplified text-based overview of the data flow:
 
-    subgraph WordPress["WordPress Plugin (UI Layer)"]
-        B[Chat Widget / Elementor] 
-        C[WP Database<br/>Conversation Logs]
-        D[Admin Dashboard]
-    end
-
-    subgraph Python["Python AI Service (Intelligence Layer)"]
-        E[FastAPI Service] 
-        F{AI Agent w/ Tools}
-        G[Sizing Calculator]
-        H[Product Recommendations]
-        E --> F
-        F --> G
-        F --> H
-    end
-
-    A -->|"Chat Message"| B
-    B -->|"HTTP Request"| E
-    F -->|"AI Response"| B
-    B --> C
-    C --> D
-```
+1.  **User** -> interacts with -> **WordPress Plugin (Chat Widget)**
+2.  **WordPress Plugin** -> sends HTTP request to -> **Python AI Service (FastAPI)**
+3.  **Python AI Service** -> processes request with -> **AI Agent**
+    - The AI Agent uses its tools:
+        - Sizing Calculator
+        - Product Recommendations
+        - RAG Pipeline
+4.  **Python AI Service** -> sends AI response to -> **WordPress Plugin**
+5.  **WordPress Plugin** -> displays response to User and logs conversation in -> **WP Database**
+6.  **Admin** -> views logs via -> **Admin Dashboard**
 
 ## Features
 
 -   **AI-Powered Chat**: A responsive chat widget with AI-driven assistance.
+-   **Retrieval-Augmented Generation (RAG)**: The AI can now answer questions by retrieving information from a dedicated knowledge base of product manuals and technical documents.
 -   **Professional Admin Interface**: Tools for viewing and managing conversation logs.
 -   **Advanced Sizing Calculations**: Accurate dehumidifier sizing based on detailed room and environmental parameters.
 -   **Product Recommendations**: Intelligent product matching from a predefined catalog.
@@ -70,7 +55,10 @@ graph TD
 2.  **Configuration**:
     *   Create a `.env` file from the `env.example` template.
     *   Add your OpenAI API key and any other necessary configurations.
-3.  **Running the Service**:
+3.  **Building the RAG Index**:
+    *   To use the RAG capabilities, you first need to build the vector index from your documents.
+    *   Run the script: `python build_rag_index.py`.
+4.  **Running the Service**:
     *   Start the service with `uvicorn main:app --host 0.0.0.0 --port 8000 --reload`.
     *   The service will be available at `http://localhost:8000`.
 
@@ -79,16 +67,11 @@ graph TD
 The repository is organized into two main directories:
 
 -   `dehum-assistant-mvp/`: Contains the WordPress plugin, including all PHP, CSS, and JS files.
--   `python-ai-service/`: Contains the FastAPI application, including the AI agent, tools, and configuration.
+-   `python-ai-service/`: Contains the FastAPI application, including the AI agent, tools, RAG pipeline, and configuration.
 
 ## Roadmap
 
-For detailed information on the project's future development plans, please refer to the following documents:
-
--   [PROJECT_ROADMAP.md](PROJECT_ROADMAP.md)
--   [FUTURE_ROADMAP.md](FUTURE_ROADMAP.md)
-
-These files outline the upcoming features, implementation priorities, and long-term vision for the project.
+For detailed information on the project's future development plans, please refer to the [ROADMAP.md](ROADMAP.md) file. This file outlines the upcoming features, implementation priorities, and long-term vision for the project.
 
 ## License
 
