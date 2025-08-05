@@ -48,7 +48,25 @@ Typical uses: pools, spas, gyms, museums, cellars, server rooms, manufacturing, 
 
 ---
 
-## 3. Key Features
+## 3. Physical Dimensions & Specifications
+
+**SP500C PRO**: 650×275×550 mm (L×W×H), 34 kg
+**SP1000C PRO**: 890×260×750 mm (L×W×H), 56 kg  
+**SP1500C PRO**: 1000×325×800 mm (L×W×H), 71 kg
+
+**Power & Current:**
+- SP500C PRO: 660W, 3.1A at 220-240V/50Hz
+- SP1000C PRO: 1500W, 6.5A at 220-240V/50Hz
+- SP1500C PRO: 2050W, 8.9A at 220-240V/50Hz
+
+**Capacity & Airflow:**
+- SP500C PRO: 50L/day, 500 m³/h airflow
+- SP1000C PRO: 100L/day, 800 m³/h airflow
+- SP1500C PRO: 150L/day, 900 m³/h airflow
+
+---
+
+## 4. Key Features
 
 * **WiFi & App (Dry Connect):**
 
@@ -86,7 +104,7 @@ Typical uses: pools, spas, gyms, museums, cellars, server rooms, manufacturing, 
 
 ---
 
-## 4. Control Panel & Operation
+## 5. Control Panel & Operation
 
 * Touchpad panel with LCD display and timer
 * Functions: On/Off, set humidity, set timer (10 min to 23:50 hrs), read current/target RH, ambient temperature (°C/°F), job and total run time
@@ -96,7 +114,7 @@ Typical uses: pools, spas, gyms, museums, cellars, server rooms, manufacturing, 
 
 ---
 
-## 5. Error Codes & Troubleshooting
+## 6. Error Codes & Troubleshooting
 
 | Code | Meaning                        |
 | ---- | ------------------------------ |
@@ -110,7 +128,7 @@ Typical uses: pools, spas, gyms, museums, cellars, server rooms, manufacturing, 
 
 ---
 
-## 6. Accessories (Included/Optional)
+## 7. Accessories (Included/Optional)
 
 * Wall mount brackets & plates (with screws)
 * Floor mount brackets (with screws)
@@ -122,7 +140,7 @@ Typical uses: pools, spas, gyms, museums, cellars, server rooms, manufacturing, 
 
 ---
 
-## 7. Maintenance & Filter Replacement
+## 8. Maintenance & Filter Replacement
 
 * Always unplug before maintenance
 * For storage: Set RH to 80% for 3–4 hrs to dry inside, then unplug, remove remote batteries
@@ -132,7 +150,7 @@ Typical uses: pools, spas, gyms, museums, cellars, server rooms, manufacturing, 
 
 ---
 
-## 8. Warranty (Australia)
+## 9. Warranty (Australia)
 
 * 24 months parts, 12 months labor from purchase
 * Excludes wear and abuse
@@ -140,7 +158,7 @@ Typical uses: pools, spas, gyms, museums, cellars, server rooms, manufacturing, 
 
 ---
 
-## 9. General Notes & Cautions
+## 10. General Notes & Cautions
 
 * Do not run above 40°C (can cause damage)
 * Unit must be upright 45 min after transport before use

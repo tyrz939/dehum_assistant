@@ -46,7 +46,30 @@ Typical uses: pool rooms, spas, gyms, basements, server rooms, greenhouses, muse
 
 ---
 
-## 3. Installation & Wiring Notes
+## 3. Physical Dimensions & Specifications
+
+**IDHR60**: 850×291×770 mm (L×W×H), 53 kg
+**IDHR96**: 1120×291×770 mm (L×W×H), 68 kg
+**IDHR120**: 1220×291×770 mm (L×W×H), 72 kg
+
+**Power & Current (at 30°C, 80% RH):**
+- IDHR60: 0.11–0.73 kW, 0.48–3.17A at 230V/50Hz
+- IDHR96: 0.17–0.99 kW, 0.74–4.30A at 230V/50Hz
+- IDHR120: 0.22–1.36 kW, 0.96–5.91A at 230V/50Hz
+
+**Capacity & Airflow:**
+- IDHR60: 60L/day, 600 m³/h airflow
+- IDHR96: 96L/day, 1000 m³/h airflow
+- IDHR120: 120L/day, 1200 m³/h airflow
+
+**Noise Levels:**
+- IDHR60: 38.3–45.6 dB(A)
+- IDHR96: 40.3–45.8 dB(A)
+- IDHR120: 39.9–46.4 dB(A)
+
+---
+
+## 4. Installation & Wiring Notes
 
 * **Installation modes:** floor (feet), wall (brackets/pads), hardware included
 * **Drain:** attach hose to base, ensure free gravity drainage
@@ -59,7 +82,7 @@ Typical uses: pool rooms, spas, gyms, basements, server rooms, greenhouses, muse
 
 ---
 
-## 4. Control Panel & Operation
+## 5. Control Panel & Operation
 
 * **On/Off:** press power
 * **Mode:** select Smart/Silence (compressor runs 100–20% / 80–20% duty)
@@ -72,7 +95,7 @@ Typical uses: pool rooms, spas, gyms, basements, server rooms, greenhouses, muse
 
 ---
 
-## 5. Parameter Codes (for Technicians)
+## 6. Parameter Codes (for Technicians)
 
 * **P0:** Heating function (0/1)
 * **P1:** Fan mode (0=low after setpoint, 1=stop at setpoint)
@@ -90,7 +113,7 @@ Typical uses: pool rooms, spas, gyms, basements, server rooms, greenhouses, muse
 
 ---
 
-## 6. Error / Fault Codes (All Models)
+## 7. Error / Fault Codes (All Models)
 
 | Code  | Description                                                                 |
 | ----- | --------------------------------------------------------------------------- |
@@ -118,7 +141,7 @@ Typical uses: pool rooms, spas, gyms, basements, server rooms, greenhouses, muse
 
 ---
 
-## 7. Maintenance & Cleaning
+## 8. Maintenance & Cleaning
 
 * Unplug before cleaning/maintenance
 * **Clean:** wipe with mild detergent/water, never solvents or high pressure
@@ -129,7 +152,7 @@ Typical uses: pool rooms, spas, gyms, basements, server rooms, greenhouses, muse
 
 ---
 
-## 8. General Warnings & Cautions
+## 9. General Warnings & Cautions
 
 * Never operate outside 10–38°C ambient (performance not guaranteed)
 * Must be installed/serviced by qualified personnel

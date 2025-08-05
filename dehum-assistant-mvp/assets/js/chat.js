@@ -321,6 +321,7 @@
         let recsElement = null;
         let currentContent = '';
         let recsContent = '';
+        let toolContent = ''; // Separate container for tool progress messages
         let isThinking = false;
         let currentMessageIndex = -1; // Track current message in conversation history
         let currentPhase = null;
@@ -383,9 +384,10 @@
                       summaryElement = this.addMessage('assistant', '', true);
                       currentMessageIndex = this.conversation.length - 1;
                     }
-                    // Add tool progress as content
-                    currentContent += (currentContent ? '\n' : '') + data.message;
-                    this.updateMessage(summaryElement, currentContent);
+                    // Add tool progress to separate container
+                    toolContent += (toolContent ? '\n' : '') + data.message;
+                    // Display tool content immediately
+                    this.updateMessage(summaryElement, toolContent);
                     currentPhase = phase;
                   } else {
                     // Regular content chunks (initial_summary, recommendations)
@@ -405,7 +407,9 @@
                     // Append chunk to appropriate element without echoing summary in recs
                     if (phase === 'initial_summary') {
                       currentContent += data.message;
-                      this.updateMessage(summaryElement, currentContent);
+                      // Combine tool content with summary content for display
+                      const displayContent = toolContent ? toolContent + '\n\n' + currentContent : currentContent;
+                      this.updateMessage(summaryElement, displayContent);
                     } else if (phase === 'recommendations') {
                       if (isThinking) {
                         this.hideThinkingIndicator();
@@ -415,8 +419,13 @@
                       this.updateMessage(recsElement, recsContent);  // Only recs content
                     }
 
-                    // Save state
-                    const saveContent = phase === 'initial_summary' ? currentContent : recsContent;
+                    // Save state - include tool content in saved state
+                    let saveContent;
+                    if (phase === 'initial_summary') {
+                      saveContent = toolContent ? toolContent + '\n\n' + currentContent : currentContent;
+                    } else {
+                      saveContent = recsContent;
+                    }
                     this.saveIncompleteState(phase, saveContent);
                   }
 
@@ -435,7 +444,7 @@
 
                   // If we didn't get any partial content before the final message,
                   // use the data.message directly so the user sees something.
-                  if (!currentContent && !recsContent && data.message) {
+                  if (!currentContent && !recsContent && !toolContent && data.message) {
                     currentContent = data.message;
                   }
 
@@ -446,8 +455,17 @@
                     currentMessageIndex = this.conversation.length - 1;
                   }
 
-                  // Ensure final content combines everything for history only
-                  const finalContent = currentContent + (recsContent ? '\n\n' + recsContent : '');
+                  // Ensure final content combines everything for history (tool + summary + recommendations)
+                  let finalContent = '';
+                  if (toolContent) {
+                    finalContent += toolContent;
+                  }
+                  if (currentContent) {
+                    finalContent += (finalContent ? '\n\n' : '') + currentContent;
+                  }
+                  if (recsContent) {
+                    finalContent += (finalContent ? '\n\n' : '') + recsContent;
+                  }
 
                   // Mark as complete in conversation history
                   if (currentMessageIndex >= 0 && currentMessageIndex < this.conversation.length) {
@@ -514,11 +532,20 @@
           }
         }
 
-        // Save complete conversation to WordPress
-        const finalContent = currentContent + (recsContent ? '\n' + recsContent : '');  // Single newline for minimal spacing
-        await this.saveConversationToWordPress(message, finalContent);
+        // Save complete conversation to WordPress - include all content types
+        let finalContentForSave = '';
+        if (toolContent) {
+          finalContentForSave += toolContent;
+        }
+        if (currentContent) {
+          finalContentForSave += (finalContentForSave ? '\n\n' : '') + currentContent;
+        }
+        if (recsContent) {
+          finalContentForSave += (finalContentForSave ? '\n\n' : '') + recsContent;
+        }
+        await this.saveConversationToWordPress(message, finalContentForSave);
 
-        return { session_id: this.currentSessionId, response: finalContent };
+        return { session_id: this.currentSessionId, response: finalContentForSave };
 
       } catch (error) {
         console.error('Streaming error:', error);
