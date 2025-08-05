@@ -25,8 +25,29 @@
     isOpen: false,
     isProcessing: false,
     conversation: [],
-    currentSessionId: null, // Track current session ID
-    streamingComplete: false, // Flag to track if streaming has completed
+    currentSessionId: null,
+    streamingComplete: false,
+
+    // Simplified phase state management
+    currentPhase: {
+      phase: null,
+      messageIndex: -1,
+      elements: {
+        summary: null,
+        recommendations: null
+      },
+      content: {
+        tools: '',
+        summary: '',
+        recommendations: ''
+      }
+    },
+
+    // Debouncing
+    debounceTimers: {},
+
+    // Privacy notice for localStorage
+    localStorageNoticeShown: false,
 
     /**
      * Initialize the chat widget
@@ -34,6 +55,9 @@
     init() {
       this.bindEvents();
       this.setupAccessibility();
+      this.checkLocalStoragePrivacy();
+
+      // Load conversation and session ID
       this.loadConversation();
       this.loadSessionId();
       this.initButtonEffects();
@@ -46,6 +70,76 @@
 
       // Check for interrupted analysis on chat initialization
       this.checkForInterruption();
+    },
+
+    /**
+     * Check and notify about localStorage usage for privacy compliance
+     */
+    checkLocalStoragePrivacy() {
+      if (!this.localStorageNoticeShown && !localStorage.getItem('dehum_privacy_acknowledged')) {
+        console.info('Dehumidifier Assistant: This chat uses browser storage to save your conversation history locally. No data is shared with third parties.');
+        localStorage.setItem('dehum_privacy_acknowledged', 'true');
+        this.localStorageNoticeShown = true;
+      }
+    },
+
+    /**
+     * Debounce function to limit rapid function calls
+     */
+    debounce(func, delay, key = 'default') {
+      if (this.debounceTimers[key]) {
+        clearTimeout(this.debounceTimers[key]);
+      }
+      this.debounceTimers[key] = setTimeout(func, delay);
+    },
+
+    /**
+     * Reset phase state for new conversation
+     */
+    resetPhaseState() {
+      this.currentPhase = {
+        phase: null,
+        messageIndex: -1,
+        elements: {
+          summary: null,
+          recommendations: null
+        },
+        content: {
+          tools: '',
+          summary: '',
+          recommendations: ''
+        }
+      };
+    },
+
+    /**
+     * Announce messages to screen readers for accessibility
+     */
+    announceToScreenReader(message) {
+      // Create a visually hidden element that screen readers can access
+      const announcement = $('<div>')
+        .attr('aria-live', 'polite')
+        .attr('aria-atomic', 'true')
+        .addClass('sr-only')
+        .css({
+          position: 'absolute',
+          width: '1px',
+          height: '1px',
+          padding: '0',
+          margin: '-1px',
+          overflow: 'hidden',
+          clip: 'rect(0,0,0,0)',
+          whiteSpace: 'nowrap',
+          border: '0'
+        })
+        .text(message);
+
+      $('body').append(announcement);
+
+      // Remove after announcement is read
+      setTimeout(() => {
+        announcement.remove();
+      }, 1000);
     },
 
     /**
@@ -79,10 +173,14 @@
         this.sendMessage();
       });
 
-      // Update char count on input
+      // Update char count on input with debouncing for performance
       $(this.selectors.input).on('input', () => {
-        this.autoResizeInput();
+        // Run immediately for responsiveness
         this.updateCharCount();
+        // Debounce the more expensive auto-resize operation
+        this.debounce(() => {
+          this.autoResizeInput();
+        }, 100, 'autoResize');
       });
 
       // Enter key to send
@@ -137,8 +235,11 @@
         $(this.selectors.input).focus();
       }, 100);
 
-      // Reload conversation from storage in case it was cleared in another tab
-      this.loadConversation();
+      // Only reload conversation if messages container is empty (first open)
+      // This prevents duplicate welcome messages on subsequent opens
+      if ($(this.selectors.messages).children().length === 0) {
+        this.loadConversation();
+      }
       this.loadSessionId();
     },
 
@@ -166,14 +267,15 @@
       // Clear frontend state
       this.conversation = [];
       this.currentSessionId = null;
-      $(this.selectors.messages).empty();
+      this.resetPhaseState(); // Clear phase state to prevent tool content issues
 
       // Clear storage
       this.saveConversation();
       this.saveSessionId();
 
-      // Show confirmation message
-      this.addSystemMessage('Conversation cleared. Starting fresh!');
+      // Clear messages and show welcome message (this handles clearing and adding properly)
+      $(this.selectors.messages).empty();
+      this.showWelcomeMessage();
 
       // Focus input for new conversation
       $(this.selectors.input).focus();
@@ -192,12 +294,18 @@
 
       if (!message || this.isProcessing) return;
 
+      // Reset phase state for new conversation turn
+      this.resetPhaseState();
+
       // Lock the interface immediately
       this.lockInterface();
 
       // Add user message to UI
       this.addMessage('user', message);
       $(this.selectors.input).val('');
+
+      // Announce new message to screen readers
+      this.announceToScreenReader(`You said: ${message}`);
 
       // Show typing indicator
       this.showTypingIndicator();
@@ -212,7 +320,18 @@
           // Only handle response if streaming didn't already handle it
           if (response && !this.streamingComplete) {
             this.hideTypingIndicator();
-            this.addMessage('assistant', response.response);
+
+            // For fallback API, we don't have separate tool content, so use regular message
+            const messageElement = this.addMessage('assistant', response.response, true);
+
+            // Update conversation with proper structure for consistency
+            if (this.conversation.length > 0) {
+              const lastMessage = this.conversation[this.conversation.length - 1];
+              if (lastMessage.type === 'assistant') {
+                lastMessage.toolContent = null; // No separate tool content from fallback API
+                lastMessage.mainContent = response.response;
+              }
+            }
 
             // Store session ID from response
             if (response.session_id) {
@@ -257,6 +376,13 @@
       this.isProcessing = false;
       $(this.selectors.input).prop('disabled', false).attr('placeholder', 'Ask about dehumidifier sizing...');
       $(this.selectors.sendBtn).prop('disabled', false).removeClass('dehum-btn--disabled');
+
+      // Automatically restore focus to input field so user can continue typing
+      if (this.isOpen) {
+        setTimeout(() => {
+          $(this.selectors.input).focus();
+        }, 100);
+      }
     },
 
     /**
@@ -314,22 +440,47 @@
         let recsElement = null;
         let currentContent = '';
         let recsContent = '';
+        let toolContent = ''; // Separate container for tool progress messages
         let isThinking = false;
         let currentMessageIndex = -1; // Track current message in conversation history
         let currentPhase = null;
 
-        // Make streaming request
-        const response = await fetch(streamUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': await this.getAIServiceAuth()
-          },
-          body: JSON.stringify(requestData)
-        });
+        // Make streaming request with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
+        let response;
+        try {
+          response = await fetch(streamUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': await this.getAIServiceAuth()
+            },
+            body: JSON.stringify(requestData),
+            signal: controller.signal
+          });
+        } catch (fetchError) {
+          clearTimeout(timeoutId);
+          if (fetchError.name === 'AbortError') {
+            throw new Error('Request timed out after 60 seconds');
+          }
+          throw new Error(`Network error: ${fetchError.message}`);
+        }
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
-          throw new Error(`Streaming request failed: ${response.status}`);
+          let errorMessage = `Streaming request failed: ${response.status}`;
+          try {
+            const errorData = await response.text();
+            if (errorData) {
+              errorMessage += ` - ${errorData}`;
+            }
+          } catch (e) {
+            // Ignore parsing errors for error message
+          }
+          throw new Error(errorMessage);
         }
 
         const reader = response.body.getReader();
@@ -345,8 +496,22 @@
           for (const line of lines) {
             if (line.startsWith('data: ') && line !== 'data: [DONE]') {
               try {
-                const jsonStr = line.slice(6); // Remove "data: "
-                const data = JSON.parse(jsonStr);
+                const jsonStr = line.slice(6).trim(); // Remove "data: " and trim whitespace
+                if (!jsonStr) continue; // Skip empty lines
+
+                let data;
+                try {
+                  data = JSON.parse(jsonStr);
+                } catch (parseError) {
+                  console.warn('Failed to parse streaming JSON:', parseError, 'Raw data:', jsonStr);
+                  continue; // Skip malformed JSON chunks
+                }
+
+                // Validate data structure
+                if (!data || typeof data !== 'object') {
+                  console.warn('Invalid data structure in stream:', data);
+                  continue;
+                }
 
                 // Store session ID
                 if (data.session_id) {
@@ -362,42 +527,73 @@
                     isThinking = true;
 
                     // Save incomplete state for interruption detection
-                    this.saveIncompleteState('thinking', currentContent);
+                    this.saveIncompleteState('thinking', currentContent, toolContent);
                   }
                 } else if (data.is_streaming_chunk) {
+                  // Handle both content chunks and tool progress messages
                   const phase = data.metadata?.phase || 'default';
 
-                  // Create new message element if phase changed or no current element
-                  if (phase !== currentPhase || (phase === 'initial_summary' && !summaryElement) || (phase === 'recommendations' && !recsElement)) {
-                    this.hideTypingIndicator();
-                    if (phase === 'initial_summary') {
+                  // Fix: If this is a tool phase message, treat it as a separate progress message
+                  if (phase === 'tools') {
+                    // Tool progress messages - display as separate content
+                    if (!summaryElement) {
+                      this.hideTypingIndicator();
                       summaryElement = this.addMessage('assistant', '', true);
-                    } else if (phase === 'recommendations') {
-                      recsElement = this.addMessage('assistant', '', true);
+                      currentMessageIndex = this.conversation.length - 1;
                     }
-                    currentMessageIndex = this.conversation.length - 1;
+                    // Add tool progress to separate container
+                    toolContent += (toolContent ? '\n' : '') + data.message;
+                    // Display tool content immediately
+                    this.updateMessage(summaryElement, toolContent);
                     currentPhase = phase;
-                  }
+                  } else {
+                    // Regular content chunks (initial_summary, recommendations)
 
-                  // Append chunk to appropriate element without echoing summary in recs
-                  if (phase === 'initial_summary') {
-                    currentContent += data.message;
-                    this.updateMessage(summaryElement, currentContent);
-                  } else if (phase === 'recommendations') {
-                    if (isThinking) {
-                      this.hideThinkingIndicator();
-                      isThinking = false;
+                    // Create new message element if phase changed or no current element
+                    if (phase !== currentPhase || (phase === 'initial_summary' && !summaryElement) || (phase === 'recommendations' && !recsElement)) {
+                      this.hideTypingIndicator();
+                      if (phase === 'initial_summary') {
+                        summaryElement = this.addMessage('assistant', '', true);
+                      } else if (phase === 'recommendations') {
+                        recsElement = this.addMessage('assistant', '', true);
+                      }
+                      currentMessageIndex = this.conversation.length - 1;
+                      currentPhase = phase;
                     }
-                    recsContent += data.message;
-                    this.updateMessage(recsElement, recsContent);  // Only recs content
-                  }
 
-                  // Save state
-                  const saveContent = phase === 'initial_summary' ? currentContent : recsContent;
-                  this.saveIncompleteState(phase, saveContent);
+                    // Append chunk to appropriate element without echoing summary in recs
+                    if (phase === 'initial_summary') {
+                      currentContent += data.message;
+                      // Combine tool content with summary content for display
+                      const displayContent = toolContent ? toolContent + '\n\n' + currentContent : currentContent;
+                      this.updateMessage(summaryElement, displayContent);
+                    } else if (phase === 'recommendations') {
+                      if (isThinking) {
+                        this.hideThinkingIndicator();
+                        isThinking = false;
+                      }
+                      recsContent += data.message;
+                      this.updateMessage(recsElement, recsContent);  // Only recs content
+                    }
+
+                    // Save state - include tool content in saved state
+                    let saveContent;
+                    if (phase === 'initial_summary') {
+                      saveContent = toolContent ? toolContent + '\n\n' + currentContent : currentContent;
+                      this.saveIncompleteState(phase, saveContent, toolContent);
+                    } else {
+                      saveContent = recsContent;
+                      this.saveIncompleteState(phase, saveContent, toolContent);
+                    }
+                  }
 
                   // Scroll to bottom after each chunk update (with timeout for DOM render)
                   setTimeout(() => this.scrollToBottom(), 0);
+
+                } else if (data.is_progress_update) {
+                  // Fix: Handle old-style progress updates without creating message bubbles
+                  // Just log for debugging - could be used for progress indicators in future
+                  console.debug('Tool progress:', data.metadata?.status, data.metadata?.tool_name);
 
                 } else if (data.is_final) {
                   // Final message - streaming is complete
@@ -406,7 +602,7 @@
 
                   // If we didn't get any partial content before the final message,
                   // use the data.message directly so the user sees something.
-                  if (!currentContent && !recsContent && data.message) {
+                  if (!currentContent && !recsContent && !toolContent && data.message) {
                     currentContent = data.message;
                   }
 
@@ -417,12 +613,23 @@
                     currentMessageIndex = this.conversation.length - 1;
                   }
 
-                  // Ensure final content combines everything for history only
-                  const finalContent = currentContent + (recsContent ? '\n\n' + recsContent : '');
+                  // Ensure final content combines everything for history (tool + summary + recommendations)
+                  let finalContent = '';
+                  if (toolContent) {
+                    finalContent += toolContent;
+                  }
+                  if (currentContent) {
+                    finalContent += (finalContent ? '\n\n' : '') + currentContent;
+                  }
+                  if (recsContent) {
+                    finalContent += (finalContent ? '\n\n' : '') + recsContent;
+                  }
 
-                  // Mark as complete in conversation history
+                  // Mark as complete in conversation history with separated content
                   if (currentMessageIndex >= 0 && currentMessageIndex < this.conversation.length) {
                     this.conversation[currentMessageIndex].content = finalContent;
+                    this.conversation[currentMessageIndex].toolContent = toolContent || null;
+                    this.conversation[currentMessageIndex].mainContent = (currentContent || '') + (recsContent ? '\n\n' + recsContent : '');
                     this.conversation[currentMessageIndex].phase = 'complete';
                     this.conversation[currentMessageIndex].isComplete = true;
                     this.saveConversation();
@@ -463,8 +670,8 @@
                   } else if (!summaryElement) {
                     // Initial response for cases without streaming
                     this.hideTypingIndicator();
-                    summaryElement = this.addMessage('assistant', data.message, true);
-                    currentContent = data.message;
+                    summaryElement = this.addMessage('assistant', data.message || '', true);
+                    currentContent = data.message || '';
                     currentMessageIndex = this.conversation.length - 1;
 
                     // Mark as initial phase in conversation history
@@ -479,17 +686,27 @@
                   setTimeout(() => this.scrollToBottom(), 0);
                 }
               } catch (e) {
-                console.error('Error parsing streaming data:', e);
+                console.error('Error processing streaming chunk:', e, 'Line:', line);
+                // Continue processing other chunks even if one fails
               }
             }
           }
         }
 
-        // Save complete conversation to WordPress
-        const finalContent = currentContent + (recsContent ? '\n' + recsContent : '');  // Single newline for minimal spacing
-        await this.saveConversationToWordPress(message, finalContent);
+        // Save complete conversation to WordPress - include all content types
+        let finalContentForSave = '';
+        if (toolContent) {
+          finalContentForSave += toolContent;
+        }
+        if (currentContent) {
+          finalContentForSave += (finalContentForSave ? '\n\n' : '') + currentContent;
+        }
+        if (recsContent) {
+          finalContentForSave += (finalContentForSave ? '\n\n' : '') + recsContent;
+        }
+        await this.saveConversationToWordPress(message, finalContentForSave);
 
-        return { session_id: this.currentSessionId, response: finalContent };
+        return { session_id: this.currentSessionId, response: finalContentForSave };
 
       } catch (error) {
         console.error('Streaming error:', error);
@@ -550,23 +767,48 @@
           type,
           content,
           timestamp,
-          phase: 'complete', // Track message phases: initial, thinking, recommendations, complete
-          isComplete: true
+          phase: 'complete',
+          isComplete: true,
+          // Preserve tool content separately for proper reconstruction
+          toolContent: null,
+          mainContent: content
         };
         this.conversation.push(message);
         this.saveConversation();
       }
 
+      // Add copy button for assistant messages if enabled
+      const copyConfig = dehumMVP.copyButtons || { enabled: true, ariaLabel: 'Copy message', title: 'Copy to clipboard' };
+      const copyButtonHtml = (type === 'assistant' && content.trim() && copyConfig.enabled) ? `
+        <button class="dehum-copy-btn" aria-label="${copyConfig.ariaLabel}" title="${copyConfig.title}">
+          <span class="material-symbols-outlined">content_copy</span>
+        </button>
+      ` : '';
+
       const messageHtml = `
-        <div class="${messageClass}">
-          <div class="dehum-message__bubble">${this.formatContent(content)}</div>
+        <div class="${messageClass}" role="article" aria-label="${type} message">
+          <div class="dehum-message__bubble">${this.formatContent(content)}${copyButtonHtml}</div>
           <div class="dehum-message__timestamp">${timestamp}</div>
         </div>
       `;
 
       const $message = $(messageHtml);
       $(this.selectors.messages).append($message);
+
+      // Bind copy functionality if copy button exists
+      if (type === 'assistant' && content.trim() && copyConfig.enabled) {
+        this.bindCopyButton($message.find('.dehum-copy-btn'), content);
+      }
+
       this.scrollToBottom();
+
+      // Announce assistant messages to screen readers
+      if (type === 'assistant' && content) {
+        // Use debouncing to avoid overwhelming screen readers during streaming
+        this.debounce(() => {
+          this.announceToScreenReader(`Assistant responded: ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`);
+        }, 500, 'announce');
+      }
 
       return returnElement ? $message : undefined;
     },
@@ -594,17 +836,124 @@
     },
 
     /**
+     * Show welcome message by fetching it from the server
+     */
+    async showWelcomeMessage() {
+      // Clear any existing welcome messages first (scoped to messages container)
+      $(this.selectors.messages).find('.dehum-welcome').remove();
+
+      try {
+        const response = await $.ajax({
+          url: dehumMVP.ajaxUrl,
+          type: 'POST',
+          data: {
+            action: 'dehum_get_welcome_message',
+            nonce: dehumMVP.nonce
+          }
+        });
+
+        if (response.success && response.data.message) {
+          const welcomeHtml = `
+            <div class="dehum-welcome">
+              ${response.data.message}
+            </div>
+          `;
+          $(this.selectors.messages).append(welcomeHtml);
+          this.scrollToBottom();
+        } else {
+          // Fallback welcome message if server request fails
+          this.showFallbackWelcomeMessage();
+        }
+      } catch (error) {
+        console.error('Failed to load welcome message:', error);
+        // Fallback welcome message if server request fails
+        this.showFallbackWelcomeMessage();
+      }
+    },
+
+    /**
+     * Show fallback welcome message (in case server request fails)
+     */
+    showFallbackWelcomeMessage() {
+      // Clear any existing welcome messages first (scoped to messages container)
+      $(this.selectors.messages).find('.dehum-welcome').remove();
+
+      const welcomeHtml = `
+        <div class="dehum-welcome">
+          <strong>Welcome! I'm your dehumidifier sizing assistant.</strong><br>
+          I can help you with:<br>
+          • <strong>Sizing recommendations</strong> - Provide space details (length × width × height in meters), current humidity (RH%), and target humidity (RH%)<br>
+          • <strong>Product specifications</strong> - Ask about features, technical details, or performance data<br>
+          • <strong>Installation & maintenance</strong> - Questions about setup, operation, or troubleshooting<br><br>
+          Is this for a pool room or regular space? What can I help you with today?
+        </div>
+      `;
+      $(this.selectors.messages).append(welcomeHtml);
+      this.scrollToBottom();
+    },
+
+    /**
      * Render a message from history
      */
     renderMessage(message) {
       const messageClass = `dehum-message dehum-message--${message.type}`;
-      const messageHtml = `
-        <div class="${messageClass}">
-          <div class="dehum-message__bubble">${this.formatContent(message.content)}</div>
-          <div class="dehum-message__timestamp">${message.timestamp}</div>
-        </div>
-      `;
-      $(this.selectors.messages).append(messageHtml);
+      const copyConfig = dehumMVP.copyButtons || { enabled: true, ariaLabel: 'Copy message', title: 'Copy to clipboard' };
+
+      // Check if this message has separate tool content (from streaming)
+      if (message.type === 'assistant' && message.toolContent && message.mainContent) {
+        // Render tool content first as a separate bubble
+        const toolMessageHtml = `
+          <div class="${messageClass}" role="article" aria-label="tool usage message">
+            <div class="dehum-message__bubble">${this.formatContent(message.toolContent)}</div>
+            <div class="dehum-message__timestamp">${message.timestamp}</div>
+          </div>
+        `;
+        $(this.selectors.messages).append(toolMessageHtml);
+
+        // Then render the main content as a separate bubble with copy button
+        const copyButtonHtml = (copyConfig.enabled) ? `
+          <button class="dehum-copy-btn" aria-label="${copyConfig.ariaLabel}" title="${copyConfig.title}">
+            <span class="material-symbols-outlined">content_copy</span>
+          </button>
+        ` : '';
+
+        const mainMessageHtml = `
+          <div class="${messageClass}" role="article" aria-label="${message.type} message">
+            <div class="dehum-message__bubble">${this.formatContent(message.mainContent)}${copyButtonHtml}</div>
+            <div class="dehum-message__timestamp">${message.timestamp}</div>
+          </div>
+        `;
+
+        const $mainMessage = $(mainMessageHtml);
+        $(this.selectors.messages).append($mainMessage);
+
+        // Bind copy functionality for the main content (full response)
+        if (copyConfig.enabled) {
+          this.bindCopyButton($mainMessage.find('.dehum-copy-btn'), message.content);
+        }
+      } else {
+        // Render as single message (original behavior)
+        const copyButtonHtml = (message.type === 'assistant' && message.content.trim() && copyConfig.enabled) ? `
+          <button class="dehum-copy-btn" aria-label="${copyConfig.ariaLabel}" title="${copyConfig.title}">
+            <span class="material-symbols-outlined">content_copy</span>
+          </button>
+        ` : '';
+
+        const messageHtml = `
+          <div class="${messageClass}" role="article" aria-label="${message.type} message">
+            <div class="dehum-message__bubble">${this.formatContent(message.content)}${copyButtonHtml}</div>
+            <div class="dehum-message__timestamp">${message.timestamp}</div>
+          </div>
+        `;
+
+        const $message = $(messageHtml);
+        $(this.selectors.messages).append($message);
+
+        // Bind copy functionality if copy button exists
+        if (message.type === 'assistant' && message.content.trim() && copyConfig.enabled) {
+          this.bindCopyButton($message.find('.dehum-copy-btn'), message.content);
+        }
+      }
     },
 
     /**
@@ -622,20 +971,39 @@
               msg.phase = 'complete';
               msg.isComplete = true;
             }
+            // Migrate to new tool content structure for backward compatibility
+            if (!msg.hasOwnProperty('toolContent')) {
+              msg.toolContent = null;
+              msg.mainContent = msg.content;
+            }
             return msg;
           });
 
+          // Clear messages container
           $(this.selectors.messages).empty();
 
-          // Only render complete messages
-          this.conversation
-            .filter(msg => msg.isComplete && msg.phase === 'complete')
-            .forEach(message => this.renderMessage(message));
+          // Filter complete messages to render
+          const completeMessages = this.conversation.filter(msg => msg.isComplete && msg.phase === 'complete');
+
+          if (completeMessages.length > 0) {
+            // Render existing conversation
+            completeMessages.forEach(message => this.renderMessage(message));
+          } else {
+            // No complete messages, show welcome message
+            this.showWelcomeMessage();
+          }
 
           this.scrollToBottom();
+        } else {
+          // No conversation history, clear any existing messages and show welcome
+          $(this.selectors.messages).empty();
+          this.showWelcomeMessage();
         }
       } catch (e) {
         this.conversation = [];
+        // Clear messages and show welcome message on error
+        $(this.selectors.messages).empty();
+        this.showWelcomeMessage();
       }
     },
 
@@ -869,9 +1237,9 @@
       return '';
     },
 
-        /**
-     * Save conversation to WordPress for admin logging
-     */
+    /**
+ * Save conversation to WordPress for admin logging
+ */
     async saveConversationToWordPress(userMessage, assistantResponse) {
       try {
         const response = await $.ajax({
@@ -885,7 +1253,7 @@
             nonce: dehumMVP.nonce
           }
         });
-        
+
         if (response.success) {
           console.log('Conversation saved to WordPress successfully');
         } else {
@@ -893,7 +1261,7 @@
         }
       } catch (error) {
         console.error('Failed to save conversation to WordPress:', error);
-        
+
         // Log additional debugging info
         if (error.status === 403) {
           console.error('403 Error - Possible causes:');
@@ -903,17 +1271,137 @@
         } else if (error.status === 429) {
           console.error('429 Error - Rate limited');
         }
-        
+
         // Re-throw so calling code can handle appropriately
         throw error;
       }
     },
 
     /**
-     * Generate a session ID if we don't have one
+     * Generate a cryptographically secure session ID
      */
     generateSessionId() {
-      return new Date().toISOString().slice(0, 19).replace(/[:-]/g, '') + '_' + Math.random().toString(36).substr(2, 8);
+      // Use crypto.randomUUID if available (modern browsers)
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+      }
+
+      // Fallback for older browsers
+      const timestamp = Date.now().toString(36);
+      const randomPart = Math.random().toString(36).substr(2, 9);
+      const extraRandom = Math.random().toString(36).substr(2, 9);
+      return `${timestamp}_${randomPart}_${extraRandom}`;
+    },
+
+    /**
+     * Bind copy functionality to a copy button
+     */
+    bindCopyButton($button, content) {
+      $button.on('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.copyToClipboard(content, $button);
+      });
+    },
+
+    /**
+     * Copy content to clipboard with visual feedback
+     */
+    async copyToClipboard(content, $button) {
+      try {
+        // Strip HTML formatting for clean text copy
+        const textContent = this.stripHtmlForCopy(content);
+
+        // Use modern Clipboard API if available
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(textContent);
+        } else {
+          // Fallback for older browsers
+          this.fallbackCopyToClipboard(textContent);
+        }
+
+        // Visual feedback
+        this.showCopyFeedback($button, 'success');
+
+        // Announce to screen readers
+        this.announceToScreenReader('Message copied to clipboard');
+
+      } catch (error) {
+        console.error('Failed to copy to clipboard:', error);
+        this.showCopyFeedback($button, 'error');
+        this.announceToScreenReader('Failed to copy message');
+      }
+    },
+
+    /**
+     * Fallback copy method for older browsers
+     */
+    fallbackCopyToClipboard(text) {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+
+      try {
+        document.execCommand('copy');
+      } finally {
+        document.body.removeChild(textArea);
+      }
+    },
+
+    /**
+     * Strip HTML formatting for clean text copy
+     */
+    stripHtmlForCopy(htmlContent) {
+      // Create a temporary element to parse HTML
+      const tempDiv = $('<div>').html(htmlContent);
+
+      // Convert specific HTML elements to readable text
+      tempDiv.find('h1, h2, h3, h4, h5, h6').each(function () {
+        $(this).prepend('# ');
+      });
+
+      tempDiv.find('li').each(function () {
+        $(this).prepend('• ');
+      });
+
+      tempDiv.find('br').replaceWith('\n');
+      tempDiv.find('p').after('\n');
+
+      // Get clean text content
+      let textContent = tempDiv.text();
+
+      // Clean up extra whitespace
+      textContent = textContent.replace(/\n\s*\n/g, '\n\n').trim();
+
+      return textContent;
+    },
+
+    /**
+     * Show visual feedback for copy operation
+     */
+    showCopyFeedback($button, type) {
+      const originalIcon = $button.find('.material-symbols-outlined').text();
+      const originalTitle = $button.attr('title');
+
+      if (type === 'success') {
+        $button.find('.material-symbols-outlined').text('check');
+        $button.attr('title', 'Copied!').addClass('dehum-copy-btn--success');
+      } else {
+        $button.find('.material-symbols-outlined').text('error');
+        $button.attr('title', 'Copy failed').addClass('dehum-copy-btn--error');
+      }
+
+      // Reset after 2 seconds
+      setTimeout(() => {
+        $button.find('.material-symbols-outlined').text(originalIcon);
+        $button.attr('title', originalTitle);
+        $button.removeClass('dehum-copy-btn--success dehum-copy-btn--error');
+      }, 2000);
     },
 
     /**
@@ -922,14 +1410,28 @@
     updateMessage(messageElement, newContent) {
       const contentDiv = messageElement.find('.dehum-message__bubble');
       if (contentDiv.length) {
-        contentDiv.html(this.formatContent(newContent));
+        // Check if this is an assistant message and should have a copy button
+        const isAssistantMessage = messageElement.hasClass('dehum-message--assistant');
+        const copyConfig = dehumMVP.copyButtons || { enabled: true, ariaLabel: 'Copy message', title: 'Copy to clipboard' };
+        const copyButtonHtml = (isAssistantMessage && newContent.trim() && copyConfig.enabled) ? `
+          <button class="dehum-copy-btn" aria-label="${copyConfig.ariaLabel}" title="${copyConfig.title}">
+            <span class="material-symbols-outlined">content_copy</span>
+          </button>
+        ` : '';
+
+        contentDiv.html(this.formatContent(newContent) + copyButtonHtml);
+
+        // Bind copy functionality if copy button was added
+        if (isAssistantMessage && newContent.trim() && copyConfig.enabled) {
+          this.bindCopyButton(contentDiv.find('.dehum-copy-btn'), newContent);
+        }
       }
       // Scroll to bottom after updating the message content (with timeout for DOM render)
       setTimeout(() => this.scrollToBottom(), 0);
     },
 
     /* Save an incomplete state (e.g., 'thinking', 'streaming') */
-    saveIncompleteState(phase, content) {
+    saveIncompleteState(phase, content, toolContent = null) {
       if (this.conversation.length > 0) {
         const lastMessage = this.conversation[this.conversation.length - 1];
         if (lastMessage.type === 'assistant') {
@@ -938,6 +1440,15 @@
           lastMessage.isComplete = false;
           lastMessage.content = content;
           lastMessage.timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+          // Preserve tool content separately if provided
+          if (toolContent !== null) {
+            lastMessage.toolContent = toolContent;
+            // Separate main content from tool content
+            lastMessage.mainContent = content.replace(toolContent, '').replace(/^\n\n/, '').trim();
+          } else {
+            lastMessage.mainContent = content;
+          }
         }
       }
       this.saveConversation();
@@ -997,6 +1508,7 @@
       if (lastUserMessage) {
         // Remove the incomplete assistant response
         this.conversation = this.conversation.filter(msg => msg.type !== 'assistant' || msg.isComplete);
+        this.resetPhaseState(); // Reset phase state for clean retry
         this.saveConversation();
 
         // Retry the analysis
@@ -1012,7 +1524,18 @@
             // Only handle response if streaming didn't already handle it
             if (response && !this.streamingComplete) {
               this.hideTypingIndicator();
-              this.addMessage('assistant', response.response);
+
+              // For retry fallback API, ensure proper structure
+              const messageElement = this.addMessage('assistant', response.response, true);
+
+              // Update conversation with proper structure for consistency
+              if (this.conversation.length > 0) {
+                const lastMessage = this.conversation[this.conversation.length - 1];
+                if (lastMessage.type === 'assistant') {
+                  lastMessage.toolContent = null; // No separate tool content from fallback API
+                  lastMessage.mainContent = response.response;
+                }
+              }
 
               // Store session ID from response
               if (response.session_id) {

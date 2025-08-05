@@ -1,0 +1,62 @@
+# Product Catalog — Practical RAG Chunks
+
+---
+
+## 1. Catalog Overview
+
+Product catalog containing commercial dehumidifiers from various series including SP-PRO, IDHR, DA-X, ST, and CT. Models are suitable for pools, spas, basements, gyms, and more.
+
+Catalog version: 2025-08-04 (updated).
+
+All prices in AUD. Capacities in L/day at standard conditions (adjust for derating in non-standard environments). "Contact" for null prices.
+
+---
+
+## 2. Product Comparison Table
+
+| SKU          | Name                  | Type       | Series | Technology       | Pool Safe | Capacity (L/day) | Price (AUD) | URL |
+| ------------ | --------------------- | ---------- | ------ | ---------------- | --------- | ---------------- | ----------- | --- |
+| SP500C_PRO   | SUNTEC SP500C PRO     | wall_mount | SP-PRO | fixed_speed      | Yes       | 50               | 2999        | https://www.dehumsaust.com.au/product/lgr-sp500c-dehumidifier/ |
+| SP1000C_PRO  | SUNTEC SP1000C PRO    | wall_mount | SP-PRO | fixed_speed      | Yes       | 100              | 3999        | https://www.dehumsaust.com.au/product/suntec-100l-day-lgr-sp1000c-pro-wall-mounted-dehumidifier-with-humidity-wifi-control/ |
+| SP1500C_PRO  | SUNTEC SP1500C PRO    | wall_mount | SP-PRO | fixed_speed      | Yes       | 150              | 5500        | https://www.dehumsaust.com.au/product/lgr-sp1500c-dehumidifier/ |
+| IDHR60       | FAIRLAND IDHR60       | wall_mount | IDHR   | inverter         | Yes       | 60               | 3900        | https://www.dehumsaust.com.au/product/fairland-60l-day-inverter-dehumidifier-idhr60/ |
+| IDHR96       | FAIRLAND IDHR96       | wall_mount | IDHR   | inverter         | Yes       | 96               | 4600        | https://www.dehumsaust.com.au/product/fairland-96l-day-inverter-dehumidifier-idhr96/ |
+| IDHR120      | FAIRLAND IDHR120      | wall_mount | IDHR   | inverter         | Yes       | 120              | 5400        | https://www.dehumsaust.com.au/product/fairland-120l-day-inverter-dehumidifier-idhr120/ |
+| DA-X140i     | LUKO DA-X140i         | ducted     | DA-X   | panasonic_inverter | Yes     | 140              | Contact     | https://www.dehumsaust.com.au/ducted-dehumidifiers/ |
+| DA-X60i      | LUKO DA-X60i          | ducted     | DA-X   | panasonic_inverter | Yes     | 60               | Contact     | https://www.dehumsaust.com.au/ducted-dehumidifiers/ |
+| ST_601_PRO   | SUNTEC ST601 PRO      | portable   | ST     | portable         | No        | 65               | 2799        | https://www.dehumsaust.com.au/product/65l-day-lgr-st601-pro-stackable-mobile-dehumidifier/ |
+| ST_1001_PRO  | SUNTEC ST1001 PRO     | portable   | ST     | portable         | No        | 100              | 3499        | https://www.dehumsaust.com.au/product/100l-day-lgr-st1001-pro-stackable-mobile-dehumidifier/ |
+| CT_801_PRO   | SUNTEC CT 801 PRO     | portable   | CT     | portable         | No        | 90               | 2999        | https://www.dehumsaust.com.au/product/suntec-90l-day-lgr-ct801-pro-commercial-stackable-mobile-dehumidifier/ |
+
+**Note:** Prices may vary; check URLs for latest. Capacities are nominal; apply derating for real-world conditions.
+
+---
+
+## 3. Quick Specifications Reference
+
+**SUNTEC SP PRO Series (Wall Mount, Pool Safe):**
+- SP500C PRO: 50L/day, 660W, 3.1A, 650×275×550mm, $2999
+- SP1000C PRO: 100L/day, 1500W, 6.5A, 890×260×750mm, $3999  
+- SP1500C PRO: 150L/day, 2050W, 8.9A, 1000×325×800mm, $5500
+
+**FAIRLAND IDHR Series (Wall Mount, Inverter, Pool Safe):**
+- IDHR60: 60L/day, 0.73kW max, 3.17A max, 850×291×770mm, $3900
+- IDHR96: 96L/day, 0.99kW max, 4.30A max, 1120×291×770mm, $4600
+- IDHR120: 120L/day, 1.36kW max, 5.91A max, 1220×291×770mm, $5400
+
+**LUKO DA-X Series (Ducted, Panasonic Inverter, Pool Safe):**
+- DA-X60i: 60L/day, Ducted, Contact for price
+- DA-X140i: 140L/day, Ducted, Contact for price
+
+**SUNTEC ST/CT Series (Portable, Not Pool Safe):**
+- ST601 PRO: 65L/day, Portable, $2799
+- ST1001 PRO: 100L/day, Portable, $3499
+- CT801 PRO: 90L/day, Portable, $2999
+
+---
+
+**\[END - Product Catalog RAG Chunks, v2025.08.04\]**
+
+---
+
+**Expand or subdivide sections as required for your implementation.**

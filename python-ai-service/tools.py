@@ -12,11 +12,38 @@ import re
 
 logger = logging.getLogger(__name__)
 
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
+
+# RAG imports with fallback
+try:
+    from rag_pipeline import load_vectorstore
+    RAG_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"RAG pipeline not available: {e}")
+    RAG_AVAILABLE = False
+    def load_vectorstore():
+        return None
+
 class DehumidifierTools:
     """Tools for dehumidifier sizing and product recommendations"""
     
     def __init__(self):
         self.products = self.load_product_database()
+        
+        # Initialize RAG vectorstore
+        self.vectorstore = None
+        if RAG_AVAILABLE:
+            try:
+                self.vectorstore = load_vectorstore()
+                if self.vectorstore:
+                    logger.info("RAG vectorstore loaded successfully")
+                else:
+                    logger.warning("RAG vectorstore could not be loaded")
+            except Exception as e:
+                logger.error(f"Error loading RAG vectorstore: {e}")
+                self.vectorstore = None
         
     def load_product_database(self) -> List[Dict[str, Any]]:
         """Load product database from JSON file"""
@@ -49,10 +76,10 @@ class DehumidifierTools:
     
     def calculate_dehum_load(self, currentRH: float, targetRH: float, indoorTemp: float,
                            length: float = None, width: float = None, height: float = None,
-                           volume_m3: float = None, ach: float = 0.6, peopleCount: int = 0, 
+                           volume_m3: float = None, ach: float = 0.5, peopleCount: int = 0, 
                            pool_area_m2: float = 0, waterTempC: float = None,
                            pool_activity: str = "none", vent_factor: float = 1.0,
-                           additional_loads_lpd: float = 0) -> Dict[str, Any]:
+                           additional_loads_lpd: float = 0, air_velocity_mps: float = 0.1) -> Dict[str, Any]:
         """
         Calculate latent moisture load for a room based on sizing spec v0.1
         
@@ -64,13 +91,14 @@ class DehumidifierTools:
             width: Room width in meters (optional if volume_m3 provided)
             height: Ceiling height in meters (optional if volume_m3 provided)
             volume_m3: Room volume in cubic meters (alternative to L×W×H)
-            ach: Air changes per hour (default 0.6)
+            ach: Air changes per hour (default 0.5)
             peopleCount: Number of occupants (default 0)
             pool_area_m2: Pool surface area in square meters (default 0)
             waterTempC: Pool water temperature in °C (optional, default 28°C)
             pool_activity: Pool activity level ("none" default=0.100 C, "low"=0.118, "medium"=0.136, "high"=0.156 kg/m²/h/kPa)
             vent_factor: Multiplier for infiltration load (default 1.0, e.g., 1.2 for poor ventilation)
             additional_loads_lpd: Additional latent loads in L/day (default 0, e.g., from plants/showers)
+            air_velocity_mps: Air velocity over pool surface in m/s (default 0.1, range 0.05-0.3 for indoor pools)
             
         Returns:
             Dictionary containing volume, latentLoad_L24h, and calculationNotes
@@ -85,6 +113,8 @@ class DehumidifierTools:
                 raise ValueError("targetRH must be less than currentRH")
             if indoorTemp < 0 or indoorTemp > 50:
                 raise ValueError("indoorTemp must be between 0 and 50°C")
+            if air_velocity_mps < 0 or air_velocity_mps > 1.0:
+                raise ValueError("air_velocity_mps must be between 0 and 1.0 m/s")
             
             # Step 1: Determine volume and dimensions
             if volume_m3 is not None:
@@ -136,7 +166,7 @@ class DehumidifierTools:
             occupant_load_gph = peopleCount * 80  # g/h (moderate activity)
             occupant_load_L24h = (occupant_load_gph * 24) / 1000  # L/day
             
-            # Step 6: Calculate pool load (if applicable)
+            # Step 6: Calculate pool load (improved)
             pool_load_L24h = 0
             if pool_area_m2 > 0:
                 # Room partial VP (kPa)
@@ -148,17 +178,27 @@ class DehumidifierTools:
                 # Water saturation VP (kPa)
                 P_w = saturation_vp(T_w)
                 
-                # Delta P (no negative evaporation)
+                # Delta P (no negative evaporation) with reasonable upper limit
                 delta_P = max(P_w - P_a, 0)
+                # Cap delta_P to prevent unrealistic evaporation rates for very hot pools
+                delta_P = min(delta_P, 2.5)  # Max 2.5 kPa difference (reasonable physical limit for residential pools)
                 
-                # Evaporation coefficient (kg/m²/h/kPa) based on activity
+                # Base evaporation coefficient (kg/m²/h/kPa) based on activity (ASHRAE-aligned)
                 activity_coeffs = {
-                    "none": 0.100,  # Still water
-                    "low": 0.118,   # Light use
-                    "medium": 0.136,  # Moderate activity
-                    "high": 0.156   # Jets/heavy use
+                    "none": 0.05,   # Unoccupied baseline
+                    "low": 0.065,   # Residential/light
+                    "medium": 0.10,  # Moderate/therapy
+                    "high": 0.15    # Public/heavy
                 }
-                C = activity_coeffs.get(pool_activity.lower(), 0.100)
+                C_base = activity_coeffs.get(pool_activity.lower(), 0.05)
+                
+                # Velocity-dependent adjustment (from ASHRAE Carrier: increases with air speed)
+                C = C_base + 0.3 * air_velocity_mps  # Tuned: +0.03 at 0.1 m/s
+                
+                # Convection boost if water warmer than air (buoyancy enhancement)
+                temp_diff = max(T_w - indoorTemp, 0)
+                # Reduced from 0.08 to 0.04 to prevent excessive sensitivity to temperature differences
+                C *= (1 + 0.04 * temp_diff)  # +16% at +4°C, more reasonable boost
                 
                 # Evaporation rate (kg/h)
                 W = pool_area_m2 * C * delta_P
@@ -189,7 +229,7 @@ class DehumidifierTools:
             
             if pool_area_m2 > 0:
                 pool_temp_note = f" at {T_w}°C" if waterTempC is not None else " at default 28°C"
-                notes.append(f"Pool: {pool_area_m2}m²{pool_temp_note}, evap load: {pool_load_L24h:.1f} L/day (activity={pool_activity}, C={C} kg/m²/h/kPa)")
+                notes.append(f"Pool: {pool_area_m2}m²{pool_temp_note}, evap load: {pool_load_L24h:.1f} L/day (activity={pool_activity}, C={C:.3f} kg/m²/h/kPa, velocity={air_velocity_mps}m/s, convection boost={1 + 0.04 * temp_diff:.2f})")
             
             if additional_loads_lpd > 0:
                 notes.append(f"Additional loads: {additional_loads_lpd:.1f} L/day")
@@ -223,6 +263,83 @@ class DehumidifierTools:
 
 
     
+    def get_product_catalog(self, 
+                           capacity_min: float = None, 
+                           capacity_max: float = None,
+                           product_type: str = None,
+                           pool_safe_only: bool = False,
+                           price_range_max: float = None) -> Dict[str, Any]:
+        """
+        Get product catalog for pricing and comparison queries.
+        
+        Args:
+            capacity_min: Minimum capacity in L/day (optional)
+            capacity_max: Maximum capacity in L/day (optional) 
+            product_type: Filter by type: 'wall_mount', 'ducted', 'portable' (optional)
+            pool_safe_only: Only return pool-safe models (optional)
+            price_range_max: Maximum price in AUD (optional)
+            
+        Returns:
+            Dictionary with filtered catalog and summary info
+        """
+        catalog = []
+        for p in self.products:
+            # Skip incomplete entries
+            if p.get("capacity_lpd") is None:
+                continue
+                
+            # Apply filters
+            if pool_safe_only and not p.get("pool_safe", False):
+                continue
+            if product_type and p.get("type") != product_type:
+                continue
+            if capacity_min and p.get("capacity_lpd", 0) < capacity_min:
+                continue
+            if capacity_max and p.get("capacity_lpd", 0) > capacity_max:
+                continue
+            if price_range_max and p.get("price_aud") and p.get("price_aud") > price_range_max:
+                continue
+                
+            # Calculate effective capacity
+            eff_cap = p["capacity_lpd"] * p.get("performance_factor", 1.0)
+            
+            catalog.append({
+                "sku": p["sku"],
+                "name": p.get("name", p["sku"]),
+                "type": p.get("type"),
+                "series": p.get("series"),
+                "technology": p.get("technology"),
+                "capacity_lpd": p["capacity_lpd"],
+                "effective_capacity_lpd": eff_cap,
+                "performance_factor": p.get("performance_factor", 1.0),
+                "pool_safe": p.get("pool_safe", False),
+                "price_aud": p.get("price_aud"),
+                "url": p.get("url")
+            })
+        
+        # Sort by capacity for easier browsing
+        catalog.sort(key=lambda x: x["capacity_lpd"])
+        
+        return {
+            "catalog": catalog,
+            "total_products": len(catalog),
+            "capacity_range": {
+                "min": min([p["capacity_lpd"] for p in catalog]) if catalog else 0,
+                "max": max([p["capacity_lpd"] for p in catalog]) if catalog else 0
+            },
+            "price_range": {
+                "min": min([p["price_aud"] for p in catalog if p["price_aud"]]) if [p for p in catalog if p["price_aud"]] else None,
+                "max": max([p["price_aud"] for p in catalog if p["price_aud"]]) if [p for p in catalog if p["price_aud"]] else None
+            },
+            "filters_applied": {
+                "capacity_min": capacity_min,
+                "capacity_max": capacity_max,
+                "product_type": product_type,
+                "pool_safe_only": pool_safe_only,
+                "price_range_max": price_range_max
+            }
+        }
+
     def get_catalog_with_effective_capacity(self, include_pool_safe_only: bool = False) -> List[Dict[str, Any]]:
         """Return product catalog with pre-computed effective capacity (capacity_lpd × performance_factor)."""
         catalog = []
@@ -304,6 +421,21 @@ class DehumidifierTools:
         except Exception as e:
             logger.error(f"Error retrieving product {type} for SKU {sku}: {str(e)}")
             return {"error": f"Error retrieving {type}: {str(e)}"}
+        
+    def saturation_vp(self, T: float) -> float:
+        """Calculate saturation vapor pressure in kPa using Magnus formula."""
+        return 0.61094 * math.exp((17.625 * T) / (T + 243.04))
+
+    def calculate_dew_point(self, temp: float, rh: float) -> float:
+        """Calculate dew point in °C using Magnus formula."""
+        if rh <= 0 or rh > 100:
+            return -100.0  # Invalid, arbitrary low
+        pv = (rh / 100.0) * self.saturation_vp(temp)  # Note: assumes saturation_vp method exists or define it here if needed
+        if pv <= 0:
+            return -100.0
+        alpha = math.log(pv / 0.61094)
+        td = 243.04 * alpha / (17.625 - alpha)
+        return td
 
     def calculate_derate_factor(self, temp: float, rh: float) -> float:
         """
@@ -316,11 +448,102 @@ class DehumidifierTools:
         Returns:
             Derating factor between 0.1 and 1.0
         """
-        return min(1.0, max(0.1, 0.4 + 0.7 * (temp / 30) ** 2.2 * (rh / 85) ** 2.8))
+        td = self.calculate_dew_point(temp, rh)
+        td_norm = max(td, 0.0) / 26.0  # Normalize to rated Td at 30°C/80% RH, floor at 0
+        return min(1.0, max(0.1, td_norm ** 1.5))  # Exponent 1.5 for nonlinear tanking at low Td
+
+    def retrieve_relevant_docs(self, query: str, k: int = 3) -> List[str]:
+        """
+        Retrieve relevant document chunks using RAG with product-aware prioritization
+        
+        Args:
+            query: The search query
+            k: Number of top chunks to return (default 3)
+            
+        Returns:
+            List of relevant document chunks as strings
+        """
+        if not self.vectorstore:
+            logger.warning("RAG vectorstore not available for document retrieval")
+            return []
+        
+        if not query or not query.strip():
+            logger.warning("Empty query provided for document retrieval")
+            return []
+        
+        try:
+            # Perform similarity search with more candidates for filtering
+            search_k = min(k * 3, 15)  # Get more candidates to filter from
+            docs = self.vectorstore.similarity_search(query.strip(), k=search_k)
+            
+            # Product-source mapping
+            product_sources = {
+                'SP500C': 'SUNTEC_SP_SERIES_INFO.txt',
+                'SP1000C': 'SUNTEC_SP_SERIES_INFO.txt', 
+                'SP1500C': 'SUNTEC_SP_SERIES_INFO.txt',
+                'SP500': 'SUNTEC_SP_SERIES_INFO.txt',
+                'SP1000': 'SUNTEC_SP_SERIES_INFO.txt',
+                'SP1500': 'SUNTEC_SP_SERIES_INFO.txt',
+                'Suntec': 'SUNTEC_SP_SERIES_INFO.txt',
+                'SP Pro': 'SUNTEC_SP_SERIES_INFO.txt',
+                'IDHR60': 'FAIRLAND_IDHR_SERIES_INFO.txt',
+                'IDHR96': 'FAIRLAND_IDHR_SERIES_INFO.txt',
+                'IDHR120': 'FAIRLAND_IDHR_SERIES_INFO.txt',
+                'Fairland': 'FAIRLAND_IDHR_SERIES_INFO.txt',
+                'DA-X60i': 'LUKO_DA-X_SERIES_INFO.txt',
+                'DA-X140i': 'LUKO_DA-X_SERIES_INFO.txt',
+                'DA-X60': 'LUKO_DA-X_SERIES_INFO.txt',
+                'DA-X140': 'LUKO_DA-X_SERIES_INFO.txt',
+                'Luko': 'LUKO_DA-X_SERIES_INFO.txt',
+                'DA-X': 'LUKO_DA-X_SERIES_INFO.txt'
+            }
+            
+            # Check if query contains specific product mentions
+            query_upper = query.upper()
+            target_source = None
+            for product, source in product_sources.items():
+                if product.upper() in query_upper:
+                    target_source = source
+                    break
+            
+            # Prioritize chunks from the target source if product is specified
+            if target_source:
+                # First, get chunks from the target source
+                target_chunks = [doc for doc in docs if doc.metadata.get('source') == target_source]
+                other_chunks = [doc for doc in docs if doc.metadata.get('source') != target_source]
+                
+                # Prioritize target source chunks, then fill with others if needed
+                prioritized_docs = target_chunks[:k] + other_chunks[:max(0, k - len(target_chunks))]
+                docs = prioritized_docs[:k]
+                
+                logger.info(f"Product-aware search: Found {len(target_chunks)} chunks from {target_source} for query '{query}'")
+            
+            # Extract content and format chunks
+            chunks = []
+            for doc in docs:
+                source = doc.metadata.get('source', 'Unknown')
+                content = doc.page_content.strip()
+                
+                if content:  # Only include non-empty chunks
+                    # Format chunk with source information
+                    formatted_chunk = f"[Source: {source}]\n{content}"
+                    chunks.append(formatted_chunk)
+            
+            logger.info(f"Retrieved {len(chunks)} relevant chunks for query: '{query[:50]}{'...' if len(query) > 50 else ''}'")
+            return chunks
+            
+        except Exception as e:
+            logger.error(f"Error retrieving relevant docs for query '{query}': {e}")
+            return []
 
     def get_available_tools(self) -> List[str]:
         """Get list of available tool names"""
-        return [
+        tools = [
             "calculate_dehum_load",
             "get_product_manual"
         ]
+        
+        # RAG tool is now managed by agent tool definitions based on config
+        # No need for conditional inclusion here
+        
+        return tools

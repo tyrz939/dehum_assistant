@@ -1,0 +1,172 @@
+# Fairland IDHR Series (IDHR60 / IDHR96 / IDHR120) — Practical RAG Chunks
+
+---
+
+## 1. Series Overview & Key Features
+
+Fairland IDHR Series (IDHR60, IDHR96, IDHR120) are full-inverter, wall/floor-mount commercial dehumidifiers for pool, spa, and high-humidity indoor use.
+
+All models include:
+
+* Inverter compressor (variable speed, high efficiency)
+* Wi-Fi & app remote control (scheduling, monitoring)
+* User-adjustable humidistat (30–95% RH)
+* Auto defrost
+* Gravity drain (with hose kit)
+* Anti-corrosion coils (R32 refrigerant)
+* Quiet operation (as low as 38 dB)
+* Touch panel + remote
+* Floor and wall installation options (hardware included)
+* Optional electric heating (factory/field option)
+* Power-loss auto restart
+* Metal/aluminum chassis, splash-resistant
+
+Typical uses: pool rooms, spas, gyms, basements, server rooms, greenhouses, museums, and similar demanding humid environments.
+
+---
+
+## 2. Model Comparison Table
+
+| Model                     | IDHR60           | IDHR96           | IDHR120          |
+| ------------------------- | ---------------- | ---------------- | ---------------- |
+| Compressor                | Inverter rotary  | Inverter rotary  | Inverter rotary  |
+| Refrigerant               | R32              | R32              | R32              |
+| Power Supply              | 230V/1Ph/50Hz    | 230V/1Ph/50Hz    | 230V/1Ph/50Hz    |
+| Airflow (m³/h)            | 600              | 1000             | 1200             |
+| Power Input (30°C 80% RH) | 0.11\~0.73 kW    | 0.17\~0.99 kW    | 0.22\~1.36 kW    |
+| Current (A)               | 0.48\~3.17       | 0.74\~4.30       | 0.96\~5.91       |
+| Noise (dB)                | 38.3–45.6        | 40.3–45.8        | 39.9–46.4        |
+| Heating option            | 1.3 kW opt.      | 2.1 kW opt.      | 2.1 kW opt.      |
+| Gravity Drain             | Yes              | Yes              | Yes              |
+| Net Size (mm)             | 850x291x770      | 1120x291x770     | 1220x291x770     |
+| Net Weight (kg)           | 53               | 68               | 72               |
+| Protection                | Splash resistant | Splash resistant | Splash resistant |
+
+**Note:** All models operate 10–38°C ambient. Use is not guaranteed outside this range.
+
+---
+
+## 3. Physical Dimensions & Specifications
+
+**IDHR60**: 850×291×770 mm (L×W×H), 53 kg
+**IDHR96**: 1120×291×770 mm (L×W×H), 68 kg
+**IDHR120**: 1220×291×770 mm (L×W×H), 72 kg
+
+**Power & Current (at 30°C, 80% RH):**
+- IDHR60: 0.11–0.73 kW, 0.48–3.17A at 230V/50Hz
+- IDHR96: 0.17–0.99 kW, 0.74–4.30A at 230V/50Hz
+- IDHR120: 0.22–1.36 kW, 0.96–5.91A at 230V/50Hz
+
+**Capacity & Airflow:**
+- IDHR60: 60L/day, 600 m³/h airflow
+- IDHR96: 96L/day, 1000 m³/h airflow
+- IDHR120: 120L/day, 1200 m³/h airflow
+
+**Noise Levels:**
+- IDHR60: 38.3–45.6 dB(A)
+- IDHR96: 40.3–45.8 dB(A)
+- IDHR120: 39.9–46.4 dB(A)
+
+---
+
+## 4. Installation & Wiring Notes
+
+* **Installation modes:** floor (feet), wall (brackets/pads), hardware included
+* **Drain:** attach hose to base, ensure free gravity drainage
+* **Power:** 230V single phase; *must be earthed*; install RCD (≤30mA) per AU/EU regs
+* **Breaker/Fuse guide:** 8A/8A (IDHR60), 10A/10A (IDHR96), 12A/12A (IDHR120)
+* **Placement:** minimum 2m from pool edge, >1m clear in front of air outlet, no obstructions near air inlet/outlet
+* **No direct hose/cable crossings under unit**; allow airflow all sides
+* For wall install: fix bracket to strong concrete wall (M6 anchors), then hang unit
+* For field electric heater: only by qualified electrician
+
+---
+
+## 5. Control Panel & Operation
+
+* **On/Off:** press power
+* **Mode:** select Smart/Silence (compressor runs 100–20% / 80–20% duty)
+* **Humidity Set:** 30–95% RH (use Up/Down)
+* **Timer:** single-use (countdown on/off, not recurring)
+* **WiFi/App:** pairing: hold WiFi symbol 3s (EZ mode); see manual for AP/Bluetooth options
+* **Status Display:** shows temp, RH, mode, WiFi, compressor percent
+* **Running Status Check (pro/tech):** hold button 5s, access C0–C9 status points (inlet/outlet temp, coil temp, fan RPM, RH, etc.)
+* **Parameter check/edit (tech):** hold two buttons 5s; P0–P15 for advanced functions
+
+---
+
+## 6. Parameter Codes (for Technicians)
+
+* **P0:** Heating function (0/1)
+* **P1:** Fan mode (0=low after setpoint, 1=stop at setpoint)
+* **P2:** Compressor run time before defrost (20–90min)
+* **P3:** Defrost start temp (–10 to 10°C)
+* **P4:** Defrost run time (1–12min)
+* **P5:** Defrost end temp (0–30°C)
+* **P6:** Humidity compensation (–5% to 5%)
+* **P10:** Compressor speed control (0=auto, 1=manual)
+* **P11:** Compressor speed (15–110Hz)
+* **P12:** EXV overheat level (–10 to 20°C)
+* **P13:** EXV mode (0=auto, 1=manual)
+* **P14:** EXV open (50–240)
+* **P15:** Power off memory (0/1)
+
+---
+
+## 7. Error / Fault Codes (All Models)
+
+| Code  | Description                                                                 |
+| ----- | --------------------------------------------------------------------------- |
+| F1    | Compressor drive module/wiring fail                                         |
+| F2    | PFC module fail                                                             |
+| F3    | Compressor start fail                                                       |
+| F4    | Compressor run fail                                                         |
+| F5    | Inverter board overcurrent                                                  |
+| F6    | Inverter board overheat                                                     |
+| F7    | Overcurrent                                                                 |
+| F8    | Radiator/cooling plate overheat                                             |
+| F9    | DC fan fault                                                                |
+| FA    | PFC module overcurrent                                                      |
+| E1    | High pressure protection                                                    |
+| E2    | Low pressure protection                                                     |
+| E5    | Abnormal power supply                                                       |
+| E7    | Electric heater overheat                                                    |
+| E8    | Exhaust high temp                                                           |
+| EA    | Air outlet overheat                                                         |
+| Eb    | Ambient temp out of range (below 10°C / above 38°C)                         |
+| P0    | Controller communication fail                                               |
+| P1–P8 | Sensor errors (inlet/outlet/exhaust/gas return/coil/humidity/cooling plate) |
+| P9    | Current sensor fail                                                         |
+| PA    | Restart memory/dip switch error                                             |
+
+---
+
+## 8. Maintenance & Cleaning
+
+* Unplug before cleaning/maintenance
+* **Clean:** wipe with mild detergent/water, never solvents or high pressure
+* **Dust cover:** cover when not in use to avoid dust ingress
+* **Filter:** check/clean regularly (bottom access)
+* **Annual service:** by qualified technician; inspect electricals, refrigerant circuit, drain
+* **Storage:** upright only; store in well-ventilated, dry area
+
+---
+
+## 9. General Warnings & Cautions
+
+* Never operate outside 10–38°C ambient (performance not guaranteed)
+* Must be installed/serviced by qualified personnel
+* Always earth connection and RCD/RCBO protection
+* Do not place or use near open flames, flammable gases/liquids
+* Do not cover air inlet/outlet or block airflow
+* All refrigerant service must be by licensed technician (R32 refrigerant)
+* Do not modify or tamper with control/logic/wiring
+* Gas leak check required on install/repair
+
+---
+
+**\[END - Fairland IDHR Series RAG Chunks, v2024.08.03]**
+
+---
+
+**Expand or subdivide sections as required for your implementation.**

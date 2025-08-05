@@ -8,6 +8,7 @@ import logging
 import os
 import json
 
+import litellm
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,6 +20,10 @@ from ai_agent import DehumidifierAgent
 from models import ChatRequest, ChatResponse, StreamingChatResponse
 from config import config
 from logging.handlers import RotatingFileHandler
+from tools import DehumidifierTools
+from engine import LLMEngine
+from tool_executor import ToolExecutor
+from session_store import WordPressSessionStore
 
 # Load environment variables from .env file
 load_dotenv()
@@ -50,8 +55,51 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize the AI agent
-agent = DehumidifierAgent()
+# Initialize the AI agent with required dependencies
+def create_ai_agent():
+    """Create and configure the AI agent with all required dependencies"""
+    wp_api_key = os.getenv("WP_API_KEY")
+    if not wp_api_key:
+        raise ValueError("WP_API_KEY environment variable is required")
+    
+    # Create tools instance
+    tools = DehumidifierTools()
+    
+    # Create engine with default completion params builder and API caller  
+    def get_completion_params(model: str, messages: list, max_tokens: int):
+        return {
+            "model": model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": config.TEMPERATURE
+        }
+    
+    # Create a simple API caller using litellm directly
+    # The agent will handle retry logic separately
+    async def api_caller(**params):
+        return await litellm.acompletion(**params)
+    
+    engine = LLMEngine(
+        model=config.DEFAULT_MODEL,
+        completion_params_builder=get_completion_params,
+        api_caller=api_caller
+    )
+    
+    # Create tool executor
+    tool_executor = ToolExecutor(tools)
+    
+    # Create session store
+    session_store = WordPressSessionStore(config.WORDPRESS_URL, wp_api_key)
+    
+    # Create and return agent
+    return DehumidifierAgent(
+        tools=tools,
+        engine=engine, 
+        tool_executor=tool_executor,
+        session_store=session_store
+    )
+
+agent = create_ai_agent()
 
 
 def check_api_key(authorization: str = Header(None)):
@@ -169,22 +217,49 @@ async def abort_session_streaming(session_id: str):
     try:
         session = agent.sessions.get(session_id)
         if session:
-            # Clear streaming state immediately
-            agent._set_streaming_state(session, False)
+            # Simply clear the session as the streaming state tracking was removed
+            agent.clear_session(session_id)
             return {
-                "message": "Session streaming aborted successfully", 
+                "message": "Session cleared successfully", 
                 "session_id": session_id,
                 "was_streaming": True
             }
         else:
             return {
-                "message": "Session not found or not streaming", 
+                "message": "Session not found", 
                 "session_id": session_id,
                 "was_streaming": False
             }
     except Exception as e:
         logger.error(f"Error aborting session streaming: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to abort session streaming")
+
+
+@app.get("/diagnostic")
+async def diagnostic_check():
+    """
+    Basic diagnostic endpoint for service health check.
+    """
+    try:
+        # Basic diagnostic information
+        diagnostic_info = {
+            "agent_status": agent.get_health_status(),
+            "models_available": agent.get_available_models(),
+            "active_sessions": len(agent.sessions),
+            "tools_available": len(agent.tools.get_available_tools()) if hasattr(agent.tools, 'get_available_tools') else 'unknown'
+        }
+        return {
+            "status": "diagnostic_complete",
+            "timestamp": datetime.now().isoformat(),
+            **diagnostic_info
+        }
+    except Exception as e:
+        logger.error(f"Error in diagnostic check: {str(e)}")
+        return {
+            "status": "diagnostic_failed",
+            "timestamp": datetime.now().isoformat(),
+            "error": str(e)
+        }
 
 
 @app.get("/health")

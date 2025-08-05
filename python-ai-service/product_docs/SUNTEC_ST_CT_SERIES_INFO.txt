@@ -1,0 +1,206 @@
+# SUNTEC ST & CT Series — Portable LGR Dehumidifiers (ST600/ST1000/ST601 Pro/ST1001 Pro/CT801 Pro)
+
+---
+
+## 1. Series Overview & Key Features
+
+**ST Series (ST600, ST1000, ST601 Pro, ST1001 Pro):**
+Portable, stackable LGR dehumidifiers for commercial drying: flood/disaster restoration, abatement/remediation, health care construction, general facilities. Heavy-duty, rotomolded body with large wheels and fold-down handle.
+
+**CT Series (CT801 Pro):**
+Compact, heavy-duty LGR dehumidifier with XL performance in a horizontal/stackable design. Similar use cases as ST. Built for easy stacking, transport, and deployment in tough sites.
+
+All models include:
+* Auto pump-out (built-in condensate pump)
+* Cable management and ducting options
+* MERV-10 filter with toolless access
+* Stackable design for storage/transport
+* Auto defrost (hot-gas bypass)
+* MID-approved energy meter
+* Timer control and loss of power protection
+
+**"Pro" models add:**
+* WiFi/Bluetooth connectivity
+* Humidistat + timer control
+* Graphical LCD panel with GPP (grain depression)
+* Job/lifetime counters
+* App control (Dry Connect)
+
+Typical uses: disaster restoration, abatement/remediation, healthcare construction, commercial facilities, flood recovery.
+
+---
+
+## 2. Model Comparison Table
+
+| Model      | Capacity (AHAM) | Capacity (Sat.) | Power | Airflow | Amps (230V) | Filter  | Weight | WxDxH (mm)  | Noise | Special               |
+| ---------- | --------------- | --------------- | ----- | ------- | ----------- | ------- | ------ | ----------- | ----- | --------------------- |
+| ST600      | 39L/day         | 67L/day         | 720W  | 550m³/h | 3.0         | MERV-10 | 43kg   | 500x485x840 | 60dB  | Timer, energy meter   |
+| ST1000     | 62L/day         | 108L/day        | 1500W | 750m³/h | 5.5         | MERV-10 | 50kg   | 500x485x840 | 65dB  | Timer, energy meter   |
+| ST601 Pro  | 39L/day         | 67L/day         | 720W  | 550m³/h | 3.0         | MERV-10 | 43kg   | 500x485x840 | 60dB  | WiFi, humidistat, LCD |
+| ST1001 Pro | 62L/day         | 108L/day        | 1500W | 750m³/h | 5.5         | MERV-10 | 50kg   | 500x485x840 | 65dB  | WiFi, humidistat, LCD |
+| CT801 Pro  | 52L/day         | 90L/day         | 1150W | 700m³/h | 5.0         | MERV-10 | 38kg   | 420x645x463 | 65dB  | WiFi, BT, GPP, LCD    |
+
+---
+
+## 3. Physical Dimensions & Specifications
+
+**ST Series (ST600, ST1000, ST601 Pro, ST1001 Pro):**
+- Dimensions: 500×485×840 mm (W×D×H)
+- Weight: ST600/ST601 Pro: 43 kg, ST1000/ST1001 Pro: 50 kg
+- Shipping: 510×510×895 mm (ST600: 46kg, ST1000: 54kg gross)
+
+**CT Series (CT801 Pro):**
+- Dimensions: 420×645×463 mm (W×D×H) 
+- Weight: 38 kg
+- Shipping: 435×655×500 mm (41kg gross)
+
+**Power & Current:**
+- ST600/ST601 Pro: 720W, 3.0A at 230V
+- ST1000/ST1001 Pro: 1500W, 5.5A at 230V
+- CT801 Pro: 1150W, 5.0A at 230V
+
+**Capacity & Airflow:**
+- ST600/ST601 Pro: 39L/day (AHAM), 67L/day (Sat.), 550 m³/h airflow
+- ST1000/ST1001 Pro: 62L/day (AHAM), 108L/day (Sat.), 750 m³/h airflow
+- CT801 Pro: 52L/day (AHAM), 90L/day (Sat.), 700 m³/h airflow
+
+**Noise Levels:**
+- ST600/ST601 Pro: 60 dB(A)
+- ST1000/ST1001 Pro: 65 dB(A) 
+- CT801 Pro: 65 dB(A)
+
+---
+
+## 4. Key Features & Technology
+
+* **Built-in Automatic Condensate Pump:**
+  - ST Series: 10m hose, 5m lift capacity
+  - CT Series: 10m hose, 15ft lift capacity
+
+* **Construction:**
+  - Rotomolded body for durability
+  - Large wheels and fold-down handle
+  - Cable/hose storage management
+  - Superior stackable design
+
+* **Filtration:**
+  - MERV-10 filter (toolless access)
+  - Front-access filter replacement
+
+* **Pro/CT Advanced Features:**
+  - WiFi & Bluetooth connectivity
+  - App control (Dry Connect)
+  - Graphical LCD panel
+  - Real-time temp, RH%, GPP display
+  - Humidistat & timer control
+  - Job/lifetime counters
+
+* **Ducting:**
+  - Rear ducting option (ST Series)
+  - Lay-flat ducting option (CT Series)
+
+---
+
+## 5. Applications & Use Cases
+
+* **Disaster Restoration:** Flood damage, water extraction, structural drying
+* **Abatement/Remediation:** Mold remediation, asbestos abatement projects
+* **Healthcare Construction:** Hospital renovations, clean room preparation
+* **Commercial Facilities:** General facility maintenance, humidity control
+* **Industrial Drying:** Construction sites, warehouses, storage facilities
+
+---
+
+## 6. Controls & Display
+
+**Pro Models (ST601 Pro, ST1001 Pro) & CT801 Pro:**
+* WiFi/Bluetooth connectivity with app control (Dry Connect)
+* Graphical LCD display showing:
+  - Real-time relative humidity (RH%)
+  - Temperature readings
+  - GPP (Grain Depression) measurements
+  - Job and lifetime hour counters
+* Humidistat control with timer functions
+* Physical membrane keys for operation
+
+**Standard Models (ST600, ST1000):**
+* LCD display with timer control
+* MID-approved energy meter
+* Operation indicator lights
+* Physical membrane keys
+
+---
+
+## 7. Operation Guidelines
+
+* **Setup:** Always use upright; allow 30 minutes after transport if laid flat
+* **Environment:** Create closed drying chamber for best results (shut external openings)
+* **Temperature Range:** 1–38°C operating range
+* **Humidity Range:** 20–90% relative humidity
+* **Recommendations:** 
+  - Use air movers for faster drying
+  - Connect drain before use
+  - Inspect/clean filter regularly (vacuum, do not wash)
+  - All models are stackable for transport or storage
+
+---
+
+## 8. Error Codes & Troubleshooting
+
+**ST601 Pro/ST1001 Pro:**
+| Code | Description |
+| ---- | ----------- |
+| Er00 | Pump or tube issue (PUMP ON flashes) |
+| Er01 | Coil temp sensor error |
+| Er02 | Ambient temp sensor error |
+| Er03 | Humidistat sensor error |
+| Er04 | Ambient temp too high |
+
+**ST600/ST1000:**
+| Code | Description |
+| ---- | ----------- |
+| Er01 | Pump or tube issue (PUMP ON flashes) |
+| Er02 | Coil temp sensor error |
+| Er03 | Ambient temp sensor error |
+
+---
+
+## 9. Maintenance & Filter Replacement
+
+* **Before Service:** Always unplug before any service/cleaning
+* **Filter Maintenance:**
+  - Vacuum filter regularly (do not wash)
+  - Replace after 3x cleanings or after mold jobs
+  - Replace if airflow drops or after significant dust exposure
+* **General Maintenance:**
+  - Clean coils as needed
+  - Inspect pump and drain hose for blockages, kinks
+  - Check cable management and storage areas
+
+---
+
+## 10. Warranty & Support
+
+* **Warranty:** 2 years parts warranty (excludes wear/misuse)
+* **Service:** Units may need to be returned to supplier for warranty claims
+* **Shipping:** Shipping costs not covered under warranty
+* **Support:** Professional-grade units designed for commercial/restoration use
+
+---
+
+## 11. Technical & Service Notes
+
+* **Pro/CT Models:** Use advanced PCB for humidistat/WiFi/GPP display
+* **Standard Models:** Use simpler PCB design
+* **Service Access:** Major electronic/service parts accessed from control panel/top cover
+* **Component Locations:** Pump at base, filter front-access
+* **Cable Length:** 7.6m (25ft) on all models
+* **Service Manual:** Consult service manual for stepwise disassembly, pump/filter replacement, troubleshooting
+
+---
+
+**\[END - SUNTEC ST & CT Series RAG Chunks, v2024.08.04]**
+
+---
+
+**Expand or further chunk by topic/feature as needed for your RAG or doc system.**
