@@ -1,0 +1,39 @@
+# Product Catalog — Practical RAG Chunks
+
+---
+
+## 1. Catalog Overview
+
+Product catalog containing commercial dehumidifiers from various series including SP-PRO, IDHR, DA-X, ST, and CT. Models are suitable for pools, spas, basements, gyms, and more.
+
+Catalog version: 2025-08-04 (updated).
+
+All prices in AUD. Capacities in L/day at standard conditions (adjust for derating in non-standard environments). "Contact" for null prices.
+
+---
+
+## 2. Product Comparison Table
+
+| SKU          | Name                  | Type       | Series | Technology       | Pool Safe | Capacity (L/day) | Price (AUD) | URL |
+| ------------ | --------------------- | ---------- | ------ | ---------------- | --------- | ---------------- | ----------- | --- |
+| SP500C_PRO   | SUNTEC SP500C PRO     | wall_mount | SP-PRO | fixed_speed      | Yes       | 50               | 2999        | https://www.dehumsaust.com.au/product/lgr-sp500c-dehumidifier/ |
+| SP1000C_PRO  | SUNTEC SP1000C PRO    | wall_mount | SP-PRO | fixed_speed      | Yes       | 100              | 3999        | https://www.dehumsaust.com.au/product/suntec-100l-day-lgr-sp1000c-pro-wall-mounted-dehumidifier-with-humidity-wifi-control/ |
+| SP1500C_PRO  | SUNTEC SP1500C PRO    | wall_mount | SP-PRO | fixed_speed      | Yes       | 150              | 5500        | https://www.dehumsaust.com.au/product/lgr-sp1500c-dehumidifier/ |
+| IDHR60       | FAIRLAND IDHR60       | wall_mount | IDHR   | inverter         | Yes       | 60               | 3900        | https://www.dehumsaust.com.au/product/fairland-60l-day-inverter-dehumidifier-idhr60/ |
+| IDHR96       | FAIRLAND IDHR96       | wall_mount | IDHR   | inverter         | Yes       | 96               | 4600        | https://www.dehumsaust.com.au/product/fairland-96l-day-inverter-dehumidifier-idhr96/ |
+| IDHR120      | FAIRLAND IDHR120      | wall_mount | IDHR   | inverter         | Yes       | 120              | 5400        | https://www.dehumsaust.com.au/product/fairland-120l-day-inverter-dehumidifier-idhr120/ |
+| DA-X140i     | LUKO DA-X140i         | ducted     | DA-X   | panasonic_inverter | Yes     | 140              | Contact     | https://www.dehumsaust.com.au/ducted-dehumidifiers/ |
+| DA-X60i      | LUKO DA-X60i          | ducted     | DA-X   | panasonic_inverter | Yes     | 60               | Contact     | https://www.dehumsaust.com.au/ducted-dehumidifiers/ |
+| ST_601_PRO   | SUNTEC ST601 PRO      | portable   | ST     | portable         | No        | 65               | 2799        | https://www.dehumsaust.com.au/product/65l-day-lgr-st601-pro-stackable-mobile-dehumidifier/ |
+| ST_1001_PRO  | SUNTEC ST1001 PRO     | portable   | ST     | portable         | No        | 100              | 3499        | https://www.dehumsaust.com.au/product/100l-day-lgr-st1001-pro-stackable-mobile-dehumidifier/ |
+| CT_801_PRO   | SUNTEC CT 801 PRO     | portable   | CT     | portable         | No        | 90               | 2999        | https://www.dehumsaust.com.au/product/suntec-90l-day-lgr-ct801-pro-commercial-stackable-mobile-dehumidifier/ |
+
+**Note:** Prices may vary; check URLs for latest. Capacities are nominal; apply derating for real-world conditions.
+
+---
+
+**\[END - Product Catalog RAG Chunks, v2025.08.04\]**
+
+---
+
+**Expand or subdivide sections as required for your implementation.**

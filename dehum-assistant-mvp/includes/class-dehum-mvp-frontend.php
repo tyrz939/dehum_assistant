@@ -18,6 +18,32 @@ class Dehum_MVP_Frontend {
     public function __construct() {
         add_action('wp_enqueue_scripts', [$this, 'enqueue_assets']);
         add_action('wp_footer', [$this, 'render_chat_widget']);
+        add_action('wp_ajax_dehum_get_welcome_message', [$this, 'ajax_get_welcome_message']);
+        add_action('wp_ajax_nopriv_dehum_get_welcome_message', [$this, 'ajax_get_welcome_message']);
+    }
+
+    /**
+     * Get the welcome message content - centralized for easy editing
+     */
+    public function get_welcome_message() {
+        return '<strong>Welcome! I\'m your dehumidifier sizing assistant.</strong><br>' .
+               'I can help you with:<br>' .
+               '• <strong>Sizing recommendations</strong> - Provide space details (length × width × height in meters), current humidity (RH%), and target humidity (RH%)<br>' .
+               '• <strong>Product specifications</strong> - Ask about features, technical details, or performance data<br>' .
+               '• <strong>Installation & maintenance</strong> - Questions about setup, operation, or troubleshooting<br><br>' .
+               'Is this for a pool room or regular space? What can I help you with today?';
+    }
+
+    /**
+     * AJAX handler to get welcome message
+     */
+    public function ajax_get_welcome_message() {
+        // Verify nonce for security
+        if (!wp_verify_nonce($_POST['nonce'], DEHUM_MVP_CHAT_NONCE)) {
+            wp_die(json_encode(['success' => false, 'data' => ['message' => 'Security check failed']]));
+        }
+
+        wp_send_json_success(['message' => $this->get_welcome_message()]);
     }
 
     /**
@@ -116,7 +142,7 @@ class Dehum_MVP_Frontend {
                 <div class="dehum-chat-container">
                     <!-- Header -->
                     <div class="dehum-chat-header">
-                        <h3 id="chat-title">Dehumidifier Sizing Assistant (ALPHA TEST)</h3>
+                        <h3 id="chat-title">Dehumidifier Sizing Assistant (ALPHA TEST) v0.2</h3>
                         <div class="dehum-header-actions">
                             <button id="dehum-clear-btn" class="dehum-clear-btn" aria-label="Clear conversation" title="Clear conversation and start fresh">
                                 🗑️
@@ -128,10 +154,7 @@ class Dehum_MVP_Frontend {
                     <!-- Messages -->
                     <div id="dehum-chat-messages" class="dehum-chat-messages">
                         <div class="dehum-welcome">
-                            <strong>Welcome! I'm your dehumidifier sizing assistant.</strong><br>
-                            To get started, is this for a pool room or a regular space?<br>
-                            Please provide the size of the space (length × width × height in meters, or total m³), your current room humidity (RH%), and your target humidity (RH%).<br>
-                            I'll calculate the ideal dehumidifier size for you!
+                            <?php echo $this->get_welcome_message(); ?>
                         </div>
                     </div>
                     

@@ -172,8 +172,8 @@
       this.saveConversation();
       this.saveSessionId();
 
-      // Show confirmation message
-      this.addSystemMessage('Conversation cleared. Starting fresh!');
+      // Show welcome message again
+      this.showWelcomeMessage();
 
       // Focus input for new conversation
       $(this.selectors.input).focus();
@@ -257,6 +257,13 @@
       this.isProcessing = false;
       $(this.selectors.input).prop('disabled', false).attr('placeholder', 'Ask about dehumidifier sizing...');
       $(this.selectors.sendBtn).prop('disabled', false).removeClass('dehum-btn--disabled');
+
+      // Automatically restore focus to input field so user can continue typing
+      if (this.isOpen) {
+        setTimeout(() => {
+          $(this.selectors.input).focus();
+        }, 100);
+      }
     },
 
     /**
@@ -365,39 +372,61 @@
                     this.saveIncompleteState('thinking', currentContent);
                   }
                 } else if (data.is_streaming_chunk) {
+                  // Handle both content chunks and tool progress messages
                   const phase = data.metadata?.phase || 'default';
 
-                  // Create new message element if phase changed or no current element
-                  if (phase !== currentPhase || (phase === 'initial_summary' && !summaryElement) || (phase === 'recommendations' && !recsElement)) {
-                    this.hideTypingIndicator();
-                    if (phase === 'initial_summary') {
+                  // Fix: If this is a tool phase message, treat it as a separate progress message
+                  if (phase === 'tools') {
+                    // Tool progress messages - display as separate content
+                    if (!summaryElement) {
+                      this.hideTypingIndicator();
                       summaryElement = this.addMessage('assistant', '', true);
-                    } else if (phase === 'recommendations') {
-                      recsElement = this.addMessage('assistant', '', true);
+                      currentMessageIndex = this.conversation.length - 1;
                     }
-                    currentMessageIndex = this.conversation.length - 1;
-                    currentPhase = phase;
-                  }
-
-                  // Append chunk to appropriate element without echoing summary in recs
-                  if (phase === 'initial_summary') {
-                    currentContent += data.message;
+                    // Add tool progress as content
+                    currentContent += (currentContent ? '\n' : '') + data.message;
                     this.updateMessage(summaryElement, currentContent);
-                  } else if (phase === 'recommendations') {
-                    if (isThinking) {
-                      this.hideThinkingIndicator();
-                      isThinking = false;
-                    }
-                    recsContent += data.message;
-                    this.updateMessage(recsElement, recsContent);  // Only recs content
-                  }
+                    currentPhase = phase;
+                  } else {
+                    // Regular content chunks (initial_summary, recommendations)
 
-                  // Save state
-                  const saveContent = phase === 'initial_summary' ? currentContent : recsContent;
-                  this.saveIncompleteState(phase, saveContent);
+                    // Create new message element if phase changed or no current element
+                    if (phase !== currentPhase || (phase === 'initial_summary' && !summaryElement) || (phase === 'recommendations' && !recsElement)) {
+                      this.hideTypingIndicator();
+                      if (phase === 'initial_summary') {
+                        summaryElement = this.addMessage('assistant', '', true);
+                      } else if (phase === 'recommendations') {
+                        recsElement = this.addMessage('assistant', '', true);
+                      }
+                      currentMessageIndex = this.conversation.length - 1;
+                      currentPhase = phase;
+                    }
+
+                    // Append chunk to appropriate element without echoing summary in recs
+                    if (phase === 'initial_summary') {
+                      currentContent += data.message;
+                      this.updateMessage(summaryElement, currentContent);
+                    } else if (phase === 'recommendations') {
+                      if (isThinking) {
+                        this.hideThinkingIndicator();
+                        isThinking = false;
+                      }
+                      recsContent += data.message;
+                      this.updateMessage(recsElement, recsContent);  // Only recs content
+                    }
+
+                    // Save state
+                    const saveContent = phase === 'initial_summary' ? currentContent : recsContent;
+                    this.saveIncompleteState(phase, saveContent);
+                  }
 
                   // Scroll to bottom after each chunk update (with timeout for DOM render)
                   setTimeout(() => this.scrollToBottom(), 0);
+
+                } else if (data.is_progress_update) {
+                  // Fix: Handle old-style progress updates without creating message bubbles
+                  // Just log for debugging - could be used for progress indicators in future
+                  console.debug('Tool progress:', data.metadata?.status, data.metadata?.tool_name);
 
                 } else if (data.is_final) {
                   // Final message - streaming is complete
@@ -594,6 +623,57 @@
     },
 
     /**
+     * Show welcome message by fetching it from the server
+     */
+    async showWelcomeMessage() {
+      try {
+        const response = await $.ajax({
+          url: dehumMVP.ajaxUrl,
+          type: 'POST',
+          data: {
+            action: 'dehum_get_welcome_message',
+            nonce: dehumMVP.nonce
+          }
+        });
+
+        if (response.success && response.data.message) {
+          const welcomeHtml = `
+            <div class="dehum-welcome">
+              ${response.data.message}
+            </div>
+          `;
+          $(this.selectors.messages).append(welcomeHtml);
+          this.scrollToBottom();
+        } else {
+          // Fallback welcome message if server request fails
+          this.showFallbackWelcomeMessage();
+        }
+      } catch (error) {
+        console.error('Failed to load welcome message:', error);
+        // Fallback welcome message if server request fails
+        this.showFallbackWelcomeMessage();
+      }
+    },
+
+    /**
+     * Show fallback welcome message (in case server request fails)
+     */
+    showFallbackWelcomeMessage() {
+      const welcomeHtml = `
+        <div class="dehum-welcome">
+          <strong>Welcome! I'm your dehumidifier sizing assistant.</strong><br>
+          I can help you with:<br>
+          • <strong>Sizing recommendations</strong> - Provide space details (length × width × height in meters), current humidity (RH%), and target humidity (RH%)<br>
+          • <strong>Product specifications</strong> - Ask about features, technical details, or performance data<br>
+          • <strong>Installation & maintenance</strong> - Questions about setup, operation, or troubleshooting<br><br>
+          Is this for a pool room or regular space? What can I help you with today?
+        </div>
+      `;
+      $(this.selectors.messages).append(welcomeHtml);
+      this.scrollToBottom();
+    },
+
+    /**
      * Render a message from history
      */
     renderMessage(message) {
@@ -633,9 +713,14 @@
             .forEach(message => this.renderMessage(message));
 
           this.scrollToBottom();
+        } else {
+          // No conversation history, show welcome message
+          this.showWelcomeMessage();
         }
       } catch (e) {
         this.conversation = [];
+        // Show welcome message on error too
+        this.showWelcomeMessage();
       }
     },
 
@@ -869,9 +954,9 @@
       return '';
     },
 
-        /**
-     * Save conversation to WordPress for admin logging
-     */
+    /**
+ * Save conversation to WordPress for admin logging
+ */
     async saveConversationToWordPress(userMessage, assistantResponse) {
       try {
         const response = await $.ajax({
@@ -885,7 +970,7 @@
             nonce: dehumMVP.nonce
           }
         });
-        
+
         if (response.success) {
           console.log('Conversation saved to WordPress successfully');
         } else {
@@ -893,7 +978,7 @@
         }
       } catch (error) {
         console.error('Failed to save conversation to WordPress:', error);
-        
+
         // Log additional debugging info
         if (error.status === 403) {
           console.error('403 Error - Possible causes:');
@@ -903,7 +988,7 @@
         } else if (error.status === 429) {
           console.error('429 Error - Rate limited');
         }
-        
+
         // Re-throw so calling code can handle appropriately
         throw error;
       }

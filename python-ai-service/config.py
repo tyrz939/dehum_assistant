@@ -32,6 +32,12 @@ class Config:
     
     THINKING_MODEL: str = os.getenv("THINKING_MODEL")
     
+    # RAG Configuration
+    RAG_ENABLED: bool = os.getenv("RAG_ENABLED", "True").lower() in ("true", "1", "yes")
+    RAG_CHUNK_SIZE: int = int(os.getenv("RAG_CHUNK_SIZE", "500"))
+    RAG_CHUNK_OVERLAP: int = int(os.getenv("RAG_CHUNK_OVERLAP", "50"))
+    RAG_TOP_K: int = int(os.getenv("RAG_TOP_K", "3"))
+    
     @classmethod
     def validate(cls) -> bool:
         """Validate configuration"""

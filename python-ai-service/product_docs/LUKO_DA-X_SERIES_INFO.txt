@@ -1,0 +1,153 @@
+# LUKO DA-X Series Ducted Inverter Dehumidifiers (DA-X60i / DA-X140i)
+
+---
+
+## 1. Series Overview & Key Features
+
+LUKO DA-X Series (DA-X60i / DA-X140i) are ducted, variable-speed, full-inverter dehumidifiers engineered for high-performance moisture control in residential, commercial, and specialty environments.
+
+* Panasonic® R32 inverter compressor (efficient, reliable, variable-speed)
+* Ultra-low noise: <32 dB(A) (DA-X60i), <35 dB(A) (DA-X140i)
+* 5-in-1 IAQ sensor (CO₂, PM2.5, TVOC, RH, Temp) for automatic control
+* Variable fresh-air intake: up to 300 m³/h (modulating damper)
+* Dual filtration: G4 pre-filter + HEPA H13 (captures dust, allergens, fine particles)
+* EC fans: High static, auto-adjusts 400–870 m³/h for pressure compensation
+* Smart control: Absolute humidity setpoint, logic-driven for 45–55% RH comfort
+* IPX4 ingress protection, R32 refrigerant
+* Advanced diagnostics, remote app/Modbus capability (planned)
+* Application: Basements, pools, gyms, offices, museums, archives, flood restoration
+
+---
+
+## 2. Model Specs Table
+
+| Feature           | DA-X60i            | DA-X140i           |
+| ----------------- | ------------------ | ------------------ |
+| Dehumid. Capacity | 45–75 L/day        | 98–145 L/day       |
+| Supply Air Flow   | 450–600 m³/h       | 650–870 m³/h       |
+| Fresh Air Intake  | 0–200 m³/h         | 0–300 m³/h         |
+| Return Air Flow   | 400–600 m³/h       | 570–870 m³/h       |
+| Noise Level       | <32 dB(A)          | <35 dB(A)          |
+| Power (Rated)     | 550–970 W          | 920–1260 W         |
+| Voltage/Freq      | 220V/50Hz          | 220V/50Hz          |
+| Pressure Drop     | 120 Pa             | 150 Pa             |
+| Dimensions (mm)   | 1160×590×325       | 1200×640×370       |
+| Net Weight        | 73 kg              | 83 kg              |
+| Duct Sizes (mm)   | S/F/R: 200/150/200 | S/F/R: 200/150/200 |
+| Drain Conn.       | Φ20 mm             | Φ20 mm             |
+| Refrigerant       | R32                | R32                |
+| Protection        | IPX4               | IPX4               |
+| Fan Type          | EC motor           | EC motor           |
+
+---
+
+## 3. Installation & Mounting
+
+* **Location:** Indoor only; attic, plant room, ceiling void, or service area above dew point
+* **Mounting:** Secure to joists/slab using brackets/straps; level installation is critical (spirit level recommended)
+* **Vibration:** Use spring/rubber isolators (esp. above living/work spaces)
+* **Clearances:** ≥500 mm front (service), ≥600 mm side (filter); access panels must be clear for filter change/maintenance
+* **Filter access:** G4 + HEPA via front/side panel—ensure regular access for cleaning/replacement (3–6 months)
+
+---
+
+## 4. Ducting & Drainage
+
+* **Ducting:**
+
+  * Connect supply/return: Φ200 mm, fresh air: Φ150 mm (rigid, insulated duct preferred)
+  * Keep runs short; avoid sharp bends, minimize pressure loss
+  * Use flexible sections at connections for vibration/noise
+  * Seal/insulate to prevent condensation
+* **Drain:**
+
+  * Attach Φ20 mm hose with P-trap (U-trap) for gravity drainage
+  * Ensure positive slope, no kinks, and smooth flow
+  * Use a condensate pump only if gravity drain not possible
+  * Connect to floor drain, sump, or exterior
+
+---
+
+## 5. Electrical Requirements
+
+* **Circuit:** Dedicated 220V/50Hz supply; check local code for RCD (≤30mA)
+* **Current draw:** DA-X60i: \~2.5–5.7A, DA-X140i: \~3.8–7.0A (typical range)
+* **Disconnect:** Install isolator switch near unit
+* **Wiring:** Grounded, installed by licensed electrician
+* **Voltage stability:** ±10% max fluctuation allowed
+
+---
+
+## 6. Control & Operation
+
+* **Smart Logic:** Maintains absolute humidity target (not just RH)
+* **Sensor:** 5-in-1 (CO₂, PM2.5, TVOC, RH, Temp) auto-adjusts fresh air damper and operation
+* **Fresh-Air Damper:** Electric, fully modulating (0–300 m³/h)
+* **Controls:**
+
+  * Touch controller on unit (menu for mode, timer, setpoint, status)
+  * WiFi/app and Modbus planned (depends on model revision)
+* **Display:** Shows supply/return air temp, RH, filter status, errors
+* **Modes:** Auto (sensor-driven), manual, boost (high capacity), sleep/quiet
+* **Timer:** Single-use (on/off), no recurring schedules (at this time)
+* **Diagnostics:** Real-time fault reporting; logs available via service interface
+
+---
+
+## 7. Filtration
+
+* **Stages:**
+
+  * G4 (primary dust)
+  * HEPA H13 (removes >99.97% of fine particles)
+  * \[Some variants may also include F7 or TVOC modules, check model]
+* **Maintenance:**
+
+  * Access via front/side panel; inspect/replace every 3–6 months under normal use
+  * HEPA must be replaced, not washed; G4 can be washed or replaced
+
+---
+
+## 8. Maintenance & Cleaning
+
+* Unplug/isolate unit before service
+* Clean exterior with damp cloth (no solvents)
+* Check/replace G4 and HEPA filters regularly
+* Inspect drain hose for kinks, blockages
+* Annual check by qualified technician (electrical, refrigerant, fan, sensors)
+
+---
+
+## 9. Error/Fault Codes & Troubleshooting
+
+* Faults and diagnostics shown on controller display
+* Common errors: temperature/humidity sensor fault, communication, fan, damper, compressor, pressure protection, refrigerant
+* Refer to manual/service menu for full error code list and remedies (manual in development, but follow standard FD-X/FD-EX error structure for now)
+* Most faults: clear by power cycle; persistent: call service
+
+---
+
+## 10. Warranty & Support
+
+* **Warranty:** 5 years parts, 2 years labor (manufacturing defects only; excludes wear/tear, consumables)
+* **Support:** Phone and email assistance; spare parts/filters available locally
+* **Contact:** Dehumidifiers Australia Pty Ltd ([sales@dehumsaust.com.au](mailto:sales@dehumsaust.com.au), 0447 728 037)
+
+---
+
+## 11. General Cautions & Compliance
+
+* Must be installed/serviced by licensed HVAC/electrical professionals
+* R32 refrigerant: flammable—do not install near ignition sources; leak test after install/service
+* IPX4 protection for indoor use only
+* Follow all relevant building/electrical codes (AS/NZS in AU)
+* Ensure no blocked air inlets/outlets; keep filters clean for safety/performance
+* All dimensions, specs, and features subject to change; refer to supplied documentation for latest info
+
+---
+
+**\[END - LUKO DA-X Series RAG Chunks, v2024.08.03]**
+
+---
+
+**Expand or further chunk by topic/feature as needed for your RAG or doc system.**

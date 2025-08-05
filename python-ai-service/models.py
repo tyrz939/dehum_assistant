@@ -51,6 +51,7 @@ class StreamingChatResponse(BaseModel):
     is_final: bool = False
     is_thinking: bool = False
     is_streaming_chunk: bool = False  # Indicates real-time text chunks from OpenAI
+    is_progress_update: bool = False  # Indicates tool/background progress, not content
     function_calls: Optional[List[Dict[str, Any]]] = None
     recommendations: Optional[List[Dict[str, Any]]] = None
     conversation_id: Optional[str] = None

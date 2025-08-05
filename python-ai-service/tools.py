@@ -12,11 +12,38 @@ import re
 
 logger = logging.getLogger(__name__)
 
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
+
+# RAG imports with fallback
+try:
+    from rag_pipeline import load_vectorstore
+    RAG_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"RAG pipeline not available: {e}")
+    RAG_AVAILABLE = False
+    def load_vectorstore():
+        return None
+
 class DehumidifierTools:
     """Tools for dehumidifier sizing and product recommendations"""
     
     def __init__(self):
         self.products = self.load_product_database()
+        
+        # Initialize RAG vectorstore
+        self.vectorstore = None
+        if RAG_AVAILABLE:
+            try:
+                self.vectorstore = load_vectorstore()
+                if self.vectorstore:
+                    logger.info("RAG vectorstore loaded successfully")
+                else:
+                    logger.warning("RAG vectorstore could not be loaded")
+            except Exception as e:
+                logger.error(f"Error loading RAG vectorstore: {e}")
+                self.vectorstore = None
         
     def load_product_database(self) -> List[Dict[str, Any]]:
         """Load product database from JSON file"""
@@ -223,6 +250,83 @@ class DehumidifierTools:
 
 
     
+    def get_product_catalog(self, 
+                           capacity_min: float = None, 
+                           capacity_max: float = None,
+                           product_type: str = None,
+                           pool_safe_only: bool = False,
+                           price_range_max: float = None) -> Dict[str, Any]:
+        """
+        Get product catalog for pricing and comparison queries.
+        
+        Args:
+            capacity_min: Minimum capacity in L/day (optional)
+            capacity_max: Maximum capacity in L/day (optional) 
+            product_type: Filter by type: 'wall_mount', 'ducted', 'portable' (optional)
+            pool_safe_only: Only return pool-safe models (optional)
+            price_range_max: Maximum price in AUD (optional)
+            
+        Returns:
+            Dictionary with filtered catalog and summary info
+        """
+        catalog = []
+        for p in self.products:
+            # Skip incomplete entries
+            if p.get("capacity_lpd") is None:
+                continue
+                
+            # Apply filters
+            if pool_safe_only and not p.get("pool_safe", False):
+                continue
+            if product_type and p.get("type") != product_type:
+                continue
+            if capacity_min and p.get("capacity_lpd", 0) < capacity_min:
+                continue
+            if capacity_max and p.get("capacity_lpd", 0) > capacity_max:
+                continue
+            if price_range_max and p.get("price_aud") and p.get("price_aud") > price_range_max:
+                continue
+                
+            # Calculate effective capacity
+            eff_cap = p["capacity_lpd"] * p.get("performance_factor", 1.0)
+            
+            catalog.append({
+                "sku": p["sku"],
+                "name": p.get("name", p["sku"]),
+                "type": p.get("type"),
+                "series": p.get("series"),
+                "technology": p.get("technology"),
+                "capacity_lpd": p["capacity_lpd"],
+                "effective_capacity_lpd": eff_cap,
+                "performance_factor": p.get("performance_factor", 1.0),
+                "pool_safe": p.get("pool_safe", False),
+                "price_aud": p.get("price_aud"),
+                "url": p.get("url")
+            })
+        
+        # Sort by capacity for easier browsing
+        catalog.sort(key=lambda x: x["capacity_lpd"])
+        
+        return {
+            "catalog": catalog,
+            "total_products": len(catalog),
+            "capacity_range": {
+                "min": min([p["capacity_lpd"] for p in catalog]) if catalog else 0,
+                "max": max([p["capacity_lpd"] for p in catalog]) if catalog else 0
+            },
+            "price_range": {
+                "min": min([p["price_aud"] for p in catalog if p["price_aud"]]) if [p for p in catalog if p["price_aud"]] else None,
+                "max": max([p["price_aud"] for p in catalog if p["price_aud"]]) if [p for p in catalog if p["price_aud"]] else None
+            },
+            "filters_applied": {
+                "capacity_min": capacity_min,
+                "capacity_max": capacity_max,
+                "product_type": product_type,
+                "pool_safe_only": pool_safe_only,
+                "price_range_max": price_range_max
+            }
+        }
+
     def get_catalog_with_effective_capacity(self, include_pool_safe_only: bool = False) -> List[Dict[str, Any]]:
         """Return product catalog with pre-computed effective capacity (capacity_lpd × performance_factor)."""
         catalog = []
@@ -318,9 +422,98 @@ class DehumidifierTools:
         """
         return min(1.0, max(0.1, 0.4 + 0.7 * (temp / 30) ** 2.2 * (rh / 85) ** 2.8))
 
+    def retrieve_relevant_docs(self, query: str, k: int = 3) -> List[str]:
+        """
+        Retrieve relevant document chunks using RAG with product-aware prioritization
+        
+        Args:
+            query: The search query
+            k: Number of top chunks to return (default 3)
+            
+        Returns:
+            List of relevant document chunks as strings
+        """
+        if not self.vectorstore:
+            logger.warning("RAG vectorstore not available for document retrieval")
+            return []
+        
+        if not query or not query.strip():
+            logger.warning("Empty query provided for document retrieval")
+            return []
+        
+        try:
+            # Perform similarity search with more candidates for filtering
+            search_k = min(k * 3, 15)  # Get more candidates to filter from
+            docs = self.vectorstore.similarity_search(query.strip(), k=search_k)
+            
+            # Product-source mapping
+            product_sources = {
+                'SP500C': 'SUNTEC_SP_SERIES_INFO.txt',
+                'SP1000C': 'SUNTEC_SP_SERIES_INFO.txt', 
+                'SP1500C': 'SUNTEC_SP_SERIES_INFO.txt',
+                'SP500': 'SUNTEC_SP_SERIES_INFO.txt',
+                'SP1000': 'SUNTEC_SP_SERIES_INFO.txt',
+                'SP1500': 'SUNTEC_SP_SERIES_INFO.txt',
+                'Suntec': 'SUNTEC_SP_SERIES_INFO.txt',
+                'SP Pro': 'SUNTEC_SP_SERIES_INFO.txt',
+                'IDHR60': 'FAIRLAND_IDHR_SERIES_INFO.txt',
+                'IDHR96': 'FAIRLAND_IDHR_SERIES_INFO.txt',
+                'IDHR120': 'FAIRLAND_IDHR_SERIES_INFO.txt',
+                'Fairland': 'FAIRLAND_IDHR_SERIES_INFO.txt',
+                'DA-X60i': 'LUKO_DA-X_SERIES_INFO.txt',
+                'DA-X140i': 'LUKO_DA-X_SERIES_INFO.txt',
+                'DA-X60': 'LUKO_DA-X_SERIES_INFO.txt',
+                'DA-X140': 'LUKO_DA-X_SERIES_INFO.txt',
+                'Luko': 'LUKO_DA-X_SERIES_INFO.txt',
+                'DA-X': 'LUKO_DA-X_SERIES_INFO.txt'
+            }
+            
+            # Check if query contains specific product mentions
+            query_upper = query.upper()
+            target_source = None
+            for product, source in product_sources.items():
+                if product.upper() in query_upper:
+                    target_source = source
+                    break
+            
+            # Prioritize chunks from the target source if product is specified
+            if target_source:
+                # First, get chunks from the target source
+                target_chunks = [doc for doc in docs if doc.metadata.get('source') == target_source]
+                other_chunks = [doc for doc in docs if doc.metadata.get('source') != target_source]
+                
+                # Prioritize target source chunks, then fill with others if needed
+                prioritized_docs = target_chunks[:k] + other_chunks[:max(0, k - len(target_chunks))]
+                docs = prioritized_docs[:k]
+                
+                logger.info(f"Product-aware search: Found {len(target_chunks)} chunks from {target_source} for query '{query}'")
+            
+            # Extract content and format chunks
+            chunks = []
+            for doc in docs:
+                source = doc.metadata.get('source', 'Unknown')
+                content = doc.page_content.strip()
+                
+                if content:  # Only include non-empty chunks
+                    # Format chunk with source information
+                    formatted_chunk = f"[Source: {source}]\n{content}"
+                    chunks.append(formatted_chunk)
+            
+            logger.info(f"Retrieved {len(chunks)} relevant chunks for query: '{query[:50]}{'...' if len(query) > 50 else ''}'")
+            return chunks
+            
+        except Exception as e:
+            logger.error(f"Error retrieving relevant docs for query '{query}': {e}")
+            return []
+
     def get_available_tools(self) -> List[str]:
         """Get list of available tool names"""
-        return [
+        tools = [
             "calculate_dehum_load",
             "get_product_manual"
         ]
+        
+        # RAG tool is now managed by agent tool definitions based on config
+        # No need for conditional inclusion here
+        
+        return tools
