@@ -98,6 +98,7 @@ LUKO DA-X Series (DA-X60i / DA-X140i) are ducted, variable-speed, full-inverter 
 * **Disconnect:** Install isolator switch near unit
 * **Wiring:** Grounded, installed by licensed electrician
 * **Voltage stability:** ±10% max fluctuation allowed
+* **Wiring Diagram (Controller):** ![Controller Wiring Diagram](https://www.dehumsaust.com.au/wp-content/uploads/2025/08/inverter-wiring.png)
 
 ---
 

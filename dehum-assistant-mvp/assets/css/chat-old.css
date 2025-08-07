@@ -1,0 +1,785 @@
+/**
+ * Dehumidifier Assistant Chat Widget
+ * Clean, professional CSS with proper cascade
+ */
+
+/* Chat Button */
+.dehum-chat-button {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+  color: var(--primary-foreground);
+  border: none;
+  border-radius: 16px;
+  cursor: pointer;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Fallback for browsers without color-mix support */
+  box-shadow: 0 4px 20px rgba(64, 84, 178, 0.4);
+  border: 2px solid rgba(64, 84, 178, 0.5);
+  /* Modern browsers with color-mix support */
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--primary) 40%, transparent);
+  border: 2px solid color-mix(in srgb, var(--primary) 40%, black 10%);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.dehum-chat-button:hover {
+  transform: translateY(-3px) scale(1.05);
+  /* Fallback for browsers without color-mix support */
+  box-shadow: 0 8px 32px rgba(64, 84, 178, 0.7);
+  /* Modern browsers with color-mix support */
+  box-shadow: 0 8px 32px color-mix(in srgb, var(--primary) 70%, transparent);
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--secondary) 0%, var(--primary) 100%);
+}
+
+.dehum-chat-button:focus {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+  transform: translateY(-2px) scale(1.03);
+}
+
+.dehum-chat-button:active {
+  transform: translateY(-1px) scale(1.02);
+}
+
+.dehum-button-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  position: relative;
+}
+
+.dehum-ai-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.9;
+  transition: all 0.2s ease;
+}
+
+.dehum-ai-text {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  opacity: 0.95;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.dehum-chat-button:hover .dehum-ai-icon {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.dehum-chat-button:hover .dehum-ai-text {
+  opacity: 1;
+  transform: scale(1.05);
+}
+
+/* Pulse animation for attention */
+@keyframes dehum-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 4px 20px rgba(102, 126, 234, 0.6), 0 0 0 8px rgba(102, 126, 234, 0.1);
+  }
+}
+
+.dehum-chat-button.pulse {
+  animation: dehum-pulse 2s ease-in-out infinite;
+}
+
+/* Chat Modal */
+.dehum-chat-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Animation */
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.3s ease, visibility 0s 0.3s;
+}
+
+.dehum-chat-modal.show {
+  visibility: visible;
+  opacity: 1;
+  transition-delay: 0s;
+}
+
+/* Chat Container */
+.dehum-chat-container {
+  width: 480px;
+  height: 700px;
+  max-height: 85vh;
+  /* Dynamic scaling for shorter screens */
+  min-height: 500px;
+  /* Minimum height to maintain usability */
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  /* Animation */
+  transform: scale(0.95);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.dehum-chat-modal.show .dehum-chat-container {
+  transform: scale(1);
+  opacity: 1;
+}
+
+/* Responsive: Mobile full-screen */
+@media (max-width: 767px) {
+  .dehum-chat-modal {
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  .dehum-chat-container {
+    width: 100%;
+    height: 100vh;
+    height: 100dvh;
+    /* Dynamic viewport height for better mobile support */
+    border-radius: 0;
+    transform: translateY(100%);
+    max-height: none;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .dehum-chat-modal.show .dehum-chat-container {
+    transform: translateY(0);
+  }
+}
+
+/* Responsive: Desktop and above */
+@media (min-width: 768px) {
+  .dehum-chat-modal {
+    align-items: flex-end;
+    justify-content: flex-end;
+  }
+
+  .dehum-chat-container {
+    margin: 0 20px 90px 0;
+  }
+
+  /* Short screens adjustments */
+  @media (max-height: 800px) {
+    .dehum-chat-container {
+      height: 75vh;
+      max-height: 600px;
+    }
+  }
+
+  /* Very short screens adjustments */
+  @media (max-height: 650px) {
+    .dehum-chat-container {
+      height: 70vh;
+      max-height: 450px;
+      min-height: 400px;
+    }
+  }
+}
+
+/* Large desktop screens */
+@media (min-width: 1200px) {
+  .dehum-chat-container {
+    width: 520px;
+    height: 750px;
+  }
+}
+
+/* Very large desktop screens */
+@media (min-width: 1600px) {
+  .dehum-chat-container {
+    width: 560px;
+    height: 800px;
+  }
+}
+
+/* Header */
+.dehum-chat-header {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.dehum-chat-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.dehum-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.dehum-clear-btn,
+.dehum-close-btn {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dehum-close-btn {
+  font-size: 24px;
+  padding: 4px;
+}
+
+.dehum-clear-btn {
+  font-size: 16px;
+  opacity: 0.9;
+}
+
+.dehum-clear-btn:hover,
+.dehum-close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dehum-clear-btn:focus,
+.dehum-close-btn:focus {
+  outline: 2px solid rgba(255, 255, 255, 0.8);
+  outline-offset: 1px;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dehum-clear-btn:hover {
+  opacity: 1;
+}
+
+/* Messages */
+.dehum-chat-messages {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  background: var(--muted, #f8f9fa);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.dehum-welcome {
+  background: var(--accent);
+  color: var(--accent-foreground);
+  padding: 20px;
+  border-radius: 10px;
+  border-left: 4px solid var(--primary);
+  margin-bottom: 24px;
+  font-size: 16px;
+}
+
+.dehum-message {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+}
+
+.dehum-message--user {
+  align-items: flex-end;
+}
+
+.dehum-message--assistant {
+  align-items: flex-start;
+}
+
+.dehum-message__bubble {
+  padding: 12px 16px;
+  max-width: 90%;
+  display: inline-block;
+  word-wrap: break-word;
+  border-radius: 8px;
+  position: relative;
+}
+
+.dehum-message--user .dehum-message__bubble {
+  background: var(--accent, #f3f4f6);
+  color: var(--foreground, #222);
+  border-right: 4px solid var(--success, #34d399);
+}
+
+.dehum-message--assistant .dehum-message__bubble {
+  background: var(--accent, #f3f4f6);
+  color: var(--foreground, #222);
+  border-left: 4px solid var(--primary);
+  box-shadow: none;
+  /* Keep right padding for potential button, but let it overlay at bottom */
+  padding-right: 44px;
+}
+
+.dehum-message--thinking .dehum-message__bubble {
+  background: #f8f9fa;
+  color: #6b7280;
+  border-left: 4px solid #9ca3af;
+  font-style: italic;
+  opacity: 0.9;
+  animation: thinking-pulse 2s infinite;
+}
+
+@keyframes thinking-pulse {
+
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.dehum-message--error .dehum-message__bubble {
+  background: #ffebee;
+  color: #c62828;
+  border-radius: 8px;
+  border-left: 4px solid #f44336;
+  max-width: 100%;
+}
+
+.dehum-message--system .dehum-message__bubble {
+  background: #fff3e0;
+  color: #ef6c00;
+  border-radius: 8px;
+  border-left: 4px solid #ff9800;
+  max-width: 100%;
+  text-align: center;
+  font-size: 14px;
+}
+
+.dehum-message__timestamp {
+  font-size: 11px;
+  color: #6c757d;
+  margin-top: 4px;
+}
+
+.dehum-message--error .dehum-message__timestamp {
+  display: none;
+}
+
+/* Copy Button */
+.dehum-copy-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.2s ease;
+  font-size: 16px;
+  color: var(--foreground, #222);
+  z-index: 1;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.dehum-copy-btn:hover {
+  background: rgba(255, 255, 255, 1);
+  border-color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transform: scale(1.05);
+}
+
+.dehum-copy-btn:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+  opacity: 1;
+}
+
+.dehum-copy-btn:active {
+  transform: scale(0.95);
+}
+
+/* Show copy button on hover or focus */
+.dehum-message--assistant .dehum-message__bubble:hover .dehum-copy-btn,
+.dehum-message--assistant .dehum-message__bubble:focus-within .dehum-copy-btn,
+.dehum-copy-btn:focus {
+  opacity: 1;
+}
+
+/* Copy button feedback states */
+.dehum-copy-btn--success {
+  background: #d1fae5;
+  border-color: #34d399;
+  color: #065f46;
+}
+
+.dehum-copy-btn--error {
+  background: #fee2e2;
+  border-color: #f87171;
+  color: #991b1b;
+}
+
+/* Mobile - always show copy button for better accessibility */
+@media (max-width: 767px) {
+  .dehum-copy-btn {
+    opacity: 0.7;
+  }
+
+  .dehum-message--assistant .dehum-message__bubble .dehum-copy-btn {
+    opacity: 0.7;
+  }
+
+  .dehum-message--assistant .dehum-message__bubble:hover .dehum-copy-btn,
+  .dehum-copy-btn:focus {
+    opacity: 1;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .dehum-copy-btn {
+    background: rgba(0, 0, 0, 0.8);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--primary-foreground, #fff);
+  }
+
+  .dehum-copy-btn:hover {
+    background: rgba(0, 0, 0, 0.9);
+    border-color: var(--primary);
+  }
+
+  .dehum-copy-btn--success {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: #10b981;
+    color: #6ee7b7;
+  }
+
+  .dehum-copy-btn--error {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: #ef4444;
+    color: #fca5a5;
+  }
+}
+
+/* Typing Indicator */
+#typing-indicator .dehum-message__bubble {
+  padding: 12px 16px;
+}
+
+.typing-dots span {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #888;
+  /* visible gray dots */
+  margin: 0 1px;
+  animation: typing-bounce 1.4s infinite ease-in-out both;
+}
+
+.typing-dots span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-dots span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes typing-bounce {
+
+  0%,
+  80%,
+  100% {
+    transform: scale(0);
+  }
+
+  40% {
+    transform: scale(1.0);
+  }
+}
+
+/* Input Area */
+.dehum-chat-input {
+  padding: 16px 20px;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+}
+
+.dehum-input-area {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.dehum-chat-input textarea {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid var(--border, #ddd);
+  border-radius: 20px;
+  background: var(--card, #fff);
+  color: var(--foreground, #222);
+  resize: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 14px;
+  min-height: 20px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.dehum-chat-input textarea:focus {
+  border-color: var(--primary);
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.dehum-send-btn {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border: none;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+
+  /* Explicit centering to prevent theme interference */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1;
+  font-weight: 500;
+
+  /* Reset any inherited spacing */
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+.dehum-send-btn:hover {
+  /* Fallback for browsers without color-mix support */
+  background: #334190;
+  /* Modern browsers with color-mix support */
+  background: color-mix(in srgb, var(--primary) 80%, black);
+}
+
+.dehum-send-btn:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  /* Fallback for browsers without color-mix support */
+  background: #334190;
+  /* Modern browsers with color-mix support */
+  background: color-mix(in srgb, var(--primary) 80%, black);
+}
+
+/* Character Counter */
+.dehum-char-count {
+  font-size: 12px;
+  color: var(--muted-foreground, #6c757d);
+  margin-left: 8px;
+  user-select: none;
+}
+
+.dehum-char-count.exceeded {
+  color: var(--destructive, #e11d48);
+}
+
+/* Fine-tune spacing inside message bubbles to avoid excessive whitespace */
+.dehum-message__bubble h1,
+.dehum-message__bubble h2,
+.dehum-message__bubble h3,
+.dehum-message__bubble h4,
+.dehum-message__bubble h5,
+.dehum-message__bubble h6 {
+  margin: 4px 0 6px;
+  font-size: 1em;
+  line-height: 1.3;
+}
+
+.dehum-message__bubble ul,
+.dehum-message__bubble ol {
+  margin: 4px 0 6px 18px;
+  padding-left: 0;
+}
+
+.dehum-message__bubble p {
+  margin: 4px 0 6px;
+}
+
+/* Remove accidental extra line breaks inside lists */
+.dehum-message__bubble ul br,
+.dehum-message__bubble ol br {
+  display: none;
+}
+
+/* Thinking indicator with animated dots */
+.thinking-dots {
+  display: inline-block;
+  margin-left: 4px;
+}
+
+.thinking-dots span {
+  animation: thinking-blink 1.4s infinite both;
+  font-weight: bold;
+  color: var(--primary);
+}
+
+.thinking-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.thinking-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes thinking-blink {
+
+  0%,
+  20% {
+    opacity: 0.2;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+
+  80%,
+  100% {
+    opacity: 0.2;
+    transform: scale(1);
+  }
+}
+
+/* Thinking message styling */
+.dehum-message--thinking .dehum-message__bubble {
+  background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+  border: 1px solid #0ea5e9;
+  color: #0369a1;
+  font-style: italic;
+}
+
+/* Dark mode thinking message */
+@media (prefers-color-scheme: dark) {
+  .dehum-message--thinking .dehum-message__bubble {
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    border: 1px solid #3b82f6;
+    color: #93c5fd;
+  }
+}
+
+/* Link styling in chat messages */
+.dehum-message__bubble a {
+  color: #2563eb;
+  text-decoration: underline;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.dehum-message__bubble a:hover {
+  color: #1d4ed8;
+  text-decoration: none;
+}
+
+.dehum-message__bubble a:visited {
+  color: #7c3aed;
+}
+
+/* Dark mode link styling */
+@media (prefers-color-scheme: dark) {
+  .dehum-message__bubble a {
+    color: #60a5fa;
+  }
+
+  .dehum-message__bubble a:hover {
+    color: #93c5fd;
+  }
+
+  .dehum-message__bubble a:visited {
+    color: #a78bfa;
+  }
+}
+
+/* Interruption message styling */
+.dehum-message--interruption .dehum-message__bubble {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border: 1px solid #f59e0b;
+  color: #92400e;
+  font-weight: 500;
+}
+
+/* Retry button styling */
+.dehum-retry-btn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  margin-top: 8px;
+  transition: all 0.2s ease;
+}
+
+.dehum-retry-btn:hover {
+  background: #2563eb;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+.dehum-retry-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(59, 130, 246, 0.2);
+}
+
+/* Dark mode interruption message */
+@media (prefers-color-scheme: dark) {
+  .dehum-message--interruption .dehum-message__bubble {
+    background: linear-gradient(135deg, #451a03, #78350f);
+    border: 1px solid #f59e0b;
+    color: #fbbf24;
+  }
+
+  .dehum-retry-btn {
+    background: #1d4ed8;
+  }
+
+  .dehum-retry-btn:hover {
+    background: #1e40af;
+  }
+}
