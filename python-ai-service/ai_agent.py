@@ -87,12 +87,23 @@ class DehumidifierAgent:
         return name + "|" + json.dumps(args, sort_keys=True, separators=(",", ":"))
             
     def _get_completion_params(self, model: str, messages: List[Dict], max_tokens: int) -> Dict[str, Any]:
-        return {
-            "model": model,
-            "messages": messages,
-            "max_tokens": DEFAULT_MAX_TOKENS,
-            "temperature": self.temperature
-        }
+        # GPT-5 uses max_completion_tokens instead of max_tokens
+        if model.startswith("gpt-5"):
+            return {
+                "model": model,
+                "messages": messages,
+                "max_completion_tokens": max_tokens,
+                "temperature": self.temperature,
+                "reasoning_effort": config.GPT5_REASONING_EFFORT,  # Configurable reasoning effort
+                "verbosity": config.GPT5_VERBOSITY                # Configurable response length
+            }
+        else:
+            return {
+                "model": model,
+                "messages": messages,
+                "max_tokens": max_tokens,
+                "temperature": self.temperature
+            }
         
     def _load_prompt_from_file(self, filename: str) -> str:
         prompt_path = os.path.join(os.path.dirname(__file__), "prompts", filename)
@@ -570,7 +581,39 @@ Use your contextual understanding to choose the most appropriate tool based on w
         
     @retry(retry=retry_if_exception(_is_retryable_error_static), stop=stop_after_attempt(MAX_RETRIES + 1), wait=wait_exponential_jitter(RETRY_DELAY_BASE, MAX_RETRY_DELAY), reraise=True)
     async def _call_openai(self, **params):
-        return await litellm.acompletion(**params)
+        # Use the same hybrid approach as main.py
+        from openai import AsyncOpenAI
+        
+        model = params.get("model", "")
+        
+        # Use OpenAI client directly for GPT-5 models
+        if model.startswith("gpt-5"):
+            openai_client = AsyncOpenAI(api_key=config.OPENAI_API_KEY)
+            
+            # Convert LiteLLM format to OpenAI format
+            openai_params = {
+                "model": params["model"],
+                "messages": params["messages"],
+                "temperature": params.get("temperature", 0.3),
+                "stream": params.get("stream", False)
+            }
+            
+            # Add GPT-5 specific parameters
+            if "max_completion_tokens" in params:
+                openai_params["max_completion_tokens"] = params["max_completion_tokens"]
+            if "reasoning_effort" in params:
+                openai_params["reasoning_effort"] = params["reasoning_effort"]
+            if "verbosity" in params:
+                openai_params["verbosity"] = params["verbosity"]
+            if "tools" in params:
+                openai_params["tools"] = params["tools"]
+            if "tool_choice" in params:
+                openai_params["tool_choice"] = params["tool_choice"]
+                
+            return await openai_client.chat.completions.create(**openai_params)
+        else:
+            # Use LiteLLM for other models
+            return await litellm.acompletion(**params)
                 
     async def _make_api_call_with_retry(self, **params):
         return await self._call_openai(**params)

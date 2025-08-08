@@ -24,6 +24,7 @@ Typical uses: pools, spas, gyms, museums, cellars, server rooms, manufacturing, 
 | Model                      | SP500C PRO                 | SP1000C PRO (interpolated) | SP1500C PRO                |
 | -------------------------- | -------------------------- | -------------------------- | -------------------------- |
 | Water Removal (32°C/80%RH) | 50L/day                    | 100L/day                   | 150L/day                   |
+| Standard Rating Conditions  | 30°C, 80% RH (AHAM)       | 30°C, 80% RH (AHAM)       | 30°C, 80% RH (AHAM)       |
 | Airflow Rate               | 500 m³/h                   | 800 m³/h                   | 900 m³/h                   |
 | Power                      | 660 W / 3.1 A              | 1500 W / 6.5 A             | 2050 W / 8.9 A             |
 | Power Supply               | 220-240V/50Hz              | 220-240V/50Hz              | 220-240V/50Hz              |
@@ -48,7 +49,23 @@ Typical uses: pools, spas, gyms, museums, cellars, server rooms, manufacturing, 
 
 ---
 
-## 3. Physical Dimensions & Specifications
+## 3. Capacity Derating & Performance Notes
+
+**IMPORTANT:** All dehumidifier capacities are rated at **30°C, 80% RH** (AHAM standard conditions). Performance will drop considerably at lower temperatures and humidity levels:
+
+* **Lower temperatures** (below 20°C): Capacity can drop 40-60%
+* **Lower humidity** (below 60% RH): Capacity can drop 30-50%
+* **Combined effect** (cool + dry conditions): Capacity may drop 60-70%
+
+**Examples:** 
+- SP1500C PRO (150L rated) may only extract 50-75L/day at 15°C/50%RH
+- SP500C PRO (50L rated) may only extract 20-30L/day at 15°C/50%RH
+
+Always size dehumidifiers based on actual site conditions, not just rated capacity. Consult with technical support for site-specific sizing.
+
+---
+
+## 4. Physical Dimensions & Specifications
 
 **SP500C PRO**: 650×275×550 mm (L×W×H), 34 kg
 **SP1000C PRO**: 890×260×750 mm (L×W×H), 56 kg  
@@ -66,7 +83,7 @@ Typical uses: pools, spas, gyms, museums, cellars, server rooms, manufacturing, 
 
 ---
 
-## 4. Key Features
+## 5. Key Features
 
 * **WiFi & App (Dry Connect):**
 
@@ -100,11 +117,13 @@ Typical uses: pools, spas, gyms, museums, cellars, server rooms, manufacturing, 
   * Mobile (wheels), stationary (feet), or wall-mounted (brackets)
 * **Drainage:**
 
-  * Gravity hose connection (condensation pump optional)
+  * Gravity hose connection with direct run to drain point
+  * **Note:** Use straight drainage run - avoid P-traps which can cause backup issues
+  * Condensation pump optional for locations where gravity drainage not possible
 
 ---
 
-## 5. Control Panel & Operation
+## 6. Control Panel & Operation
 
 * Touchpad panel with LCD display and timer
 * Functions: On/Off, set humidity, set timer (10 min to 23:50 hrs), read current/target RH, ambient temperature (°C/°F), job and total run time
@@ -114,7 +133,7 @@ Typical uses: pools, spas, gyms, museums, cellars, server rooms, manufacturing, 
 
 ---
 
-## 6. Error Codes & Troubleshooting
+## 7. Error Codes & Troubleshooting
 
 | Code | Meaning                        |
 | ---- | ------------------------------ |
@@ -128,7 +147,7 @@ Typical uses: pools, spas, gyms, museums, cellars, server rooms, manufacturing, 
 
 ---
 
-## 7. Accessories (Included/Optional)
+## 8. Accessories (Included/Optional)
 
 * Wall mount brackets & plates (with screws)
 * Floor mount brackets (with screws)
@@ -140,7 +159,7 @@ Typical uses: pools, spas, gyms, museums, cellars, server rooms, manufacturing, 
 
 ---
 
-## 8. Maintenance & Filter Replacement
+## 9. Maintenance & Filter Replacement
 
 * Always unplug before maintenance
 * For storage: Set RH to 80% for 3–4 hrs to dry inside, then unplug, remove remote batteries
@@ -150,7 +169,7 @@ Typical uses: pools, spas, gyms, museums, cellars, server rooms, manufacturing, 
 
 ---
 
-## 9. Warranty (Australia)
+## 10. Warranty (Australia)
 
 * 24 months parts, 12 months labor from purchase
 * Excludes wear and abuse
@@ -158,7 +177,7 @@ Typical uses: pools, spas, gyms, museums, cellars, server rooms, manufacturing, 
 
 ---
 
-## 10. General Notes & Cautions
+## 11. General Notes & Cautions
 
 * Do not run above 40°C (can cause damage)
 * Unit must be upright 45 min after transport before use

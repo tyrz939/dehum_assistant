@@ -38,6 +38,10 @@ class Config:
     RAG_CHUNK_OVERLAP: int = int(os.getenv("RAG_CHUNK_OVERLAP", "50"))
     RAG_TOP_K: int = int(os.getenv("RAG_TOP_K", "3"))
     
+    # GPT-5 Optimization Settings
+    GPT5_REASONING_EFFORT: str = os.getenv("GPT5_REASONING_EFFORT", "minimal")  # minimal, low, medium, high
+    GPT5_VERBOSITY: str = os.getenv("GPT5_VERBOSITY", "low")                   # low, medium, high
+    
     @classmethod
     def validate(cls) -> bool:
         """Validate configuration"""

@@ -23,18 +23,18 @@ LUKO DA-X Series (DA-X60i / DA-X140i) are ducted, variable-speed, full-inverter 
 
 | Feature                  | DA-X60i                             | DA-X140i                            |
 | ------------------------ | ----------------------------------- | ----------------------------------- |
-| **Capacity (27°C, 60%RH)** | **45–75 L/Day**                     | **98–145 L/Day**                    |
+| **Capacity (27°C, 60%RH)** | **45–75 L/Day**                     | **110–155 L/Day**                   |
 | **Voltage/Frequency**    | 220V/50HZ                           | 220V/50HZ                           |
 | **Refrigerant**          | R32                                 | R32                                 |
-| **Supply Air Flow**      | 450–600 m³/h                        | 650–870 m³/h                        |
-| **Fresh Air Flow**       | 0–200 m³/h                          | 0–300 m³/h                          |
-| **Return Air Flow**      | 400–600 m³/h                        | 570–870 m³/h                        |
+| **Supply Air Flow**      | 450–600 m³/h                        | 800–1150 m³/h                       |
+| **Fresh Air Flow**       | 0–200 m³/h                          | 0–380 m³/h                          |
+| **Return Air Flow**      | 400–600 m³/h                        | 770–1150 m³/h                       |
 | **Fan Type**             | EC motor, variable speed control    | EC motor, variable speed control    |
-| **Static Pressure**      | 120 Pa                              | 150 Pa                              |
+| **Static Pressure**      | 120 Pa                              | 180 Pa                              |
 | **Compressor**           | Panasonic Inverter                  | Panasonic Inverter                  |
 | **Control Logic**        | RH & Absolute humidity setpoint     | RH & Absolute humidity setpoint     |
-| **Rated Power**          | 550–970 W                           | 920–1260 W                          |
-| **Rated Current**        | 2.5–4.4 A                           | 4.1–5.7 A                           |
+| **Rated Power**          | 890 W                               | 1860 W                              |
+| **Rated Current**        | 4.1 A                               | 8.5 A                               |
 | **Drain Hole Size**      | Φ20 mm                              | Φ20 mm                              |
 | **Drain Pan**            | SUS304                              | SUS304                              |
 | **Filtration**           | Primary Filter G4 + HEPA H13        | Primary Filter G4 + HEPA H13        |
@@ -51,11 +51,32 @@ LUKO DA-X Series (DA-X60i / DA-X140i) are ducted, variable-speed, full-inverter 
 
 ---
 
-## 3. Physical Dimensions & Ducting
+## 3. Capacity Derating & Performance Notes
 
-**DA-X60i**: 1160×590×325 mm (L×W×H)
-**DA-X140i**: 1200×640×370 mm (L×W×H)
-**Net Weight**: DA-X60i: 73 kg, DA-X140i: 83 kg
+**IMPORTANT:** All dehumidifier capacities are rated at **30°C, 80% RH** (AHAM standard conditions). Performance will drop considerably at lower temperatures and humidity levels:
+
+* **Lower temperatures** (below 20°C): Capacity can drop 40-60%
+* **Lower humidity** (below 60% RH): Capacity can drop 30-50%
+* **Combined effect** (cool + dry conditions): Capacity may drop 60-70%
+
+**Example:** A DA-X140i (155L rated) at 30°C/80%RH may only extract 50-70L/day at 15°C/50%RH.
+
+Always size dehumidifiers based on actual site conditions, not just rated capacity. Consult with technical support for site-specific sizing.
+
+---
+
+## 4. Physical Dimensions & Ducting
+
+**DA-X60i**: 1160×590×325 mm (L×W×H), 73 kg
+**DA-X140i**: 1200×640×370 mm (L×W×H), 83 kg
+
+**Power Requirements:**
+**DA-X60i**: 890W, 4.1A at 220V/50Hz
+**DA-X140i**: 1860W, 8.5A at 220V/50Hz
+
+**Capacity & Airflow:**
+**DA-X60i**: 45–75 L/day, 450–600 m³/h supply air, 0–200 m³/h fresh air
+**DA-X140i**: 110–155 L/day, 800–1150 m³/h supply air, 0–380 m³/h fresh air
 
 **Duct Connections (for both models):**
 - **Supply Air Duct:** Φ200 mm
@@ -64,7 +85,7 @@ LUKO DA-X Series (DA-X60i / DA-X140i) are ducted, variable-speed, full-inverter 
 
 ---
 
-## 4. Installation & Mounting
+## 5. Installation & Mounting
 
 * **Location:** Indoor only; attic, plant room, ceiling void, or service area above dew point
 * **Mounting:** Secure to joists/slab using brackets/straps; level installation is critical (spirit level recommended)
@@ -74,7 +95,7 @@ LUKO DA-X Series (DA-X60i / DA-X140i) are ducted, variable-speed, full-inverter 
 
 ---
 
-## 5. Ducting & Drainage
+## 6. Ducting & Drainage
 
 * **Ducting:**
 
@@ -84,17 +105,19 @@ LUKO DA-X Series (DA-X60i / DA-X140i) are ducted, variable-speed, full-inverter 
   * Seal/insulate to prevent condensation
 * **Drain:**
 
-  * Attach Φ20 mm hose with P-trap (U-trap) for gravity drainage
-  * Ensure positive slope, no kinks, and smooth flow
+  * Attach Φ20 mm hose with **NO P-trap or U-trap** for gravity drainage
+  * **IMPORTANT: Do NOT use P-traps on ducted dehumidifiers** - they can cause drainage backup and system malfunction
+  * **Positive Air Pressure System:** DA-X units operate with positive air pressure in their drain systems, which means P-traps are not needed and can actually interfere with proper drainage flow
+  * Ensure positive slope, no kinks, and smooth flow - straight run to drain point
   * Use a condensate pump only if gravity drain not possible
-  * Connect to floor drain, sump, or exterior
+  * Connect to floor drain, sump, or exterior with direct drainage path
 
 ---
 
-## 6. Electrical Requirements
+## 7. Electrical Requirements
 
 * **Circuit:** Dedicated 220V/50Hz supply; check local code for RCD (≤30mA)
-* **Current draw:** DA-X60i: 2.5–4.4A, DA-X140i: 4.1–5.7A (rated current)
+* **Current draw:** DA-X60i: 4.1A, DA-X140i: 8.5A (rated current)
 * **Disconnect:** Install isolator switch near unit
 * **Wiring:** Grounded, installed by licensed electrician
 * **Voltage stability:** ±10% max fluctuation allowed
@@ -102,7 +125,7 @@ LUKO DA-X Series (DA-X60i / DA-X140i) are ducted, variable-speed, full-inverter 
 
 ---
 
-## 7. Control & Operation
+## 8. Control & Operation
 
 * **Smart Logic:** Maintains absolute humidity target (not just RH)
 * **Sensor:** 5-in-1 (CO₂, PM2.5, TVOC, RH, Temp) auto-adjusts fresh air damper and operation
@@ -118,7 +141,7 @@ LUKO DA-X Series (DA-X60i / DA-X140i) are ducted, variable-speed, full-inverter 
 
 ---
 
-## 8. Filtration
+## 9. Filtration
 
 * **Stages:**
 
@@ -132,7 +155,7 @@ LUKO DA-X Series (DA-X60i / DA-X140i) are ducted, variable-speed, full-inverter 
 
 ---
 
-## 9. Maintenance & Cleaning
+## 10. Maintenance & Cleaning
 
 * Unplug/isolate unit before service
 * Clean exterior with damp cloth (no solvents)
@@ -142,7 +165,7 @@ LUKO DA-X Series (DA-X60i / DA-X140i) are ducted, variable-speed, full-inverter 
 
 ---
 
-## 10. Error/Fault Codes & Troubleshooting
+## 11. Error/Fault Codes & Troubleshooting
 
 * Faults and diagnostics shown on controller display
 * Common errors: temperature/humidity sensor fault, communication, fan, damper, compressor, pressure protection, refrigerant
@@ -151,7 +174,7 @@ LUKO DA-X Series (DA-X60i / DA-X140i) are ducted, variable-speed, full-inverter 
 
 ---
 
-## 11. Warranty & Support
+## 12. Warranty & Support
 
 * **Warranty:** 5 years parts, 2 years labor (manufacturing defects only; excludes wear/tear, consumables)
 * **Support:** Phone and email assistance; spare parts/filters available locally
@@ -159,7 +182,7 @@ LUKO DA-X Series (DA-X60i / DA-X140i) are ducted, variable-speed, full-inverter 
 
 ---
 
-## 12. General Cautions & Compliance
+## 13. General Cautions & Compliance
 
 * Must be installed/serviced by licensed HVAC/electrical professionals
 * R32 refrigerant: flammable—do not install near ignition sources; leak test after install/service

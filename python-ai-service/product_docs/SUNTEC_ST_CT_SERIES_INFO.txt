@@ -40,9 +40,27 @@ Typical uses: disaster restoration, abatement/remediation, healthcare constructi
 | ST1001 Pro | 62L/day         | 108L/day        | 1500W | 750m³/h | 5.5         | MERV-10 | 50kg   | 500x485x840 | 65dB  | WiFi, humidistat, LCD |
 | CT801 Pro  | 52L/day         | 90L/day         | 1150W | 700m³/h | 5.0         | MERV-10 | 38kg   | 420x645x463 | 65dB  | WiFi, BT, GPP, LCD    |
 
+**Note:** All capacities rated at 30°C, 80% RH (AHAM standard). Actual performance will be significantly lower at cooler/drier conditions.
+
 ---
 
-## 3. Physical Dimensions & Specifications
+## 3. Capacity Derating & Performance Notes
+
+**IMPORTANT:** All dehumidifier capacities are rated at **30°C, 80% RH** (AHAM standard conditions). Performance will drop considerably at lower temperatures and humidity levels:
+
+* **Lower temperatures** (below 20°C): Capacity can drop 40-60%
+* **Lower humidity** (below 60% RH): Capacity can drop 30-50%
+* **Combined effect** (cool + dry conditions): Capacity may drop 60-70%
+
+**Examples for Restoration Work:**
+- ST1001 Pro (62L AHAM rated) may only extract 25-35L/day at 15°C/50%RH
+- CT801 Pro (52L AHAM rated) may only extract 20-30L/day at 15°C/50%RH
+
+**For disaster restoration projects:** Size equipment based on actual site conditions, not rated capacity. Use multiple units for faster drying in challenging conditions.
+
+---
+
+## 4. Physical Dimensions & Specifications
 
 **ST Series (ST600, ST1000, ST601 Pro, ST1001 Pro):**
 - Dimensions: 500×485×840 mm (W×D×H)
@@ -71,11 +89,12 @@ Typical uses: disaster restoration, abatement/remediation, healthcare constructi
 
 ---
 
-## 4. Key Features & Technology
+## 5. Key Features & Technology
 
 * **Built-in Automatic Condensate Pump:**
   - ST Series: 10m hose, 5m lift capacity
   - CT Series: 10m hose, 15ft lift capacity
+  - **Drainage:** Direct hose connection to drain point - no P-traps needed due to built-in pump
 
 * **Construction:**
   - Rotomolded body for durability
@@ -101,7 +120,7 @@ Typical uses: disaster restoration, abatement/remediation, healthcare constructi
 
 ---
 
-## 5. Applications & Use Cases
+## 6. Applications & Use Cases
 
 * **Disaster Restoration:** Flood damage, water extraction, structural drying
 * **Abatement/Remediation:** Mold remediation, asbestos abatement projects
@@ -111,7 +130,7 @@ Typical uses: disaster restoration, abatement/remediation, healthcare constructi
 
 ---
 
-## 6. Controls & Display
+## 7. Controls & Display
 
 **Pro Models (ST601 Pro, ST1001 Pro) & CT801 Pro:**
 * WiFi/Bluetooth connectivity with app control (Dry Connect)
@@ -131,7 +150,7 @@ Typical uses: disaster restoration, abatement/remediation, healthcare constructi
 
 ---
 
-## 7. Operation Guidelines
+## 8. Operation Guidelines
 
 * **Setup:** Always use upright; allow 30 minutes after transport if laid flat
 * **Environment:** Create closed drying chamber for best results (shut external openings)
@@ -139,13 +158,14 @@ Typical uses: disaster restoration, abatement/remediation, healthcare constructi
 * **Humidity Range:** 20–90% relative humidity
 * **Recommendations:** 
   - Use air movers for faster drying
-  - Connect drain before use
+  - Connect drain hose before use (direct run to drain point)
+  - **Do not use P-traps** - built-in pump handles drainage automatically
   - Inspect/clean filter regularly (vacuum, do not wash)
   - All models are stackable for transport or storage
 
 ---
 
-## 8. Error Codes & Troubleshooting
+## 9. Error Codes & Troubleshooting
 
 **ST601 Pro/ST1001 Pro:**
 | Code | Description |
@@ -165,7 +185,7 @@ Typical uses: disaster restoration, abatement/remediation, healthcare constructi
 
 ---
 
-## 9. Maintenance & Filter Replacement
+## 10. Maintenance & Filter Replacement
 
 * **Before Service:** Always unplug before any service/cleaning
 * **Filter Maintenance:**
@@ -179,7 +199,7 @@ Typical uses: disaster restoration, abatement/remediation, healthcare constructi
 
 ---
 
-## 10. Warranty & Support
+## 11. Warranty & Support
 
 * **Warranty:** 2 years parts warranty (excludes wear/misuse)
 * **Service:** Units may need to be returned to supplier for warranty claims
@@ -188,7 +208,7 @@ Typical uses: disaster restoration, abatement/remediation, healthcare constructi
 
 ---
 
-## 11. Technical & Service Notes
+## 12. Technical & Service Notes
 
 * **Pro/CT Models:** Use advanced PCB for humidistat/WiFi/GPP display
 * **Standard Models:** Use simpler PCB design

@@ -10,6 +10,11 @@ import json
 
 import litellm
 from dotenv import load_dotenv
+from openai import AsyncOpenAI
+
+# Configure LiteLLM to be minimal (no logging, no proxy features)
+os.environ["LITELLM_LOG"] = "ERROR"
+os.environ["LITELLM_LOG_LEVEL"] = "ERROR"
 from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -67,17 +72,57 @@ def create_ai_agent():
     
     # Create engine with default completion params builder and API caller  
     def get_completion_params(model: str, messages: list, max_tokens: int):
-        return {
-            "model": model,
-            "messages": messages,
-            "max_tokens": max_tokens,
-            "temperature": config.TEMPERATURE
-        }
+        # GPT-5 uses max_completion_tokens instead of max_tokens
+        if model.startswith("gpt-5"):
+            return {
+                "model": model,
+                "messages": messages,
+                "max_completion_tokens": max_tokens,
+                "temperature": config.TEMPERATURE,
+                "reasoning_effort": config.GPT5_REASONING_EFFORT,  # Configurable reasoning effort
+                "verbosity": config.GPT5_VERBOSITY                # Configurable response length
+            }
+        else:
+            return {
+                "model": model,
+                "messages": messages,
+                "max_tokens": max_tokens,
+                "temperature": config.TEMPERATURE
+            }
     
-    # Create a simple API caller using litellm directly
-    # The agent will handle retry logic separately
+    # Create a hybrid API caller: OpenAI direct for GPT-5, LiteLLM for others
+    # This eliminates LiteLLM dependency issues with new GPT-5 parameters
+    openai_client = AsyncOpenAI(api_key=config.OPENAI_API_KEY)
+    
     async def api_caller(**params):
-        return await litellm.acompletion(**params)
+        model = params.get("model", "")
+        
+        # Use OpenAI client directly for GPT-5 models
+        if model.startswith("gpt-5"):
+            # Convert LiteLLM format to OpenAI format
+            openai_params = {
+                "model": params["model"],
+                "messages": params["messages"],
+                "temperature": params.get("temperature", 0.3),
+                "stream": params.get("stream", False)
+            }
+            
+            # Add GPT-5 specific parameters
+            if "max_completion_tokens" in params:
+                openai_params["max_completion_tokens"] = params["max_completion_tokens"]
+            if "reasoning_effort" in params:
+                openai_params["reasoning_effort"] = params["reasoning_effort"]
+            if "verbosity" in params:
+                openai_params["verbosity"] = params["verbosity"]
+            if "tools" in params:
+                openai_params["tools"] = params["tools"]
+            if "tool_choice" in params:
+                openai_params["tool_choice"] = params["tool_choice"]
+                
+            return await openai_client.chat.completions.create(**openai_params)
+        else:
+            # Use LiteLLM for other models (no dependency issues)
+            return await litellm.acompletion(**params)
     
     engine = LLMEngine(
         model=config.DEFAULT_MODEL,
