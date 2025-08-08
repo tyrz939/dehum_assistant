@@ -646,6 +646,7 @@
     conversation: [],
     currentSessionId: null,
     streamingComplete: false,
+    welcomeMessageShown: false, // Prevents duplicate welcome messages during initialization race conditions
 
     // Simplified phase state management
     currentPhase: {
@@ -828,6 +829,7 @@
 
       // Only reload conversation if messages container is empty
       if ($(this.selectors.messages).children().length === 0) {
+        this.welcomeMessageShown = false; // Reset flag for first open
         this.loadConversation();
       }
       this.loadSessionId();
@@ -857,6 +859,7 @@
       // Clear frontend state
       this.conversation = [];
       this.currentSessionId = null;
+      this.welcomeMessageShown = false; // Reset welcome message flag
       this.resetPhaseState();
 
       // Clear storage
@@ -930,11 +933,12 @@
               StateManager.saveSessionId(this.currentSessionId);
             }
 
-            // Save conversation when using fallback API
+            // Save conversation when using fallback API (non-critical - don't interrupt user flow)
             try {
               await this.saveConversationToWordPress(message, response.response);
             } catch (error) {
-              console.warn('Failed to save conversation via WordPress AJAX:', error);
+              console.warn('Failed to save conversation via WordPress AJAX (non-critical):', error);
+              // Don't interrupt user experience - conversation save is for admin logging only
             }
           }
         })
@@ -1368,6 +1372,11 @@
      * Always displayed at the top of every chat session
      */
     async showWelcomeMessage() {
+      // Skip if welcome message already shown and messages container has content
+      if (this.welcomeMessageShown && $(this.selectors.messages).children().length > 0) {
+        return;
+      }
+
       // Remove any existing welcome message to avoid duplicates
       $(this.selectors.messages).find('.dehum-welcome-message').remove();
 
@@ -1386,9 +1395,11 @@
           : this.getFallbackWelcomeContent();
 
         this.renderWelcomeMessage(welcomeContent);
+        this.welcomeMessageShown = true; // Mark as shown
       } catch (error) {
         console.error('Failed to load welcome message:', error);
         this.renderWelcomeMessage(this.getFallbackWelcomeContent());
+        this.welcomeMessageShown = true; // Mark as shown even for fallback
       }
     },
 
@@ -1454,11 +1465,13 @@
 
       $(this.selectors.messages).empty();
 
-      // Always show welcome message at the top
-      this.showWelcomeMessage();
+      // Show welcome message only if not already shown or if no conversation history
+      const completeMessages = this.conversation.filter(msg => msg.isComplete && msg.phase === 'complete');
+      if (!this.welcomeMessageShown || completeMessages.length === 0) {
+        this.showWelcomeMessage();
+      }
 
       // Then load any existing conversation history
-      const completeMessages = this.conversation.filter(msg => msg.isComplete && msg.phase === 'complete');
       if (completeMessages.length > 0) {
         completeMessages.forEach(message => this.renderMessage(message));
       }
@@ -1665,7 +1678,9 @@
     /**
      * Save conversation to WordPress for admin logging
      */
-    async saveConversationToWordPress(userMessage, assistantResponse) {
+    async saveConversationToWordPress(userMessage, assistantResponse, retryCount = 0) {
+      const maxRetries = 2;
+
       try {
         const response = await $.ajax({
           url: dehumMVP.ajaxUrl,
@@ -1675,7 +1690,7 @@
             message: userMessage,
             response: assistantResponse,
             session_id: this.currentSessionId,
-            nonce: dehumMVP.nonce
+            nonce: dehumMVP.saveNonce || dehumMVP.nonce // Use separate save nonce
           }
         });
 
@@ -1683,10 +1698,29 @@
           console.log('Conversation saved to WordPress successfully');
         } else {
           console.error('WordPress rejected conversation save:', response.data?.message || 'Unknown error');
+
+          // Log detailed error for debugging
+          this.logSaveError('WordPress rejection', {
+            userMessage: userMessage.substring(0, 100) + '...',
+            responseLength: assistantResponse.length,
+            sessionId: this.currentSessionId,
+            errorMessage: response.data?.message
+          });
         }
       } catch (error) {
         console.error('Failed to save conversation to WordPress:', error);
 
+        // Log detailed error for debugging
+        this.logSaveError('AJAX failure', {
+          userMessage: userMessage.substring(0, 100) + '...',
+          responseLength: assistantResponse.length,
+          sessionId: this.currentSessionId,
+          status: error.status,
+          statusText: error.statusText,
+          retryCount: retryCount
+        });
+
+        // Handle specific error types
         if (error.status === 403) {
           console.error('403 Error - Possible causes:');
           console.error('1. Chat may be restricted to logged-in users only');
@@ -1694,9 +1728,49 @@
           console.error('3. User does not have required permissions');
         } else if (error.status === 429) {
           console.error('429 Error - Rate limited');
+        } else if (error.status === 0 || error.status === 502 || error.status === 503) {
+          // Network/server errors - retry if possible
+          if (retryCount < maxRetries) {
+            console.log(`Retrying save request (attempt ${retryCount + 1}/${maxRetries + 1})...`);
+
+            // Wait before retry with exponential backoff
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+
+            return this.saveConversationToWordPress(userMessage, assistantResponse, retryCount + 1);
+          }
         }
 
         throw error;
+      }
+    },
+
+    /**
+     * Log save errors for debugging purposes
+     */
+    logSaveError(errorType, details) {
+      const errorData = {
+        timestamp: new Date().toISOString(),
+        type: errorType,
+        userAgent: navigator.userAgent,
+        url: window.location.href,
+        ...details
+      };
+
+      console.error('Conversation Save Error Details:', errorData);
+
+      // Store in sessionStorage for admin debugging (if available)
+      try {
+        const existingErrors = JSON.parse(sessionStorage.getItem('dehum_save_errors') || '[]');
+        existingErrors.push(errorData);
+
+        // Keep only last 10 errors
+        if (existingErrors.length > 10) {
+          existingErrors.splice(0, existingErrors.length - 10);
+        }
+
+        sessionStorage.setItem('dehum_save_errors', JSON.stringify(existingErrors));
+      } catch (e) {
+        // Ignore storage errors
       }
     },
 

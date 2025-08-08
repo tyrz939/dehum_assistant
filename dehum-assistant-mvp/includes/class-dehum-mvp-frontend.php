@@ -252,6 +252,7 @@ Pool room or regular space?";
         $script_data = [
             'ajaxUrl'    => admin_url('admin-ajax.php'),
             'nonce'      => wp_create_nonce(DEHUM_MVP_CHAT_NONCE),
+            'saveNonce'  => wp_create_nonce('dehum_mvp_save_conversation'),
             'isLoggedIn' => is_user_logged_in(),
             'siteUrl'    => home_url(),
             'maxLen'     => DEHUM_MVP_MESSAGE_MAX_LENGTH,

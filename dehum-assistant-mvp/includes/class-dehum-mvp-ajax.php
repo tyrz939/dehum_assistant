@@ -512,12 +512,14 @@ class Dehum_MVP_Ajax {
             wp_send_json_error(['message' => 'Chat is currently restricted to logged-in users only.'], 403);
         }
         
-        if (!wp_verify_nonce($_POST['nonce'], DEHUM_MVP_CHAT_NONCE)) {
+        // Use separate nonce for conversation saving to avoid reuse conflicts
+        if (!wp_verify_nonce($_POST['nonce'], 'dehum_mvp_save_conversation')) {
             wp_send_json_error(['message' => 'Security check failed'], 403);
         }
 
         $user_message = sanitize_textarea_field($_POST['message']);
-        $assistant_response = sanitize_textarea_field($_POST['response']);
+        // Preserve markdown/HTML formatting in AI responses while maintaining security
+        $assistant_response = wp_kses_post($_POST['response']);
         $session_id = sanitize_text_field($_POST['session_id']);
         
         if (empty($user_message) || empty($assistant_response) || empty($session_id)) {
@@ -530,7 +532,21 @@ class Dehum_MVP_Ajax {
         if ($result) {
             wp_send_json_success(['message' => 'Conversation saved']);
         } else {
-            wp_send_json_error(['message' => 'Failed to save conversation']);
+            // Enhanced error logging for debugging
+            error_log('Dehum MVP: Conversation save failed - Session: ' . $session_id . 
+                     ', User Message Length: ' . strlen($user_message) . 
+                     ', Response Length: ' . strlen($assistant_response) . 
+                     ', IP: ' . $this->get_user_ip());
+            
+            wp_send_json_error([
+                'message' => 'Failed to save conversation',
+                'debug_info' => [
+                    'session_id' => $session_id,
+                    'user_message_length' => strlen($user_message),
+                    'response_length' => strlen($assistant_response),
+                    'timestamp' => current_time('mysql')
+                ]
+            ]);
         }
     }
 } 
