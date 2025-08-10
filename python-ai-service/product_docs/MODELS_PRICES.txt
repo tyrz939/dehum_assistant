@@ -60,6 +60,9 @@ All prices in AUD. Capacities in L/day at **30°C, 80% RH** standard conditions.
 - ST600: 65L/day, Portable, $1999
 - ST1000: 100L/day, Portable, $2699
 
+**Accessories:**
+- SP PUMP (CP10245): $330 ex GST (condensate pump kit; accessory, not a dehumidifier)
+
 ---
 
 **\[END - Product Catalog RAG Chunks, v2025.08.04\]**

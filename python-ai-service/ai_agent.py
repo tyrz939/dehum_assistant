@@ -367,7 +367,8 @@ Use your contextual understanding to choose the most appropriate tool based on w
         load_info = self._get_latest_load_info(session)
         if load_info:
             preferred_types = self._detect_preferred_types(last_user_content)
-            catalog_message = self._prepare_catalog_message(load_info, preferred_types)
+            drying_intent = self._is_drying_intent(last_user_content)
+            catalog_message = self._prepare_catalog_message(load_info, preferred_types, drying_intent)
             messages.append(catalog_message)
 
             product_count = self._compute_product_count(catalog_message)
@@ -439,7 +440,8 @@ Use your contextual understanding to choose the most appropriate tool based on w
         load_info = self._get_latest_load_info(session)
         if load_info:
             preferred_types = self._detect_preferred_types(last_user_content)
-            catalog_message = self._prepare_catalog_message(load_info, preferred_types)
+            drying_intent = self._is_drying_intent(last_user_content)
+            catalog_message = self._prepare_catalog_message(load_info, preferred_types, drying_intent)
             messages.append(catalog_message)
 
         async def stream_follow_up_content():
@@ -561,11 +563,24 @@ Use your contextual understanding to choose the most appropriate tool based on w
         if "wall" in text_lower: types.append("wall_mount")
         if "portable" in text_lower: types.append("portable")
         return types
+
+    def _is_drying_intent(self, text: str) -> bool:
+        text_lower = (text or "").lower()
+        keywords = [
+            "flood", "restoration", "carpet", "drying", "as dry as possible",
+            "clothes", "laundry", "dry asap", "dry as possible"
+        ]
+        return any(k in text_lower for k in keywords)
     
-    def _prepare_catalog_message(self, load_info: Dict[str, Any], preferred_types: List[str]) -> Dict[str, str]:
+    def _prepare_catalog_message(self, load_info: Dict[str, Any], preferred_types: List[str], drying_intent: bool = False) -> Dict[str, str]:
         catalog = self.tools.get_catalog_with_effective_capacity(include_pool_safe_only=load_info["pool_required"])
         if preferred_types:
             catalog = [p for p in catalog if p.get("type") in preferred_types]
+        # Exclude drying-only models from sizing recommendations entirely (kept in DB for pricing lookups)
+        catalog = [p for p in catalog if not p.get("drying_only", False)]
+        # Also exclude specific constant-run SKUs from sizing recommendations
+        banned_sizing_skus = {"ST600", "ST1000"}
+        catalog = [p for p in catalog if p.get("sku") not in banned_sizing_skus]
 
         temp = load_info['indoorTemp']
         rh = load_info['targetRH']

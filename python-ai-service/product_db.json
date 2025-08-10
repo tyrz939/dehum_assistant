@@ -110,6 +110,19 @@
       "url": "https://www.dehumsaust.com.au/product/65l-day-lgr-st601-pro-stackable-mobile-dehumidifier/"
     },
     {
+      "sku": "ST600",
+      "name": "SUNTEC ST600 (constant run)",
+      "type": "portable",
+      "series": "ST",
+      "technology": "portable",
+      "pool_safe": false,
+      "price_aud": 1999,
+      "performance_factor": 1,
+      "capacity_lpd": 65,
+      "drying_only": true,
+      "url": "https://www.dehumsaust.com.au/"
+    },
+    {
       "sku": "ST_1001_PRO",
       "name": "SUNTEC ST1001 PRO",
       "type": "portable",
@@ -122,6 +135,19 @@
       "url": "https://www.dehumsaust.com.au/product/100l-day-lgr-st1001-pro-stackable-mobile-dehumidifier/"
     },
     {
+      "sku": "ST1000",
+      "name": "SUNTEC ST1000 (constant run)",
+      "type": "portable",
+      "series": "ST",
+      "technology": "portable",
+      "pool_safe": false,
+      "price_aud": 2699,
+      "performance_factor": 1,
+      "capacity_lpd": 100,
+      "drying_only": true,
+      "url": "https://www.dehumsaust.com.au/"
+    },
+    {
       "sku": "CT_801_PRO",
       "name": "SUNTEC CT 801 PRO",
       "type": "portable",
@@ -132,6 +158,18 @@
       "performance_factor": 1,
       "capacity_lpd": 90,
       "url": "https://www.dehumsaust.com.au/product/suntec-90l-day-lgr-ct801-pro-commercial-stackable-mobile-dehumidifier/"
+    },
+    {
+      "sku": "SP_PUMP_CP10245",
+      "name": "SP Pump (CP10245)",
+      "type": "accessory",
+      "series": "accessory",
+      "technology": "pump",
+      "pool_safe": false,
+      "price_aud": 330,
+      "performance_factor": 0,
+      "capacity_lpd": 0,
+      "url": "https://www.dehumsaust.com.au/"
     }
   ]
 }
