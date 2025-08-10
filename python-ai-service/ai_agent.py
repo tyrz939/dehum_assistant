@@ -369,21 +369,21 @@ Use your contextual understanding to choose the most appropriate tool based on w
             preferred_types = self._detect_preferred_types(last_user_content)
             catalog_message = self._prepare_catalog_message(load_info, preferred_types)
             messages.append(catalog_message)
-            
+
             product_count = self._compute_product_count(catalog_message)
-            
-        yield self._yield_streaming_response(
-            message=f"📋 Prepared product catalog with {product_count} matching products",
-            session_id=session_id,
-            timestamp=datetime.now(),
-            is_streaming_chunk=True,
-            metadata={
-                "phase": StreamingPhase.TOOLS.value,
-                "status": "catalog_prepared",
-                "product_count": product_count,
-                "char_streaming": True
-            }
-        )
+
+            yield self._yield_streaming_response(
+                message=f"📋 Prepared product catalog with {product_count} matching products",
+                session_id=session_id,
+                timestamp=datetime.now(),
+                is_streaming_chunk=True,
+                metadata={
+                    "phase": StreamingPhase.TOOLS.value,
+                    "status": "catalog_prepared",
+                    "product_count": product_count,
+                    "char_streaming": True
+                }
+            )
         
         yield ToolResults(tool_results)
     
