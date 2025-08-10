@@ -1,226 +1,204 @@
-# SUNTEC ST & CT Series — Portable LGR Dehumidifiers (ST600/ST1000/ST601 Pro/ST1001 Pro/CT801 Pro)
+# SUNTEC ST & CT SERIES — MASTER RAG (AU/NZ 230V focus, with GPP notes)
+
+Aliases:
+
+* “STX00” = ST600 / ST1000 (timer-only, no humidistat)
+* “STX01 Pro” = ST601 Pro / ST1001 Pro (humidistat + Wi-Fi)
+* “CT801 Pro” = CT801 Pro (horizontal / stackable; humidistat + Wi-Fi; shows GPP)
+* “GPP versions” = units whose display/app show In/Out GPP and use extended error codes (Er11–Er17) — includes STX01 Pro and CT801 Pro
 
 ---
 
-## 1. Series Overview & Key Features
+## 1) What each model DOES (and DOES NOT) do
 
-**ST Series (ST600, ST1000, ST601 Pro, ST1001 Pro):**
-Portable, stackable LGR dehumidifiers for commercial drying: flood/disaster restoration, abatement/remediation, health care construction, general facilities. Heavy-duty, rotomolded body with large wheels and fold-down handle.
+### ST600 / ST1000 (STX00)
 
-**CT Series (CT801 Pro):**
-Compact, heavy-duty LGR dehumidifier with XL performance in a horizontal/stackable design. Similar use cases as ST. Built for easy stacking, transport, and deployment in tough sites.
+* Control: **Timer only**. Continuous run until the timer ends. **No humidity set-point**.
+* This means: they **cannot maintain a set RH%**. They simply run (or stop) by time.
+* Typical use: restoration jobs where you just want max extraction for N hours.
 
-All models include:
-* Auto pump-out (built-in condensate pump)
-* Cable management and ducting options
-* MERV-10 filter with toolless access
-* Stackable design for storage/transport
-* Auto defrost (hot-gas bypass)
-* MID-approved energy meter
-* Timer control and loss of power protection
+### ST601 Pro / ST1001 Pro (STX01 Pro)
 
-**"Pro" models add:**
-* WiFi/Bluetooth connectivity
-* Humidistat + timer control
-* Graphical LCD panel with GPP (grain depression)
-* Job/lifetime counters
-* App control (Dry Connect)
+* Control: **Humidistat + Timer** + Wi-Fi app (Dry Connect). User sets RH% (25–80%) or runs continuous.
+* Display: temp, RH, job/life timers; supports app scheduling, device sharing, grouping.
+* Suitable when you must **maintain a target RH%** automatically.
 
-Typical uses: disaster restoration, abatement/remediation, healthcare construction, commercial facilities, flood recovery.
+### CT801 Pro
 
----
+* Form factor: horizontal / stackable footprint for tight spaces/van work.
+* Control & telemetry: like STX01 Pro (humidistat + Wi-Fi), plus **GPP readouts** (In/Out).
+* Use when you want Pro features in a low-profile, lay-flat form.
 
-## 2. Model Comparison Table
+Canned answer (keep handy):
 
-| Model      | Capacity (AHAM) | Capacity (Sat.) | Power | Airflow | Amps (230V) | Filter  | Weight | WxDxH (mm)  | Noise | Special               |
-| ---------- | --------------- | --------------- | ----- | ------- | ----------- | ------- | ------ | ----------- | ----- | --------------------- |
-| ST600      | 39L/day         | 67L/day         | 720W  | 550m³/h | 3.0         | MERV-10 | 43kg   | 500x485x840 | 60dB  | Timer, energy meter   |
-| ST1000     | 62L/day         | 108L/day        | 1500W | 750m³/h | 5.5         | MERV-10 | 50kg   | 500x485x840 | 65dB  | Timer, energy meter   |
-| ST601 Pro  | 39L/day         | 67L/day         | 720W  | 550m³/h | 3.0         | MERV-10 | 43kg   | 500x485x840 | 60dB  | WiFi, humidistat, LCD |
-| ST1001 Pro | 62L/day         | 108L/day        | 1500W | 750m³/h | 5.5         | MERV-10 | 50kg   | 500x485x840 | 65dB  | WiFi, humidistat, LCD |
-| CT801 Pro  | 52L/day         | 90L/day         | 1150W | 700m³/h | 5.0         | MERV-10 | 38kg   | 420x645x463 | 65dB  | WiFi, BT, GPP, LCD    |
-
-**Note:** All capacities rated at 30°C, 80% RH (AHAM standard). Actual performance will be significantly lower at cooler/drier conditions.
+> **Q: Can the ST600/ST1000 maintain 50% RH?**
+> **A: No.** ST600/ST1000 are **timer-only constant-run** models. They do **not** have a humidistat and **cannot** maintain any set RH. If you need set-point control, pick **ST601 Pro/ST1001 Pro** or **CT801 Pro**.
 
 ---
 
-## 3. Capacity Derating & Performance Notes
+## 2) Rated performance (230V models, AU/NZ)
 
-**IMPORTANT:** All dehumidifier capacities are rated at **30°C, 80% RH** (AHAM standard conditions). Performance will drop considerably at lower temperatures and humidity levels:
+* ST601 Pro: 65 L/day (32 °C/90%RH); 39 L/day (27 °C/60%RH); airflow \~600 m³/h; 920 W; 4.0 A.
+* ST1001 Pro: 100 L/day (32 °C/90%RH); 61 L/day (27 °C/60%RH); airflow \~750 m³/h; 1650 W; 6.5 A.
+* ST600: 65 L/day (32 °C/90%RH); 39 L/day (27 °C/60%RH); airflow \~600 m³/h; 920 W; 4.0 A.
+* ST1000: 100 L/day (32 °C/90%RH); 61 L/day (27 °C/60%RH); airflow \~750 m³/h; 1650 W; 6.5 A.
+* Operating range (typical): 1–38 °C.
+* Refrigerant: R410A.
+* Body: rotomoulded; big wheels; 10 m drain hose; \~8 m power cord.
+* Size/weight (ST chassis): 500×485×840 mm; \~40–50 kg depending on model.
 
-* **Lower temperatures** (below 20°C): Capacity can drop 40-60%
-* **Lower humidity** (below 60% RH): Capacity can drop 30-50%
-* **Combined effect** (cool + dry conditions): Capacity may drop 60-70%
+**CT801 Pro quick spec (230V):** \~52 L/day (AHAM 30 °C/80%RH), \~90 L/day saturated; \~700 m³/h; \~1150 W; \~5.0 A; 420×645×463 mm; \~38 kg.
 
-**Examples for Restoration Work:**
-- ST1001 Pro (62L AHAM rated) may only extract 25-35L/day at 15°C/50%RH
-- CT801 Pro (52L AHAM rated) may only extract 20-30L/day at 15°C/50%RH
+Guidance for sizing (use in copy):
 
-**For disaster restoration projects:** Size equipment based on actual site conditions, not rated capacity. Use multiple units for faster drying in challenging conditions.
-
----
-
-## 4. Physical Dimensions & Specifications
-
-**ST Series (ST600, ST1000, ST601 Pro, ST1001 Pro):**
-- Dimensions: 500×485×840 mm (W×D×H)
-- Weight: ST600/ST601 Pro: 43 kg, ST1000/ST1001 Pro: 50 kg
-- Shipping: 510×510×895 mm (ST600: 46kg, ST1000: 54kg gross)
-
-**CT Series (CT801 Pro):**
-- Dimensions: 420×645×463 mm (W×D×H) 
-- Weight: 38 kg
-- Shipping: 435×655×500 mm (41kg gross)
-
-**Power & Current:**
-- ST600/ST601 Pro: 720W, 3.0A at 230V
-- ST1000/ST1001 Pro: 1500W, 5.5A at 230V
-- CT801 Pro: 1150W, 5.0A at 230V
-
-**Capacity & Airflow:**
-- ST600/ST601 Pro: 39L/day (AHAM), 67L/day (Sat.), 550 m³/h airflow
-- ST1000/ST1001 Pro: 62L/day (AHAM), 108L/day (Sat.), 750 m³/h airflow
-- CT801 Pro: 52L/day (AHAM), 90L/day (Sat.), 700 m³/h airflow
-
-**Noise Levels:**
-- ST600/ST601 Pro: 60 dB(A)
-- ST1000/ST1001 Pro: 65 dB(A) 
-- CT801 Pro: 65 dB(A)
+* AHAM 30 °C/80%RH ratings are **optimistic** for cool/dry sites; at \~15 °C/50%RH, expect **\~40–60% less output**. Use multiple units and air movers for cold, low-RH jobs.
 
 ---
 
-## 5. Key Features & Technology
+## 3) Controls, Operating Modes & UI (what users will see)
 
-* **Built-in Automatic Condensate Pump:**
-  - ST Series: 10m hose, 5m lift capacity
-  - CT Series: 10m hose, 15ft lift capacity
-  - **Drainage:** Direct hose connection to drain point - no P-traps needed due to built-in pump
+### STX00 (ST600/1000)
 
-* **Construction:**
-  - Rotomolded body for durability
-  - Large wheels and fold-down handle
-  - Cable/hose storage management
-  - Superior stackable design
+* Keys: ON/OFF, TIMER, START/STOP, DISPLAY, PURGE.
+* LCD icons: Dehumidifier ON, DEFROST, DELAY bar, JOB/TOTAL/TIMER clocks.
+* Timer window: 00:00–23:50 (10-min steps). No RH set-point.
+* PURGE empties the pump before transport.
+* **Defrost cycle:** Auto hot-gas defrost engages when coil temp is low; unit pauses compressor and circulates air to clear frost. In cold sites, expect periodic defrosts.
 
-* **Filtration:**
-  - MERV-10 filter (toolless access)
-  - Front-access filter replacement
+### STX01 Pro (ST601/1001 Pro)
 
-* **Pro/CT Advanced Features:**
-  - WiFi & Bluetooth connectivity
-  - App control (Dry Connect)
-  - Graphical LCD panel
-  - Real-time temp, RH%, GPP display
-  - Humidistat & timer control
-  - Job/lifetime counters
+* Keys: ON/OFF, MENU, ADJUST, START/STOP, PURGE.
+* Menus: CURRENT RH, SET RH, TIMER, JOB, TOTAL/LIFE, °C/°F, IN/OUT (Pro GPP models).
+* RH set range: 25–80% (–– = continuous).
+* Wi-Fi indicator states; Dry Connect app pairing (hold MENU 5 s from OFF).
+* Modes: **Set RH% mode** maintains humidity; **Continuous** runs nonstop; defrost as per STX00.
 
-* **Ducting:**
-  - Rear ducting option (ST Series)
-  - Lay-flat ducting option (CT Series)
+### CT801 Pro
+
+* Same Pro-class UI + GPP readouts (Inlet/Outlet Temp, RH, **GPP**). Great for documenting grain depression.
+* Defrost: same logic as STX01 Pro.
 
 ---
 
-## 6. Applications & Use Cases
+## 4) Pumps, drainage, and transport
 
-* **Disaster Restoration:** Flood damage, water extraction, structural drying
-* **Abatement/Remediation:** Mold remediation, asbestos abatement projects
-* **Healthcare Construction:** Hospital renovations, clean room preparation
-* **Commercial Facilities:** General facility maintenance, humidity control
-* **Industrial Drying:** Construction sites, warehouses, storage facilities
+* Built-in **condensate pump** with long hose; purge automatically when full.
+* **Before moving**: stop dehumidifying, wait \~10 min for drip-down, then **PURGE** (manual or via auto off-countdown on Pro models).
+* Do **not** kink the drain hose; a kink will trip a pump error.
 
 ---
 
-## 7. Controls & Display
+## 5) Error codes (match what customers report on screen)
 
-**Pro Models (ST601 Pro, ST1001 Pro) & CT801 Pro:**
-* WiFi/Bluetooth connectivity with app control (Dry Connect)
-* Graphical LCD display showing:
-  - Real-time relative humidity (RH%)
-  - Temperature readings
-  - GPP (Grain Depression) measurements
-  - Job and lifetime hour counters
-* Humidistat control with timer functions
-* Physical membrane keys for operation
+### STX00 (ST600/ST1000)
 
-**Standard Models (ST600, ST1000):**
-* LCD display with timer control
-* MID-approved energy meter
-* Operation indicator lights
-* Physical membrane keys
+* **Er01** — Pump problem / kinked tube; “PUMP ON” flashes.
+* **Er02** — Coil temp sensor fault.
+* **Er03** — Ambient temp sensor fault.
+  (Dehu may stop or keep running depending on code; service if persistent.)
 
----
+### STX01 Pro (ST601/1001 Pro) — legacy codes
 
-## 8. Operation Guidelines
+* **Er00** — Pump problem / kinked tube (PUMP ON flashes).
+* **Er01** — Coil temp sensor fault.
+* **Er02** — Ambient temp sensor fault.
+* **Er03** — Humidistat sensor fault.
+* **Er04** — Ambient temp too high (unit protects itself).
 
-* **Setup:** Always use upright; allow 30 minutes after transport if laid flat
-* **Environment:** Create closed drying chamber for best results (shut external openings)
-* **Temperature Range:** 1–38°C operating range
-* **Humidity Range:** 20–90% relative humidity
-* **Recommendations:** 
-  - Use air movers for faster drying
-  - Connect drain hose before use (direct run to drain point)
-  - **Do not use P-traps** - built-in pump handles drainage automatically
-  - Inspect/clean filter regularly (vacuum, do not wash)
-  - All models are stackable for transport or storage
+### “GPP versions” (extended codes on newer Pro displays / CT801 Pro)
+
+* **Er11** — Pump / drain tube issue (“PURGE” flashes).
+* **Er12** — Coil temperature sensor (TC).
+* **Er13** — Inlet temperature sensor (TI).
+* **Er14** — Inlet humidity sensor (HI).
+* **Er15** — Outlet temperature sensor (TO).
+* **Er16** — Outlet humidity sensor (HO).
+* **Er17** — Ambient/inlet temp too high (>100 °F ≈ >38 °C).
+  (Er11–Er17 stop dehumidification; unit returns to Standby until resolved.)
 
 ---
 
-## 9. Error Codes & Troubleshooting
+## 6) Field setup & best practice (short, actionable chunks)
 
-**ST601 Pro/ST1001 Pro:**
-| Code | Description |
-| ---- | ----------- |
-| Er00 | Pump or tube issue (PUMP ON flashes) |
-| Er01 | Coil temp sensor error |
-| Er02 | Ambient temp sensor error |
-| Er03 | Humidistat sensor error |
-| Er04 | Ambient temp too high |
-
-**ST600/ST1000:**
-| Code | Description |
-| ---- | ----------- |
-| Er01 | Pump or tube issue (PUMP ON flashes) |
-| Er02 | Coil temp sensor error |
-| Er03 | Ambient temp sensor error |
+* **Create a sealed drying chamber.** Close outside openings; keep air moving with fans.
+* **Place centrally; keep intakes/outlets clear.**
+* **Cold sites (<20 °C):** expect big capacity drop; add heat & airflow; expect more defrost.
+* **Filters:** pleated; vacuum only; do **not** wash. Replace after 3x cleanings or any mould job.
+* **Power:** grounded outlet; no cheater plugs.
+* **Transport:** if laid down, stand upright \~30 min before start.
 
 ---
 
-## 10. Maintenance & Filter Replacement
+## 7) Maintenance & consumables
 
-* **Before Service:** Always unplug before any service/cleaning
-* **Filter Maintenance:**
-  - Vacuum filter regularly (do not wash)
-  - Replace after 3x cleanings or after mold jobs
-  - Replace if airflow drops or after significant dust exposure
-* **General Maintenance:**
-  - Clean coils as needed
-  - Inspect pump and drain hose for blockages, kinks
-  - Check cable management and storage areas
+* **Filter:** inspect weekly on dusty jobs; vacuum; replace after 3 cleans or if damaged/mould.
+* **Pump:** test purge weekly in long-term deployments; clean float/sump every 6 months.
+* **Coils:** inspect quarterly; clean with coil-safe cleaner; rinse gently.
+* **Wi-Fi/App troubleshooting:** ensure 2.4 GHz network, strong signal; reset module (hold MENU 10 s) and re-pair; disable VPN during pairing; keep router within 10 m.
 
 ---
 
-## 11. Warranty & Support
+## 8) Quick selection guide (sales assist)
 
-* **Warranty:** 2 years parts warranty (excludes wear/misuse)
-* **Service:** Units may need to be returned to supplier for warranty claims
-* **Shipping:** Shipping costs not covered under warranty
-* **Support:** Professional-grade units designed for commercial/restoration use
-
----
-
-## 12. Technical & Service Notes
-
-* **Pro/CT Models:** Use advanced PCB for humidistat/WiFi/GPP display
-* **Standard Models:** Use simpler PCB design
-* **Service Access:** Major electronic/service parts accessed from control panel/top cover
-* **Component Locations:** Pump at base, filter front-access
-* **Cable Length:** 7.6m (25ft) on all models
-* **Service Manual:** Consult service manual for stepwise disassembly, pump/filter replacement, troubleshooting
+* Need **set-point control** (maintain 50% RH), logs, remote app? → **ST601 Pro / ST1001 Pro / CT801 Pro**.
+* Need **constant run** with simple timer (price-sensitive, basic jobs)? → **ST600 / ST1000**.
+* Tight spaces / stack flat in vans? → **CT801 Pro**.
+* Cold jobs (1–10 °C)? All will run, but expect slow extraction; add heat/air movers.
 
 ---
 
-**\[END - SUNTEC ST & CT Series RAG Chunks, v2024.08.04]**
+## 9) Physicals & logistics (fast reference)
+
+* **Chassis (ST)**: 500×485×840 mm; 40–50 kg; wheels + fold-down handle; 10 m hose; \~8 m cord.
+* **Chassis (CT801 Pro)**: 420×645×463 mm; \~38 kg; low-profile stackable.
+* **Noise**: \~60 dB (ST600/601 Pro), \~65 dB (ST1000/1001 Pro, CT801 Pro).
 
 ---
 
-**Expand or further chunk by topic/feature as needed for your RAG or doc system.**
+## 10) App basics (Dry Connect)
+
+* 2.4 GHz Wi-Fi only; pair by holding MENU 5 s (beep).
+* App features: On/Off, **Continuous Run**, **Set RH%**, **Timer & Schedules**, Logs, Device Sharing, Group Control, Lock.
+
+---
+
+## 11) Tech service notes (triage)
+
+* No power/LCD dark: verify mains, L/N to board, transformer \~10.6 V, board fuse.
+* No water / poor performance: confirm “Water Drop/DEHUMIDIFIER ON” icon, compressor cold test, capacitors/overload, fan/capacitor, blocked filter or hose.
+* Leaks: check for **kinked** discharge tube; inspect/clean pump float & shaft; verify float switches.
+* Parts location: transformer/terminal/fan capacitor under control panel; compressor capacitor on rear plate.
+
+---
+
+## 12) FAQ snippets (drop-in answers)
+
+* **Will ST600/ST1000 hold 50% RH overnight?**
+  No. They’re **timer-only**; choose **ST601 Pro/CT801 Pro** for set-point control.
+
+* **What’s GPP and why do I care?**
+  GPP = grains of water per pound of dry air. GPP drop (In→Out) proves moisture removal and helps document drying progress. **CT801 Pro/STX01 Pro GPP models** display this.
+
+* **My screen says Er11 / Er00. What now?**
+  Likely a pump/tube issue (kink or blockage). Straighten/clear the hose and purge. If error persists, service the pump and float.
+
+---
+
+## 13) Safety & limits (copy/paste)
+
+* Operate between \~1–38 °C.
+* Keep wiring/motor dry; never in standing water.
+* Always earth the unit; use proper gauge grounded leads; no adapters.
+* Don’t block intakes/outlets; run upright; purge before transport.
+
+---
+
+## 14) Glossary (for retrieval)
+
+* **Timer-only / Constant-run** = ST600 / ST1000; no humidistat; cannot maintain set RH.
+* **Humidistat** = ST601 Pro / ST1001 Pro / CT801 Pro; can maintain set RH.
+* **GPP models** = Pro models with In/Out GPP and extended **Er11–Er17** codes.
+* **PURGE** = manual/auto pump empty before transport.
+* **AHAM** = 30 °C/80%RH rating; real jobs colder/drier → lower yields.
+
+\[End of ST & CT Series Master RAG v2025-08]

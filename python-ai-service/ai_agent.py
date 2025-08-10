@@ -87,23 +87,10 @@ class DehumidifierAgent:
         return name + "|" + json.dumps(args, sort_keys=True, separators=(",", ":"))
             
     def _get_completion_params(self, model: str, messages: List[Dict], max_tokens: int) -> Dict[str, Any]:
-        # GPT-5 uses max_completion_tokens instead of max_tokens
-        if model.startswith("gpt-5"):
-            return {
-                "model": model,
-                "messages": messages,
-                "max_completion_tokens": max_tokens,
-                "temperature": self.temperature,
-                "reasoning_effort": config.GPT5_REASONING_EFFORT,  # Configurable reasoning effort
-                "verbosity": config.GPT5_VERBOSITY                # Configurable response length
-            }
-        else:
-            return {
-                "model": model,
-                "messages": messages,
-                "max_tokens": max_tokens,
-                "temperature": self.temperature
-            }
+        # Deprecated: engine now owns all parameter construction.
+        # Kept for minimal surface changes where a dict is expected by callers.
+        # Return only fields engine may not infer (none currently), so pass-through.
+        return {"model": model, "messages": messages, "max_tokens": max_tokens, "temperature": self.temperature}
         
     def _load_prompt_from_file(self, filename: str) -> str:
         prompt_path = os.path.join(os.path.dirname(__file__), "prompts", filename)
@@ -176,13 +163,17 @@ Use your contextual understanding to choose the most appropriate tool based on w
             
             if current_phase == StreamingPhase.INITIAL:
                 tools = self._get_tool_definitions()
-                params = self._get_completion_params(self.model, messages, DEFAULT_MAX_TOKENS)
-                params.update({"tools": tools, "tool_choice": "auto", "stream": True})
-                
                 accumulated_content = ""
                 tool_call_dicts = {}
-                
-                async for chunk in await self._make_api_call_with_retry(**params):
+
+                stream = await self.engine.completion(
+                    messages=messages,
+                    max_tokens=DEFAULT_MAX_TOKENS,
+                    tools=tools,
+                    tool_choice="auto",
+                    stream=True,
+                )
+                async for chunk in stream:
                     delta = chunk.choices[0].delta
                     if delta.content:
                         content_chunk = delta.content
@@ -295,9 +286,10 @@ Use your contextual understanding to choose the most appropriate tool based on w
             timestamp=datetime.now(),
             is_streaming_chunk=True,
             metadata={
-                "phase": StreamingPhase.TOOLS.value, 
+                "phase": StreamingPhase.TOOLS.value,
                 "status": "starting_tools",
-                "tool_count": len(tool_calls)
+                "tool_count": len(tool_calls),
+                "char_streaming": True
             }
         )
         
@@ -314,16 +306,19 @@ Use your contextual understanding to choose the most appropriate tool based on w
                     "status": "executing_tool",
                     "tool_name": func_name,
                     "tool_index": i + 1,
-                    "total_tools": len(tool_calls)
+                    "total_tools": len(tool_calls),
+                    "char_streaming": True
                 }
             )
             
             func_args = json.loads(tc["function"]["arguments"])
-            result = self._execute_tool_function(func_name, func_args, session)
+            # Delegate to ToolExecutor for execution + caching
+            exec_results = self.tool_executor.execute([{"function": {"name": func_name, "arguments": json.dumps(func_args)}}], session)
+            result = exec_results[0]["result"] if exec_results else {}
             tool_results.append({
-                "name": func_name, 
-                "arguments": func_args, 
-                "result": result
+                "name": func_name,
+                "args": func_args,
+                "output": result
             })
             
             if func_name == 'retrieve_relevant_docs' and 'formatted_docs' in result:
@@ -348,9 +343,26 @@ Use your contextual understanding to choose the most appropriate tool based on w
                     "status": "tool_completed",
                     "tool_name": func_name,
                     "tool_index": i + 1,
-                    "total_tools": len(tool_calls)
+                    "total_tools": len(tool_calls),
+                    "char_streaming": True
                 }
             )
+
+        # Emit a single structured JSON array with all tool inputs and outputs
+        try:
+            tools_json = json.dumps(tool_results, ensure_ascii=False)
+        except Exception:
+            tools_json = json.dumps([])
+        yield self._yield_streaming_response(
+            message=tools_json,
+            session_id=session_id,
+            timestamp=datetime.now(),
+            is_streaming_chunk=True,
+            metadata={
+                "phase": StreamingPhase.TOOLS.value,
+                "status": "tool_details_json"
+            }
+        )
         
         load_info = self._get_latest_load_info(session)
         if load_info:
@@ -360,17 +372,18 @@ Use your contextual understanding to choose the most appropriate tool based on w
             
             product_count = self._compute_product_count(catalog_message)
             
-            yield self._yield_streaming_response(
-                message=f"📋 Prepared product catalog with {product_count} matching products",
-                session_id=session_id,
-                timestamp=datetime.now(),
-                is_streaming_chunk=True,
-                metadata={
-                    "phase": StreamingPhase.TOOLS.value,
-                    "status": "catalog_prepared",
-                    "product_count": product_count
-                }
-            )
+        yield self._yield_streaming_response(
+            message=f"📋 Prepared product catalog with {product_count} matching products",
+            session_id=session_id,
+            timestamp=datetime.now(),
+            is_streaming_chunk=True,
+            metadata={
+                "phase": StreamingPhase.TOOLS.value,
+                "status": "catalog_prepared",
+                "product_count": product_count,
+                "char_streaming": True
+            }
+        )
         
         yield ToolResults(tool_results)
     
@@ -385,10 +398,12 @@ Use your contextual understanding to choose the most appropriate tool based on w
         return len(catalog_data.get("catalog", []))
     
     async def _stream_follow_up_synthesis(self, messages: List[Dict], session_id: str) -> AsyncGenerator[StreamingChatResponse, None]:
-        params = self._get_completion_params(self.model, messages, DEFAULT_MAX_TOKENS)
-        params["stream"] = True
-        
-        async for chunk in await self._make_api_call_with_retry(**params):
+        stream = await self.engine.completion(
+            messages=messages,
+            max_tokens=DEFAULT_MAX_TOKENS,
+            stream=True,
+        )
+        async for chunk in stream:
             if chunk.choices[0].delta.content:
                 content_chunk = chunk.choices[0].delta.content
                 yield self._yield_streaming_response(
@@ -410,7 +425,8 @@ Use your contextual understanding to choose the most appropriate tool based on w
         for tc in tool_calls:
             func_name = tc["function"]["name"]
             func_args = json.loads(tc["function"]["arguments"])
-            result = self._execute_tool_function(func_name, func_args, session)
+            exec_results = self.tool_executor.execute([{"function": {"name": func_name, "arguments": json.dumps(func_args)}}], session)
+            result = exec_results[0]["result"] if exec_results else {}
             tool_results.append({"name": func_name, "arguments": func_args, "result": result})
             
             if func_name == 'retrieve_relevant_docs' and 'formatted_docs' in result:
@@ -426,11 +442,13 @@ Use your contextual understanding to choose the most appropriate tool based on w
             catalog_message = self._prepare_catalog_message(load_info, preferred_types)
             messages.append(catalog_message)
 
-        params = self._get_completion_params(self.model, messages, DEFAULT_MAX_TOKENS)
-        params["stream"] = True  
-        
         async def stream_follow_up_content():
-            async for chunk in await self._make_api_call_with_retry(**params):
+            stream_inner = await self.engine.completion(
+                messages=messages,
+                max_tokens=DEFAULT_MAX_TOKENS,
+                stream=True,
+            )
+            async for chunk in stream_inner:
                 if chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
         
@@ -498,10 +516,19 @@ Use your contextual understanding to choose the most appropriate tool based on w
                         "width": {"type": "number", "description": "Room width in meters"}, 
                         "height": {"type": "number", "description": "Room height in meters"}, 
                         "volume_m3": {"type": "number", "description": "Room volume in cubic meters (alternative to length/width/height)"}, 
-                        "ach": {"type": "number", "description": "Air changes per hour"}, 
+                        "ach": {"type": "number", "description": "Air changes per hour (default 1.0)"}, 
                         "peopleCount": {"type": "number", "description": "Number of people in the space"}, 
                         "pool_area_m2": {"type": "number", "description": "Pool area in square meters if applicable"}, 
-                        "waterTempC": {"type": "number", "description": "Water temperature in Celsius for pools"}
+                        "waterTempC": {"type": "number", "description": "Water temperature in Celsius for pools"},
+                        "outdoorTempC": {"type": "number", "description": "Outdoor (or supply) air temperature in Celsius (optional)"},
+                        "outdoorRH": {"type": "number", "description": "Outdoor (or supply) RH% (optional)"},
+                        "air_velocity_mps": {"type": "number", "description": "Air velocity across water surface in m/s (default 0.12)"},
+                        "pool_activity": {"type": "string", "enum": ["none", "low", "medium", "high"], "description": "Pool activity level (default 'low')"},
+                        "covered_hours_per_day": {"type": "number", "description": "Hours per day pool is covered (0-24)"},
+                        "cover_reduction": {"type": "number", "description": "Fractional evaporation reduction when covered (0-1, default 0.7)"},
+                        "air_movement_level": {"type": "string", "enum": ["still", "low", "medium"], "description": "Air movement near water surface (default 'still')"},
+                        "vent_level": {"type": "string", "enum": ["low", "standard"], "description": "Infiltration ventilation level (default 'low')"},
+                        "mode": {"type": "string", "enum": ["standard", "field_calibrated"], "description": "Evaporation mode (default 'field_calibrated')"}
                     }, 
                     "required": ["currentRH", "targetRH", "indoorTemp"]
                 }
@@ -699,38 +726,10 @@ Use your contextual understanding to choose the most appropriate tool based on w
         return new_session
 
     def _execute_tool_function(self, func_name: str, func_args: Dict, session: SessionInfo) -> Dict:
-        cache_key = self._make_tool_key(func_name, func_args)
-        if cache_key in session.tool_cache:
-            return session.tool_cache[cache_key]
-        
-        if func_name == 'calculate_dehum_load':
-            result = self.tools.calculate_dehum_load(**func_args)
-        elif func_name == 'get_product_catalog':
-            result = self.tools.get_product_catalog(**func_args)
-        elif func_name == 'retrieve_relevant_docs':
-            query = func_args.get('query', '')
-            k = func_args.get('k', 3)
-            
-            enhanced_query = self._enhance_rag_query_with_context(query, session)
-            chunks = self.tools.retrieve_relevant_docs(enhanced_query, k)
-            
-            if chunks:
-                query_info = f"'{enhanced_query}'" if enhanced_query != query else f"'{query}'"
-                formatted_content = f"RELEVANT DOCUMENTATION for query {query_info}:\n\n"
-                for i, chunk in enumerate(chunks):
-                    formatted_content += f"--- Document {i+1} ---\n{chunk}\n\n"
-                formatted_content += "END OF DOCUMENTATION\n\nPlease use this information to provide an accurate, specific answer."
-                result = {"formatted_docs": formatted_content, "chunks": chunks}
-            else:
-                query_info = f"'{enhanced_query}'" if enhanced_query != query else f"'{query}'"
-                result = {"formatted_docs": f"No relevant documentation found for query {query_info}. I don't have specific information about this topic in my available documentation.", "chunks": []}
-        else:
-            raise ValueError(f"Unknown tool: {func_name}")
-        
-        if func_name != 'retrieve_relevant_docs':
-            session.tool_cache[cache_key] = result
-        
-        return result
+        """Deprecated: tool execution is handled by ToolExecutor. This remains for
+        backward compatibility in any lingering call sites (shouldn't be used)."""
+        exec_results = self.tool_executor.execute([{"function": {"name": func_name, "arguments": json.dumps(func_args)}}], session)
+        return exec_results[0]["result"] if exec_results else {}
 
     def _prepare_messages_streaming(self, session: SessionInfo) -> List[Dict]:
         messages = [{"role": "system", "content": self.get_system_prompt()}]
@@ -751,34 +750,24 @@ Use your contextual understanding to choose the most appropriate tool based on w
     
     async def _get_initial_completion(self, messages: List[Dict]) -> Dict:
         tools = self._get_tool_definitions()
-        params = self._get_completion_params(self.model, messages, DEFAULT_MAX_TOKENS)
-        params.update({"tools": tools, "tool_choice": "auto", "stream": True})
-        
         accumulated_content = ""
-        tool_call_dicts = {}
-        
-        async for chunk in await self._make_api_call_with_retry(**params):
+        tool_call_dicts: Dict[int, Dict[str, Any]] = {}
+
+        stream = await self.engine.completion(
+            messages=messages,
+            max_tokens=DEFAULT_MAX_TOKENS,
+            tools=tools,
+            tool_choice="auto",
+            stream=True,
+        )
+        async for chunk in stream:
             delta = chunk.choices[0].delta
             if delta.content:
                 accumulated_content += delta.content
             if delta.tool_calls:
                 for tc_delta in delta.tool_calls:
-                    index = tc_delta.index
-                    if index not in tool_call_dicts:
-                        tool_call_dicts[index] = {
-                            "id": tc_delta.id,
-                            "type": tc_delta.type,
-                            "function": {
-                                "name": tc_delta.function.name,
-                                "arguments": tc_delta.function.arguments
-                            }
-                        }
-                    else:
-                        if tc_delta.function.name:
-                            tool_call_dicts[index]["function"]["name"] += tc_delta.function.name
-                        if tc_delta.function.arguments:
-                            tool_call_dicts[index]["function"]["arguments"] += tc_delta.function.arguments
+                    self._apply_tool_call_delta(tool_call_dicts, tc_delta)
         
-        tool_calls = list(tool_call_dicts.values())
+        tool_calls = self._finalize_tool_calls(tool_call_dicts)
         
         return {"content": accumulated_content, "tool_calls": tool_calls}

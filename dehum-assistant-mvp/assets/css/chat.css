@@ -938,6 +938,135 @@
 }
 
 /* ===============================
+   TOOL DETAILS DROPDOWN
+   =============================== */
+
+.dehum-tool-details {
+  margin-bottom: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.dehum-tool-details>summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 8px 12px;
+  color: var(--foreground);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dehum-tool-details>summary::-webkit-details-marker {
+  display: none;
+}
+
+.dehum-tool-details>summary::after {
+  content: 'expand_more';
+  font-family: 'Material Symbols Outlined';
+  font-size: 18px;
+  line-height: 1;
+  display: inline-block;
+  margin-left: auto;
+  transform: rotate(0deg);
+  transition: transform var(--chat-transition-fast);
+}
+
+.dehum-tool-details[open]>summary::after {
+  transform: rotate(180deg);
+}
+
+.dehum-tool-content {
+  border-top: 1px solid var(--border);
+  padding: 8px 10px;
+  color: var(--foreground);
+  font-size: 0.95em;
+  line-height: 1.5;
+}
+
+/* Tool details layout */
+.dehum-toollist {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.dehum-toolitem {
+  padding: 6px 0;
+}
+
+.dehum-toolname {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.dehum-toolsection {
+  font-size: 0.9em;
+  color: var(--muted-foreground);
+  margin-top: 6px;
+  margin-bottom: 2px;
+}
+
+.dehum-toolline .k {
+  color: var(--foreground);
+  font-weight: 500;
+}
+
+.dehum-toolline .v {
+  color: var(--foreground);
+}
+
+.dehum-tool-raw {
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  margin-top: 8px;
+  max-height: 200px;
+  overflow: auto;
+}
+
+/* New compact grid for Inputs/Outputs */
+.dehum-toolgrid {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  row-gap: 4px;
+  column-gap: 10px;
+  align-items: start;
+  margin-bottom: 6px;
+}
+
+.dehum-toolgrid .row {
+  display: contents;
+}
+
+.dehum-toolgrid .k {
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.dehum-toolgrid .v {
+  color: var(--foreground);
+  word-break: break-word;
+}
+
+.dehum-tool-title {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.dehum-tool-summary {
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+.dehum-subdetails {
+  margin-top: 8px;
+}
+
+/* ===============================
    RETRY BUTTON
    =============================== */
 

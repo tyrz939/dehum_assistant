@@ -76,189 +76,108 @@ class DehumidifierTools:
     
     def calculate_dehum_load(self, currentRH: float, targetRH: float, indoorTemp: float,
                            length: float = None, width: float = None, height: float = None,
-                           volume_m3: float = None, ach: float = 0.5, peopleCount: int = 0, 
+                           volume_m3: float = None, ach: float = 1.0, peopleCount: int = 0, 
                            pool_area_m2: float = 0, waterTempC: float = None,
-                           pool_activity: str = "none", vent_factor: float = 1.0,
-                           additional_loads_lpd: float = 0, air_velocity_mps: float = 0.1) -> Dict[str, Any]:
+                           pool_activity: str = "low", vent_factor: float = 1.0,
+                           additional_loads_lpd: float = 0, air_velocity_mps: float = 0.12,
+                           outdoorTempC: float = None, outdoorRH: float = None,
+                           covered_hours_per_day: float = 0.0, cover_reduction: float = 0.7,
+                           air_movement_level: str = 'still', vent_level: str = 'low', mode: str = 'field_calibrated',
+                           field_bias: float = 0.80, min_ratio_vs_standard: float = 0.70,
+                           calibrate_to_data: bool = False, measured_data: list = None) -> Dict[str, Any]:
+        """Thin wrapper around sizing.compute_load_components for backward compatibility.
+
+        New optional params: outdoorTempC, outdoorRH, air_velocity_mps (default 0.12),
+        pool_activity (default 'low'), covered_hours_per_day, cover_reduction, ach default 1.0.
         """
-        Calculate latent moisture load for a room based on sizing spec v0.1
-        
-        Args:
-            currentRH: Current relative humidity %
-            targetRH: Target relative humidity %
-            indoorTemp: Indoor temperature °C
-            length: Room length in meters (optional if volume_m3 provided)
-            width: Room width in meters (optional if volume_m3 provided)
-            height: Ceiling height in meters (optional if volume_m3 provided)
-            volume_m3: Room volume in cubic meters (alternative to L×W×H)
-            ach: Air changes per hour (default 0.5)
-            peopleCount: Number of occupants (default 0)
-            pool_area_m2: Pool surface area in square meters (default 0)
-            waterTempC: Pool water temperature in °C (optional, default 28°C)
-            pool_activity: Pool activity level ("none" default=0.100 C, "low"=0.118, "medium"=0.136, "high"=0.156 kg/m²/h/kPa)
-            vent_factor: Multiplier for infiltration load (default 1.0, e.g., 1.2 for poor ventilation)
-            additional_loads_lpd: Additional latent loads in L/day (default 0, e.g., from plants/showers)
-            air_velocity_mps: Air velocity over pool surface in m/s (default 0.1, range 0.05-0.3 for indoor pools)
-            
-        Returns:
-            Dictionary containing volume, latentLoad_L24h, and calculationNotes
-        """
+        from sizing import compute_load_components
         try:
-            # Validation
-            if currentRH < 0 or currentRH > 100:
-                raise ValueError("currentRH must be between 0 and 100")
-            if targetRH < 0 or targetRH > 100:
-                raise ValueError("targetRH must be between 0 and 100")
-            if targetRH >= currentRH:
-                raise ValueError("targetRH must be less than currentRH")
-            if indoorTemp < 0 or indoorTemp > 50:
-                raise ValueError("indoorTemp must be between 0 and 50°C")
-            if air_velocity_mps < 0 or air_velocity_mps > 1.0:
-                raise ValueError("air_velocity_mps must be between 0 and 1.0 m/s")
-            
-            # Step 1: Determine volume and dimensions
-            if volume_m3 is not None:
-                # Volume provided directly - fabricate cube-root dimensions for downstream compatibility
-                if volume_m3 <= 0:
-                    raise ValueError("volume_m3 must be greater than 0")
-                volume = volume_m3
-                edge = volume_m3 ** (1/3)  # Cube root for fabricated dimensions
-                length = width = height = edge
-            elif length is not None and width is not None and height is not None:
-                # Traditional L×W×H provided
-                if length <= 0 or width <= 0 or height <= 0:
-                    raise ValueError("length, width, and height must be greater than 0")
-                volume = length * width * height
-            else:
-                raise ValueError("Either volume_m3 OR all three dimensions (length, width, height) must be provided")
-            
-            # Define saturation vapor pressure function (Magnus formula, kPa)
-            def saturation_vp(T):
-                return 0.61094 * math.exp((17.625 * T) / (T + 243.04))
-            
-            # Atmospheric pressure (kPa, standard sea level)
-            P_atm = 101.325
-            
-            # Step 2: Calculate humidity ratios (kg/kg dry air)
-            # Current conditions
-            P_v_current = (currentRH / 100) * saturation_vp(indoorTemp)
-            W_current = 0.62198 * P_v_current / (P_atm - P_v_current)
-            
-            # Target conditions
-            P_v_target = (targetRH / 100) * saturation_vp(indoorTemp)
-            W_target = 0.62198 * P_v_target / (P_atm - P_v_target)
-            
-            delta_W = W_current - W_target  # kg/kg
-            
-            # Step 3: Calculate air mass (approximate air density at room temperature)
-            # Air density ≈ 1.2 kg/m³ at 20°C, decreases with temperature
-            air_density = 1.2 * (293.15 / (273.15 + indoorTemp))  # kg/m³
-            air_mass = air_density * volume  # kg
-            
-            # Step 4: Calculate infiltration load
-            # ACH determines how much outside air enters
-            infiltration_load_kgph = ach * air_mass * delta_W  # kg/h
-            infiltration_load_L24h = infiltration_load_kgph * 24  # L/day (1 kg ≈ 1 L)
-            infiltration_load_L24h *= vent_factor  # Apply vent factor
-            
-            # Step 5: Calculate occupant load
-            # Typical latent load per person: 50-120 g/h depending on activity
-            occupant_load_gph = peopleCount * 80  # g/h (moderate activity)
-            occupant_load_L24h = (occupant_load_gph * 24) / 1000  # L/day
-            
-            # Step 6: Calculate pool load (improved)
-            pool_load_L24h = 0
-            if pool_area_m2 > 0:
-                # Room partial VP (kPa)
-                P_a = P_v_current  # From current RH/temp
-                
-                # Water temp (default 28°C if not provided)
-                T_w = waterTempC if waterTempC is not None else 28.0
-                
-                # Water saturation VP (kPa)
-                P_w = saturation_vp(T_w)
-                
-                # Delta P (no negative evaporation) with reasonable upper limit
-                delta_P = max(P_w - P_a, 0)
-                # Cap delta_P to prevent unrealistic evaporation rates for very hot pools
-                delta_P = min(delta_P, 2.5)  # Max 2.5 kPa difference (reasonable physical limit for residential pools)
-                
-                # Base evaporation coefficient (kg/m²/h/kPa) based on activity (ASHRAE-aligned)
-                activity_coeffs = {
-                    "none": 0.05,   # Unoccupied baseline
-                    "low": 0.065,   # Residential/light
-                    "medium": 0.10,  # Moderate/therapy
-                    "high": 0.15    # Public/heavy
-                }
-                C_base = activity_coeffs.get(pool_activity.lower(), 0.05)
-                
-                # Velocity-dependent adjustment (from ASHRAE Carrier: increases with air speed)
-                C = C_base + 0.3 * air_velocity_mps  # Tuned: +0.03 at 0.1 m/s
-                
-                # Convection boost if water warmer than air (buoyancy enhancement)
-                temp_diff = max(T_w - indoorTemp, 0)
-                # Reduced from 0.08 to 0.04 to prevent excessive sensitivity to temperature differences
-                C *= (1 + 0.04 * temp_diff)  # +16% at +4°C, more reasonable boost
-                
-                # Evaporation rate (kg/h)
-                W = pool_area_m2 * C * delta_P
-                
-                # Convert to L/day (1 kg ≈ 1 L)
-                pool_load_L24h = round(W * 24, 1)
-            
-            # Step 7: Aggregate loads
-            total_load_L24h = max(0, infiltration_load_L24h) + occupant_load_L24h + pool_load_L24h + additional_loads_lpd
-            
-            # Round to 1 decimal place
-            total_load_L24h = round(total_load_L24h, 1)
-            
-            # Create calculation notes
-            notes = []
-            if volume_m3 is not None:
-                notes.append(f"Room: {volume:.1f}m³ (given volume, fabricated dimensions {edge:.1f}×{edge:.1f}×{edge:.1f}m)")
-            else:
-                notes.append(f"Room: {length}×{width}×{height}m = {volume:.1f}m³")
-            notes.append(f"Volume: {volume:.1f}m³, ACH: {ach}")
-            notes.append(f"RH reduction: {currentRH}% → {targetRH}% at {indoorTemp}°C")
-            notes.append(f"Humidity ratio difference: {delta_W:.4f} kg/kg")
-            notes.append(f"Air mass: {air_mass:.1f} kg")
-            notes.append(f"Infiltration load: {infiltration_load_L24h:.1f} L/day (vent_factor={vent_factor})")
-            
-            if peopleCount > 0:
-                notes.append(f"Occupants: {peopleCount} people, {occupant_load_L24h:.1f} L/day")
-            
-            if pool_area_m2 > 0:
-                pool_temp_note = f" at {T_w}°C" if waterTempC is not None else " at default 28°C"
-                notes.append(f"Pool: {pool_area_m2}m²{pool_temp_note}, evap load: {pool_load_L24h:.1f} L/day (activity={pool_activity}, C={C:.3f} kg/m²/h/kPa, velocity={air_velocity_mps}m/s, convection boost={1 + 0.04 * temp_diff:.2f})")
-            
-            if additional_loads_lpd > 0:
-                notes.append(f"Additional loads: {additional_loads_lpd:.1f} L/day")
-            
-            notes.append(f"Total latent load: {total_load_L24h} L/day")
-            
-            return {
-                "volume": round(volume, 1),
-                "latentLoad_L24h": total_load_L24h,
-                "room_area_m2": round(length * width, 1),
-                "calculationNotes": "; ".join(notes)
+            result = compute_load_components(
+                current_rh=currentRH,
+                target_rh=targetRH,
+                indoor_temp_c=indoorTemp,
+                length=length,
+                width=width,
+                height=height,
+                volume_m3=volume_m3,
+                ach=ach,
+                people_count=peopleCount,
+                pool_area_m2=pool_area_m2,
+                water_temp_c=waterTempC,
+                pool_activity=pool_activity,
+                vent_factor=vent_factor,
+                additional_loads_lpd=additional_loads_lpd,
+                air_velocity_mps=air_velocity_mps,
+                outdoor_temp_c=outdoorTempC,
+                outdoor_rh_percent=outdoorRH,
+                covered_hours_per_day=covered_hours_per_day,
+                cover_reduction=cover_reduction,
+                air_movement_level=air_movement_level,
+                vent_level=vent_level,
+                mode=mode,
+                field_bias=field_bias,
+                min_ratio_vs_standard=min_ratio_vs_standard,
+                calibrate_to_data=calibrate_to_data,
+                measured_data=measured_data,
+            )
+            # Map to legacy keys while preserving plot_data
+            components = result["components"]
+            legacy = {
+                "volume": round(result["inputs"]["volume_m3"], 1),
+                "latentLoad_L24h": result["total_lpd"],
+                "room_area_m2": round(result["derived"]["room_area_m2"], 1) if result["derived"]["room_area_m2"] else None,
+                "calculationNotes": "; ".join(result["notes"]),
+                "components_breakdown": components,
+                "plot_data": result.get("plot_data", {}),
+                "steady_latent_kw": result.get("steady_latent_kw"),
+                "pulldown_air_l": result.get("pulldown_air_l", 0.0),
             }
-            
+
+            # Enrich plot_data with product capacities and target line for charting
+            try:
+                required_lpd = legacy["latentLoad_L24h"]
+                # Pool-safe filter if pool present
+                pool_required = (pool_area_m2 or 0) > 0
+                catalog = self.get_catalog_with_effective_capacity(include_pool_safe_only=pool_required)
+                # Apply derate factor for indoor conditions at target RH
+                derate = self.calculate_derate_factor(indoorTemp, targetRH)
+                products_for_plot = []
+                for p in catalog:
+                    eff = p.get("effective_capacity_lpd")
+                    if eff is None:
+                        continue
+                    eff_adj = round(eff * derate, 1)
+                    products_for_plot.append({
+                        "sku": p.get("sku"),
+                        "name": p.get("name", p.get("sku")),
+                        "capacity_lpd": eff_adj,
+                        "url": p.get("url"),
+                        "type": p.get("type")
+                    })
+                # Select a concise set for visualization: products around the required load
+                if products_for_plot:
+                    # Prefer those that meet or exceed required, then a couple below
+                    above = [x for x in products_for_plot if x["capacity_lpd"] >= required_lpd]
+                    below = [x for x in products_for_plot if x["capacity_lpd"] < required_lpd]
+                    above.sort(key=lambda x: x["capacity_lpd"])  # ascending
+                    below.sort(key=lambda x: x["capacity_lpd"], reverse=True)
+                    selected = (below[:2] + above[:8])[:8] if above else below[:8]
+                    # Keep ascending for chart
+                    selected.sort(key=lambda x: x["capacity_lpd"])
+                    legacy["plot_data"]["products"] = selected
+                    legacy["plot_data"]["target_line_lpd"] = required_lpd
+            except Exception as _e:
+                # Don't fail the tool if product enrichment has an issue
+                pass
+            return legacy
         except Exception as e:
             logger.error(f"Error calculating dehumidifier load: {str(e)}")
-            # Handle case where dimensions may be None
-            try:
-                error_volume = volume_m3 if volume_m3 is not None else (length * width * height if all(x is not None for x in [length, width, height]) else 0)
-                error_area = length * width if all(x is not None for x in [length, width]) else 0
-            except:
-                error_volume = 0
-                error_area = 0
-            
             return {
                 "error": f"Calculation error: {str(e)}",
-                "volume": error_volume,
+                "volume": 0,
                 "latentLoad_L24h": 0,
-                "room_area_m2": error_area,
-                "calculationNotes": f"Error in calculation: {str(e)}"
+                "room_area_m2": 0,
+                "calculationNotes": f"Error in calculation: {str(e)}",
             }
 
 
@@ -422,35 +341,18 @@ class DehumidifierTools:
             logger.error(f"Error retrieving product {type} for SKU {sku}: {str(e)}")
             return {"error": f"Error retrieving {type}: {str(e)}"}
         
+    # --- Deprecated: moved to psychrometrics.py; kept for backward compatibility ---
     def saturation_vp(self, T: float) -> float:
-        """Calculate saturation vapor pressure in kPa using Magnus formula."""
-        return 0.61094 * math.exp((17.625 * T) / (T + 243.04))
+        from psychrometrics import saturation_vp as _svp
+        return _svp(T)
 
     def calculate_dew_point(self, temp: float, rh: float) -> float:
-        """Calculate dew point in °C using Magnus formula."""
-        if rh <= 0 or rh > 100:
-            return -100.0  # Invalid, arbitrary low
-        pv = (rh / 100.0) * self.saturation_vp(temp)  # Note: assumes saturation_vp method exists or define it here if needed
-        if pv <= 0:
-            return -100.0
-        alpha = math.log(pv / 0.61094)
-        td = 243.04 * alpha / (17.625 - alpha)
-        return td
+        from psychrometrics import dew_point as _dew
+        return _dew(temp, rh)
 
     def calculate_derate_factor(self, temp: float, rh: float) -> float:
-        """
-        Calculate derating factor for dehumidifier capacity based on temperature and humidity.
-        
-        Args:
-            temp: Indoor temperature in °C
-            rh: Target relative humidity in %
-            
-        Returns:
-            Derating factor between 0.1 and 1.0
-        """
-        td = self.calculate_dew_point(temp, rh)
-        td_norm = max(td, 0.0) / 26.0  # Normalize to rated Td at 30°C/80% RH, floor at 0
-        return min(1.0, max(0.1, td_norm ** 1.5))  # Exponent 1.5 for nonlinear tanking at low Td
+        from psychrometrics import derate_factor as _derate
+        return _derate(temp, rh)
 
     def retrieve_relevant_docs(self, query: str, k: int = 3) -> List[str]:
         """
@@ -476,47 +378,24 @@ class DehumidifierTools:
             search_k = min(k * 3, 15)  # Get more candidates to filter from
             docs = self.vectorstore.similarity_search(query.strip(), k=search_k)
             
-            # Product-source mapping
-            product_sources = {
-                'SP500C': 'SUNTEC_SP_SERIES_INFO.txt',
-                'SP1000C': 'SUNTEC_SP_SERIES_INFO.txt', 
-                'SP1500C': 'SUNTEC_SP_SERIES_INFO.txt',
-                'SP500': 'SUNTEC_SP_SERIES_INFO.txt',
-                'SP1000': 'SUNTEC_SP_SERIES_INFO.txt',
-                'SP1500': 'SUNTEC_SP_SERIES_INFO.txt',
-                'Suntec': 'SUNTEC_SP_SERIES_INFO.txt',
-                'SP Pro': 'SUNTEC_SP_SERIES_INFO.txt',
-                'IDHR60': 'FAIRLAND_IDHR_SERIES_INFO.txt',
-                'IDHR96': 'FAIRLAND_IDHR_SERIES_INFO.txt',
-                'IDHR120': 'FAIRLAND_IDHR_SERIES_INFO.txt',
-                'Fairland': 'FAIRLAND_IDHR_SERIES_INFO.txt',
-                'DA-X60i': 'LUKO_DA-X_SERIES_INFO.txt',
-                'DA-X140i': 'LUKO_DA-X_SERIES_INFO.txt',
-                'DA-X60': 'LUKO_DA-X_SERIES_INFO.txt',
-                'DA-X140': 'LUKO_DA-X_SERIES_INFO.txt',
-                'Luko': 'LUKO_DA-X_SERIES_INFO.txt',
-                'DA-X': 'LUKO_DA-X_SERIES_INFO.txt'
-            }
-            
-            # Check if query contains specific product mentions
-            query_upper = query.upper()
-            target_source = None
-            for product, source in product_sources.items():
-                if product.upper() in query_upper:
-                    target_source = source
-                    break
-            
-            # Prioritize chunks from the target source if product is specified
-            if target_source:
-                # First, get chunks from the target source
-                target_chunks = [doc for doc in docs if doc.metadata.get('source') == target_source]
-                other_chunks = [doc for doc in docs if doc.metadata.get('source') != target_source]
-                
-                # Prioritize target source chunks, then fill with others if needed
-                prioritized_docs = target_chunks[:k] + other_chunks[:max(0, k - len(target_chunks))]
-                docs = prioritized_docs[:k]
-                
-                logger.info(f"Product-aware search: Found {len(target_chunks)} chunks from {target_source} for query '{query}'")
+            # Dynamic source prioritization (no hard-coded filenames)
+            # Boost any document whose source filename appears to match tokens found in the query.
+            query_upper = query.strip().upper()
+            # Tokens: continuous sequences with letters/numbers/dashes, length >= 3
+            raw_tokens = re.findall(r"[A-Z0-9][A-Z0-9\-]{2,}", query_upper)
+            tokens = {t for t in raw_tokens}
+
+            if tokens:
+                def score(doc):
+                    src = (doc.metadata.get('source') or '').upper()
+                    # Count token matches in source filename
+                    matches = sum(1 for t in tokens if t in src)
+                    return matches
+
+                # Preserve original order on ties by enumerating
+                indexed = list(enumerate(docs))
+                indexed.sort(key=lambda iv: ( -score(iv[1]), iv[0]))
+                docs = [d for _, d in indexed]
             
             # Extract content and format chunks
             chunks = []
@@ -538,12 +417,12 @@ class DehumidifierTools:
 
     def get_available_tools(self) -> List[str]:
         """Get list of available tool names"""
-        tools = [
+        available = [
             "calculate_dehum_load",
-            "get_product_manual"
+            "get_product_manual",
+            "get_product_catalog",
         ]
-        
-        # RAG tool is now managed by agent tool definitions based on config
-        # No need for conditional inclusion here
-        
-        return tools
+        # Reflect RAG availability truthfully for /health
+        if self.vectorstore is not None:
+            available.append("retrieve_relevant_docs")
+        return available

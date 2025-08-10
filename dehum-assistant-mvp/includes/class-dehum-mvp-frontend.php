@@ -148,22 +148,26 @@ Pool room or regular space?";
             return;
         }
 
-        // Enqueue modern chat widget CSS with enhanced styling
+        // Enqueue modern chat widget CSS with cache-busting by file mtime
+        $chat_css_path = DEHUM_MVP_PLUGIN_PATH . 'assets/css/chat.css';
+        $chat_css_ver = DEHUM_MVP_VERSION . '-' . @filemtime($chat_css_path);
         wp_enqueue_style(
             'dehum-mvp-chat',
             DEHUM_MVP_PLUGIN_URL . 'assets/css/chat.css',
             [],
-            DEHUM_MVP_VERSION
+            $chat_css_ver
         );
 
         // Prefer local icon font; fallback to Google CDN if the woff2 file is missing
         $local_font = DEHUM_MVP_PLUGIN_PATH . 'assets/fonts/MaterialSymbolsOutlined.woff2';
         if (file_exists($local_font)) {
+            $icons_css_path = DEHUM_MVP_PLUGIN_PATH . 'assets/css/material-symbols.css';
+            $icons_css_ver = DEHUM_MVP_VERSION . '-' . @filemtime($icons_css_path);
             wp_enqueue_style(
                 'dehum-mvp-material-symbols',
                 DEHUM_MVP_PLUGIN_URL . 'assets/css/material-symbols.css',
                 [],
-                DEHUM_MVP_VERSION
+                $icons_css_ver
             );
         } else {
             wp_enqueue_style(
@@ -230,12 +234,14 @@ Pool room or regular space?";
 
         wp_add_inline_style('dehum-mvp-chat', $theme_css);
 
-        // Enqueue enhanced chat widget JavaScript
+        // Enqueue enhanced chat widget JavaScript with cache-busting by file mtime
+        $chat_js_path = DEHUM_MVP_PLUGIN_PATH . 'assets/js/chat.js';
+        $chat_js_ver = DEHUM_MVP_VERSION . '-' . @filemtime($chat_js_path);
         wp_enqueue_script(
             'dehum-mvp-chat',
             DEHUM_MVP_PLUGIN_URL . 'assets/js/chat.js',
             ['jquery'],
-            DEHUM_MVP_VERSION,
+            $chat_js_ver,
             true
         );
 
@@ -295,7 +301,7 @@ Pool room or regular space?";
         
         // Enhanced configurable content with modern defaults
         $config = apply_filters('dehum_mvp_widget_config', [
-            'title' => 'Dehumidifier Assistant (ALPHA TEST) v0.3',
+            'title' => 'Dehumidifier Assistant (ALPHA TEST) v0.4',
             'button_aria_label' => 'Open chat assistant',
             'clear_aria_label' => 'Clear conversation',
             'clear_title' => 'Clear conversation and start fresh',

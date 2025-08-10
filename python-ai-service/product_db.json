@@ -81,7 +81,7 @@
       "technology": "panasonic_inverter",
       "pool_safe": true,
       "price_aud": null,
-      "performance_factor": 0.6,
+      "performance_factor": 0.8,
       "capacity_lpd": 140,
       "url": "https://www.dehumsaust.com.au/ducted-dehumidifiers/"
     },
@@ -93,7 +93,7 @@
       "technology": "panasonic_inverter",
       "pool_safe": true,
       "price_aud": null,
-      "performance_factor": 0.6,
+      "performance_factor": 0.8,
       "capacity_lpd": 60,
       "url": "https://www.dehumsaust.com.au/ducted-dehumidifiers/"
     },

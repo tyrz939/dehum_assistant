@@ -22,8 +22,8 @@ All prices in AUD. Capacities in L/day at **30°C, 80% RH** standard conditions.
 | IDHR60       | FAIRLAND IDHR60       | wall_mount | IDHR   | inverter         | Yes       | 60               | 3900        | https://www.dehumsaust.com.au/product/fairland-60l-day-inverter-dehumidifier-idhr60/ |
 | IDHR96       | FAIRLAND IDHR96       | wall_mount | IDHR   | inverter         | Yes       | 96               | 4600        | https://www.dehumsaust.com.au/product/fairland-96l-day-inverter-dehumidifier-idhr96/ |
 | IDHR120      | FAIRLAND IDHR120      | wall_mount | IDHR   | inverter         | Yes       | 120              | 5400        | https://www.dehumsaust.com.au/product/fairland-120l-day-inverter-dehumidifier-idhr120/ |
-| DA-X140i     | LUKO DA-X140i         | ducted     | DA-X   | panasonic_inverter | Yes     | 155              | 5600        | https://www.dehumsaust.com.au/ducted-dehumidifiers/ |
-| DA-X60i      | LUKO DA-X60i          | ducted     | DA-X   | panasonic_inverter | Yes     | 75               | 4200        | https://www.dehumsaust.com.au/ducted-dehumidifiers/ |
+| DA-X140i     | LUKO DA-X140i         | ducted     | DA-X   | panasonic_inverter | Yes     | 140              | 5600        | https://www.dehumsaust.com.au/ducted-dehumidifiers/ |
+| DA-X60i      | LUKO DA-X60i          | ducted     | DA-X   | panasonic_inverter | Yes     | 60               | 4200        | https://www.dehumsaust.com.au/ducted-dehumidifiers/ |
 | ST_601_PRO   | SUNTEC ST601 PRO      | portable   | ST     | portable         | No        | 65               | 2799        | https://www.dehumsaust.com.au/product/65l-day-lgr-st601-pro-stackable-mobile-dehumidifier/ |
 | ST_1001_PRO  | SUNTEC ST1001 PRO     | portable   | ST     | portable         | No        | 100              | 3499        | https://www.dehumsaust.com.au/product/100l-day-lgr-st1001-pro-stackable-mobile-dehumidifier/ |
 | CT_801_PRO   | SUNTEC CT 801 PRO     | portable   | CT     | portable         | No        | 90               | 2999        | https://www.dehumsaust.com.au/product/suntec-90l-day-lgr-ct801-pro-commercial-stackable-mobile-dehumidifier/ |
@@ -50,13 +50,15 @@ All prices in AUD. Capacities in L/day at **30°C, 80% RH** standard conditions.
 - IDHR120: 120L/day, 1.36kW max, 5.91A max, 1220×291×770mm, $5400
 
 **LUKO DA-X Series (Ducted, Panasonic Inverter, Pool Safe):**
-- DA-X60i: 75L/day, 890W, 4.1A, 1160×590×325mm
-- DA-X140i: 155L/day, 1860W, 8.5A, 1200×640×370mm
+- DA-X60i: 60L/day, 890W, 4.1A, 1160×590×325mm
+- DA-X140i: 140L/day, 1860W, 8.5A, 1200×640×370mm
 
 **SUNTEC ST/CT Series (Portable, Not Pool Safe):**
 - ST601 PRO: 65L/day, Portable, $2799
 - ST1001 PRO: 100L/day, Portable, $3499
 - CT801 PRO: 90L/day, Portable, $2999
+- ST600: 65L/day, Portable, $1999
+- ST1000: 100L/day, Portable, $2699
 
 ---
 

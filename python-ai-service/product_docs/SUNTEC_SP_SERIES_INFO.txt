@@ -1,195 +1,140 @@
-# Suntec SP Pro Series — Practical RAG Chunks (SP500C PRO, SP1000C PRO, SP1500C PRO)
+# SUNTEC SP SERIES — MASTER RAG (AU/NZ 230V focus, manual-verified)
+
+Aliases:
+* SP500C PRO, SP1000C PRO, SP1500C PRO = Wall-mounted swimming pool/commercial dehumidifiers with Wi-Fi app control.
+* External Condensate Pump (CP10245) = Separate product; compatible with SP Series and Fairland units; requires wiring into power.
 
 ---
 
-## 1. Series Overview & Applications
+## 1) Model Overview & Specifications
 
-Suntec SP Pro Series dehumidifiers are commercial-grade units designed for swimming pools, spas, gyms, art galleries, basements, server rooms, greenhouses, and more. They are engineered for corrosion resistance, energy recovery, and long life in demanding indoor environments. All models include:
-
-* Wi-Fi App Control ("Dry Connect") for remote monitoring, scheduling, and group control
-* Humidistat with user-set target humidity and power-saving auto-stop
-* Multiple installation modes: wall-mount, floor, or mobile (wheels)
-* Splash and rust-resistant hard plastic casing; coated coils for salt/chlorine environments
-* BMS/RS-485 integration (for remote monitoring/building systems)
-* Auto-defrost with hot-gas bypass (effective operation to 1°C)
-* Power loss protection with auto-restart
-* Quiet centrifugal fan
-
-Typical uses: pools, spas, gyms, museums, cellars, server rooms, manufacturing, greenhouses, and large houses.
-
----
-
-## 2. Model Comparison Table
-
-| Model                      | SP500C PRO                 | SP1000C PRO (interpolated) | SP1500C PRO                |
-| -------------------------- | -------------------------- | -------------------------- | -------------------------- |
-| Water Removal (32°C/80%RH) | 50L/day                    | 100L/day                   | 150L/day                   |
-| Standard Rating Conditions  | 30°C, 80% RH (AHAM)       | 30°C, 80% RH (AHAM)       | 30°C, 80% RH (AHAM)       |
-| Airflow Rate               | 500 m³/h                   | 800 m³/h                   | 900 m³/h                   |
-| Power                      | 660 W / 3.1 A              | 1500 W / 6.5 A             | 2050 W / 8.9 A             |
-| Power Supply               | 220-240V/50Hz              | 220-240V/50Hz              | 220-240V/50Hz              |
-| Noise                      | 42 dB(A)                   | 48 dB(A)                   | 48 dB(A)                   |
-| Compressor                 | Rotary / R410A             | Rotary / R410A             | Rotary / R410A             |
-| Dimensions                 | 650x275x550 mm             | 890x260x750 mm             | 1000x325x800 mm            |
-| Weight                     | 34 kg                      | 56 kg                      | 71 kg                      |
-| Operating Temp             | 1°C–40°C                   | 1°C–40°C                   | 1°C–40°C                   |
-| Operating RH               | 10–90%                     | 10–90%                     | 10–90%                     |
-| Protection                 | IP22                       | IP22                       | IP22                       |
-| Defrost Type               | Hot-gas bypass             | Hot-gas bypass             | Hot-gas bypass             |
-| Installation               | Mobile/Floor/Wall          | Mobile/Floor/Wall          | Mobile/Floor/Wall          |
-| Filter                     | Nylon                      | Nylon (see note)           | Nylon                      |
-| Drainage                   | Gravity                    | Gravity                    | Gravity                    |
-| Cable Length               | 3m w/ plug                 | 3m w/ plug                 | 3m w/ plug                 |
-| Warranty                   | 24mo parts/12mo labor (AU) | 24mo parts/12mo labor (AU) | 24mo parts/12mo labor (AU) |
-| BMS/RS-485                 | Yes                        | Yes                        | Yes                        |
-
-**Note:** Some literature says SP1000C PRO "none" filter; all other docs and product images show a filter is included—assume nylon filter present.
+| Model        | SP500C PRO               | SP1000C PRO              | SP1500C PRO              |
+|--------------|--------------------------|--------------------------|--------------------------|
+| Water Removal (30°C/80%RH) | 50 L/day                 | 100 L/day                | 150 L/day                |
+| Operating Temp Range        | 1°C – 40°C               | 1°C – 40°C               | 1°C – 40°C               |
+| Operating Humidity Range    | 10% – 90% RH             | 10% – 90% RH             | 10% – 90% RH             |
+| Compressor / Refrigerant    | Rotary / R410A           | Rotary / R410A           | Rotary / R410A           |
+| Power Consumption           | 720 W                    | 1500 W                   | 2050 W                   |
+| Voltage / Cycle             | 220–240V / 50 Hz         | 220–240V / 50 Hz         | 220–240V / 50 Hz         |
+| Amps                        | 3.1 A                    | 6.5 A                    | 8.9 A                    |
+| Rated Air Flow              | 500 m³/h                 | 800 m³/h                 | 900 m³/h                 |
+| Noise Level                 | 42 dB(A)                 | 48 dB(A)                 | 48 dB(A)                 |
+| Installation / Mobility     | Mobile / Floor Mount / Wall Mount | Mobile / Floor Mount / Wall Mount | Mobile / Floor Mount / Wall Mount |
+| Touch-pad Control Panel     | Yes                      | Yes                      | Yes                      |
+| Remote Control              | Yes                      | Yes                      | Yes                      |
+| Defrost Type                | Hot-gas bypass           | Hot-gas bypass           | Hot-gas bypass           |
+| Air Filter                  | Washable                 | Washable                 | Washable                 |
+| Housing                     | Hard plastic             | Hard plastic             | Hard plastic             |
+| Drain Hose Length           | 2 m                      | 2 m                      | 2 m                      |
+| Cable Length                | 3 m                      | 3 m                      | 3 m                      |
+| WxDxH (mm)                  | 650×270×550              | 890×290×760              | 1000×330×800             |
+| Use Weight                  | 35 kg                    | 56 kg                    | 71 kg                    |
 
 ---
 
----
+## 2) Applications
 
-## 3. Capacity Derating & Performance Notes
-
-**IMPORTANT:** All dehumidifier capacities are rated at **30°C, 80% RH** (AHAM standard conditions). Performance will drop considerably at lower temperatures and humidity levels:
-
-* **Lower temperatures** (below 20°C): Capacity can drop 40-60%
-* **Lower humidity** (below 60% RH): Capacity can drop 30-50%
-* **Combined effect** (cool + dry conditions): Capacity may drop 60-70%
-
-**Examples:** 
-- SP1500C PRO (150L rated) may only extract 50-75L/day at 15°C/50%RH
-- SP500C PRO (50L rated) may only extract 20-30L/day at 15°C/50%RH
-
-Always size dehumidifiers based on actual site conditions, not just rated capacity. Consult with technical support for site-specific sizing.
+* Designed for swimming pools, spas, gyms, saunas, museums, galleries, archives, and large residential/commercial spaces.
+* Reduces condensation and prevents mould, corrosion, and building material deterioration.
+* Heat recovery design — air is dehumidified and returned with retained heat, saving up to ~70% energy.
 
 ---
 
-## 4. Physical Dimensions & Specifications
+## 3) Installation
 
-**SP500C PRO**: 650×275×550 mm (L×W×H), 34 kg
-**SP1000C PRO**: 890×260×750 mm (L×W×H), 56 kg  
-**SP1500C PRO**: 1000×325×800 mm (L×W×H), 71 kg
+### Mounting Options
+1. **Mobile (Wheels)** – Screw wheels into base, adjust height.
+2. **Floor Mount** – Screw floor brackets into base, adjust height.
+3. **Wall Mount** – Fix supplied wall brackets with M8 bolts (8 mm holes), hang unit, connect condensation pipe.
 
-**Power & Current:**
-- SP500C PRO: 660W, 3.1A at 220-240V/50Hz
-- SP1000C PRO: 1500W, 6.5A at 220-240V/50Hz
-- SP1500C PRO: 2050W, 8.9A at 220-240V/50Hz
+### Positioning
+* Maintain airflow clearance around the unit.
+* Do not operate above 40°C ambient temperature.
+* Avoid installation near corrosive vapours or above electrical panels.
 
-**Capacity & Airflow:**
-- SP500C PRO: 50L/day, 500 m³/h airflow
-- SP1000C PRO: 100L/day, 800 m³/h airflow
-- SP1500C PRO: 150L/day, 900 m³/h airflow
-
----
-
-## 5. Key Features
-
-* **WiFi & App (Dry Connect):**
-
-  * Remote operation, monitoring, and scheduling
-  * Group control (manage multiple units at once)
-  * Compatible with iOS and Android
-* **Humidistat Control:**
-
-  * Set target RH (25%–80%)
-  * Compressor auto-stops at setpoint to save power
-* **Coated Coils:**
-
-  * Special anti-corrosion treatment for salty/chlorinated air
-* **Power Loss Protection:**
-
-  * Auto-restart after outages, maintains settings
-* **BMS/RS-485:**
-
-  * For Building Management System integration (monitoring/alarms)
-* **Centrifugal Fan:**
-
-  * Quiet, high-output, durable
-* **Defrost System:**
-
-  * Hot-gas bypass, effective to 1°C
-* **Filter:**
-
-  * Nylon (washable)
-* **Installation:**
-
-  * Mobile (wheels), stationary (feet), or wall-mounted (brackets)
-* **Drainage:**
-
-  * Gravity hose connection with direct run to drain point
-  * **Note:** Use straight drainage run - avoid P-traps which can cause backup issues
-  * Condensation pump optional for locations where gravity drainage not possible
+### Electrical
+* SP500C & SP1000C: 10A plug.
+* SP1500C: 15A plug.
+* Use earthed socket. Avoid light-duty extension leads.
 
 ---
 
-## 6. Control Panel & Operation
+## 4) Controls
 
-* Touchpad panel with LCD display and timer
-* Functions: On/Off, set humidity, set timer (10 min to 23:50 hrs), read current/target RH, ambient temperature (°C/°F), job and total run time
-* Remote control included
-* Compressor delay: 30s (first startup), up to 180s (normal)
-* WiFi/App control: see quick-start guide for pairing steps
+**Control Panel & Remote:**
+* Buttons: On/Off, Menu, Up, Down, Start/Stop.
+* Functions: Set/Display Humidity (25–80% RH, or continuous), Temperature (°C/°F), Timers (00:10–23:50), Job Clock, Total Clock.
+* Wi-Fi Light: Shows pairing status (2.4 GHz only).
+* Defrost: Automatic hot-gas bypass; more frequent below 15°C.
 
----
-
-## 7. Error Codes & Troubleshooting
-
-| Code | Meaning                        |
-| ---- | ------------------------------ |
-| ER01 | Coil temp sensor error         |
-| ER02 | Ambient temp sensor error      |
-| ER03 | Humidity sensor error          |
-| ER04 | Ambient temp over 1–40°C range |
-| ER05 | High pressure switch off       |
-| ER06 | Low pressure switch off        |
-| ER07 | Communication error            |
+**Display Indicators:**
+* Delay Bar, Service, Run, Sleep.
+* Ambient humidity/temperature readouts.
 
 ---
 
-## 8. Accessories (Included/Optional)
+## 5) Error Codes
 
-* Wall mount brackets & plates (with screws)
-* Floor mount brackets (with screws)
-* Universal wheels (for mobile use)
-* Water drain hose
-* Condensation pipe connector
-* Remote control
-* Optional: External automatic condensation pump, back wall mount kit
-
----
-
-## 9. Maintenance & Filter Replacement
-
-* Always unplug before maintenance
-* For storage: Set RH to 80% for 3–4 hrs to dry inside, then unplug, remove remote batteries
-* To resume use: Ensure airflow not blocked, ground wire connected
-* **Filter replacement:** Remove two bottom screws, take off cover, replace filter
-* Clean nylon filter regularly for optimal performance
+| Code | Description |
+|------|-------------|
+| ER01 | Coil temperature sensor error |
+| ER02 | Ambient temperature sensor error |
+| ER03 | Humidity sensor error |
+| ER04 | Ambient temperature out of range (1–40°C) |
+| ER05 | High pressure switch off |
+| ER06 | Low pressure switch off |
+| ER07 | Communication error |
 
 ---
 
-## 10. Warranty (Australia)
+## 6) Maintenance
 
-* 24 months parts, 12 months labor from purchase
-* Excludes wear and abuse
-* Unit must be returned to supplier; shipping not covered
+When not in use long-term:
+* Run at 80% RH for 3–4 hrs to dry interior.
+* Turn off and unplug.
+* Remove remote batteries.
 
----
+Before reuse:
+* Ensure air inlets/outlets are clear.
+* Check grounding.
 
-## 11. General Notes & Cautions
-
-* Do not run above 40°C (can cause damage)
-* Unit must be upright 45 min after transport before use
-* Always connect drain before use (gravity feed)
-* Do not operate with damaged power cable
-* Only use with earthed supply
-* Coated coils extend life in corrosive environments (salt/chlorine)
-
----
-
-**\[END - Suntec SP Pro Series RAG Chunks, v2024.08.03]**
+Routine:
+* Clean washable filter every 3 months.
+* Inspect drain hose monthly.
+* Wipe cabinet with damp cloth.
+* Annual professional service.
 
 ---
 
-**If you need to add more specific troubleshooting, app setup, or site-specific details, extend this doc accordingly.**
+## 7) Included Accessories
+
+* 2x Wall Mount Brackets
+* 4x Exploded Screws & Washers (wall fixing)
+* 4x Screws & Washers (unit fixing)
+* 4x Floor Mount Brackets
+* 4x Universal Wheels
+* 1x 2 m Water Drain Hose
+* 1x Condensation Pipe Connector
+
+---
+
+## 8) Safety
+
+* Keep away from water ingress; risk of shock.
+* Do not use damaged cables or adapters.
+* Always use earthed outlet.
+* Do not drop or tip unit.
+* Do not block air inlets/outlets.
+* Children should not operate unit.
+* Do not attempt internal repairs unless qualified.
+
+---
+
+## 9) External Condensate Pump (Optional)
+
+* Model: CP10245
+* External mounting, wired to dedicated supply.
+* Suitable for SP Series & Fairland units.
+* Allows drainage to remote locations.
+
+[End of SP Series Master RAG — Verified 2025-08]

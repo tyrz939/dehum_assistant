@@ -3,7 +3,7 @@
  * Plugin Name: Dehumidifier Assistant MVP
  * Plugin URI: https://github.com/your-username/dehum-assistant
  * Description: Complete dehumidifier assistant with responsive chat widget, Python AI service integration, admin interface, and conversation logging
- * Version: 2.4.1
+ * Version: 2.4.1 (UI v0.4)
  * Author: Your Name
  * License: MIT
  * Text Domain: dehum-assistant-mvp

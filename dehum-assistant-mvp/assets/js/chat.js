@@ -20,8 +20,9 @@
     parse(text) {
       if (!text) return '';
 
-      // Escape HTML first
-      let html = this.escapeHtml(text);
+      // Normalize and escape first
+      const normalized = String(text).replace(/[ \t]+$/gm, '').trim();
+      let html = this.escapeHtml(normalized);
 
       // Convert markdown patterns in order (images before links to avoid conflicts)
       html = this.parseHeadings(html);
@@ -34,6 +35,10 @@
       html = this.parseItalic(html);
       html = this.parseLineBreaks(html);
 
+      // Collapse excessive breaks and trim leading/trailing breaks
+      html = html.replace(/(?:<br>\s*){3,}/g, '<br><br>');
+      html = html.replace(/^(?:\s*<br>)+/g, '');
+      html = html.replace(/(?:<br>\s*)+$/g, '');
       return html;
     },
 
@@ -109,19 +114,60 @@
      * Inspired by Open WebUI's image handling approach
      */
     parseImages(text) {
+      // Only process if text actually contains image markdown syntax
+      if (!text.includes('![')) {
+        return text;
+      }
+
+      console.log('Processing text for images:', text.substring(0, 200) + (text.length > 200 ? '...' : ''));
+
       // Match markdown image syntax: ![alt text](url "optional title")
       return text.replace(/!\[([^\]]*)\]\(([^)]+)(?:\s+"([^"]*)")?\)/g, (match, alt, url, title) => {
-        // Security validation: only allow HTTPS URLs
-        if (!this.isValidImageUrl(url)) {
-          return `<div class="dehum-image-error" role="img" aria-label="${alt || 'Invalid image'}"><span class="dehum-image-error-icon">🖼️</span><span class="dehum-image-error-text">${alt || 'Image unavailable'} (Invalid URL)</span></div>`;
-        }
+        console.log('Found image markdown:', match, 'alt:', alt, 'url:', url);
 
-        // Create image element with lazy loading and error handling
+        // Trim and validate URL
+        url = (url || '').trim();
+
         const escapedAlt = this.escapeHtml(alt || 'Image');
         const escapedTitle = title ? this.escapeHtml(title) : '';
         const titleAttr = escapedTitle ? ` title="${escapedTitle}"` : '';
 
-        return `<img class="dehum-chat-image" src="${this.escapeHtml(url)}" alt="${escapedAlt}"${titleAttr} loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';" /><div class="dehum-image-error" style="display: none;" role="img" aria-label="${escapedAlt}"><span class="dehum-image-error-icon">🖼️</span><span class="dehum-image-error-text">${escapedAlt}</span><span class="dehum-image-error-detail">Failed to load image</span></div>`;
+        // If empty or clearly invalid, just return the alt text (no error UI)
+        if (!url || url.length < 2) {
+          return escapedAlt;
+        }
+
+        // Allow data URI images explicitly
+        if (url.startsWith('data:image/')) {
+          return `<img class="dehum-chat-image" src="${url}" alt="${escapedAlt}"${titleAttr} loading="lazy" />`;
+        }
+
+        // Allow relative URLs (/, ./, ../) – let browser resolve
+        if (url.startsWith('/') || url.startsWith('./') || url.startsWith('../')) {
+          return `<img class="dehum-chat-image" src="${this.escapeHtml(url)}" alt="${escapedAlt}"${titleAttr} loading="lazy" />`;
+        }
+
+        // For absolute URLs, validate protocol
+        const isValid = this.isValidImageUrl(url);
+        if (!isValid) {
+          // Do not show error UI; fallback to a plain link so content stays useful
+          return `<a href="${this.escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapedAlt}</a>`;
+        }
+
+        // Mixed content: if page is HTTPS and image is HTTP, render a link instead of <img>
+        try {
+          const urlObj = new URL(url);
+          if (window && window.location && window.location.protocol === 'https:' && urlObj.protocol === 'http:') {
+            return `<a href="${this.escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapedAlt} (open image)</a>`;
+          }
+        } catch (e) {
+          // If URL parsing fails here, just link
+          return `<a href="${this.escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapedAlt}</a>`;
+        }
+
+        // Default: render image with graceful onerror fallback to a link
+        const imgHtml = `<img class="dehum-chat-image" src="${this.escapeHtml(url)}" alt="${escapedAlt}"${titleAttr} loading="lazy" onerror="this.outerHTML=''<a href=\\'${this.escapeHtml(url)}\\' target=\\'_blank\\' rel=\\'noopener noreferrer\\'>${escapedAlt}</a>'';" />`;
+        return imgHtml;
       });
     },
 
@@ -132,8 +178,9 @@
       try {
         const urlObj = new URL(url);
 
-        // Only allow HTTPS URLs for security
-        if (urlObj.protocol !== 'https:') {
+        // Allow both HTTP and HTTPS for broader compatibility
+        if (urlObj.protocol !== 'https:' && urlObj.protocol !== 'http:') {
+          console.warn(`Invalid protocol for image URL: ${urlObj.protocol}`);
           return false;
         }
 
@@ -144,8 +191,10 @@
           // Still allow if no whitelist is configured, just warn
         }
 
+        console.log(`Valid image URL detected: ${url}`);
         return true;
       } catch (e) {
+        console.warn(`Failed to parse image URL: ${url}`, e);
         return false;
       }
     },
@@ -173,6 +222,9 @@
     parseLineBreaks(text) {
       // Process line breaks more carefully to avoid breaks between list items
       let result = text;
+
+      // Collapse 3+ empty lines to 2 newlines
+      result = result.replace(/\n{3,}/g, '\n\n');
 
       // First, protect list content from getting line breaks
       result = result.replace(/(<ul>[\s\S]*?<\/ul>)/g, (match) => {
@@ -204,7 +256,17 @@
       // Format content based on type
       let formattedContent = '';
       if (type === 'assistant') {
-        formattedContent = MarkdownRenderer.parse(content);
+        // Allow raw HTML content when explicitly requested
+        if (options.rawHtml === true) {
+          formattedContent = content;
+        } else {
+          // content might be HTML (from combined builder); avoid double-escaping by trusting if it looks like HTML
+          if (typeof content === 'string' && content.trim().startsWith('<')) {
+            formattedContent = content;
+          } else {
+            formattedContent = MarkdownRenderer.parse(content);
+          }
+        }
       } else {
         formattedContent = this.escapeHtml(content);
       }
@@ -638,6 +700,227 @@
       sendBtn: '#dehum-send-btn'
     },
 
+    // -------------------------------
+    // Plot helpers (inline SVG)
+    // -------------------------------
+    plotColors() {
+      return {
+        infiltration: '#4F46E5',
+        occupants: '#059669',
+        pool: '#0EA5E9',
+        additional: '#F59E0B',
+        axis: '#6B7280',
+        bg: '#F3F4F6',
+        total: '#111827'
+      };
+    },
+
+    buildStackedBarSVG(components) {
+      // components: [{ name, value }]
+      const width = 420, height = 120, padding = 12, barHeight = 24;
+      const total = Math.max(0.0001, components.reduce((s, c) => s + (c.value || 0), 0));
+      const colors = this.plotColors();
+
+      // Compute segments
+      let x = padding;
+      const segments = components.map(c => {
+        const w = ((c.value || 0) / total) * (width - padding * 2);
+        const seg = { x, w, name: c.name, value: c.value };
+        x += w;
+        return seg;
+      });
+
+      // SVG segments
+      const rects = segments.map(seg => {
+        const color = colors[seg.name] || '#9CA3AF';
+        return `<rect x="${seg.x.toFixed(1)}" y="${(height / 2 - barHeight / 2).toFixed(1)}" width="${Math.max(0, seg.w).toFixed(1)}" height="${barHeight}" rx="4" fill="${color}" />`;
+      }).join('');
+
+      // Labels (only if segment wide enough)
+      const labels = segments.map(seg => {
+        if (seg.w < 46) return '';
+        const cx = seg.x + seg.w / 2;
+        const cy = height / 2 + 4;
+        return `<text x="${cx.toFixed(1)}" y="${cy.toFixed(1)}" text-anchor="middle" font-size="11" fill="white">${seg.name} ${(seg.value || 0).toFixed(1)}L</text>`;
+      }).join('');
+
+      const totalLabel = `<text x="${(width - padding).toFixed(1)}" y="${(height - padding).toFixed(1)}" text-anchor="end" font-size="12" fill="${colors.total}">Total: ${total.toFixed(1)} L/day</text>`;
+
+      const legendItems = components.map((c, idx) => {
+        const color = colors[c.name] || '#9CA3AF';
+        const lx = padding + (idx % 2) * 190;
+        const ly = padding + Math.floor(idx / 2) * 18;
+        return `<rect x="${lx}" y="${ly}" width="10" height="10" rx="2" fill="${color}" />` +
+          `<text x="${lx + 16}" y="${ly + 9}" font-size="11" fill="#111827">${c.name} (${(c.value || 0).toFixed(1)}L)</text>`;
+      }).join('');
+
+      return `
+        <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Dehumidifier load breakdown">
+          <rect x="0" y="0" width="${width}" height="${height}" fill="white" />
+          ${legendItems}
+          ${rects}
+          ${labels}
+          ${totalLabel}
+        </svg>
+      `;
+    },
+
+    renderPlotMessage(plotData) {
+      return null;
+    },
+
+    /**
+     * Format tool details into a human-readable HTML block.
+     * Attempts to parse JSON; falls back to markdown.
+     */
+    formatToolDetails(toolContent) {
+      if (!toolContent || !String(toolContent).trim()) return '';
+      return `<div class="dehum-toolsection">Details</div>${MarkdownRenderer.parse(toolContent)}`;
+    },
+
+    buildKeyValueGrid(obj) {
+      const entries = Object.entries(obj || {});
+      if (entries.length === 0) return '<div class="dehum-tool-empty">None</div>';
+      return `
+        <div class="dehum-toolgrid">
+          ${entries.map(([k, v]) => {
+        const text = (v !== null && typeof v === 'object') ? JSON.stringify(v) : String(v);
+        const cleanK = MessageRenderer.escapeHtml(k).replace(/_/g, ' ');
+        const cleanV = MessageRenderer.escapeHtml(text).replace(/[ \t]+$/gm, '');
+        return `<div class="row"><div class="k">${cleanK}</div><div class="v" title="${cleanV}">${cleanV}</div></div>`;
+      }).join('')}
+        </div>
+      `;
+    },
+
+    buildToolStructuredHtml(toolsJson, logsText) {
+      let items;
+      try {
+        const parsed = JSON.parse(toolsJson);
+        items = Array.isArray(parsed) ? parsed : [parsed];
+      } catch {
+        return this.formatToolDetails(toolsJson);
+      }
+
+      const first = items[0] || {};
+      const toolName = String(first.name || '').trim();
+
+      const blocks = items.map((entry, idx) => {
+        const name = String(entry.name || `Tool ${idx + 1}`);
+        const args = entry.args || entry.input || entry.params || {};
+        const out = entry.output || entry.result || entry.data || entry.response || {};
+        const inputsGrid = this.buildKeyValueGrid(args);
+        const outputsGrid = this.buildKeyValueGrid(out);
+        // Simple 1-line summary if common keys exist
+        let summary = '';
+        if (out && typeof out === 'object') {
+          if (typeof out.latentLoad_L24h !== 'undefined') {
+            summary = `<div class="dehum-tool-summary">Load: ${MessageRenderer.escapeHtml(String(out.latentLoad_L24h))} L/day</div>`;
+          }
+        }
+        return `
+          <div class="dehum-toolname">${MessageRenderer.escapeHtml(name)}</div>
+          <div class="dehum-toolsection">Inputs</div>
+          ${inputsGrid}
+          <div class="dehum-toolsection">Outputs</div>
+          ${outputsGrid}
+          ${summary}
+        `;
+      }).join('');
+
+      const progressHtml = logsText && String(logsText).trim()
+        ? `<details class="dehum-subdetails"><summary>Progress</summary><pre class="dehum-tool-raw"><code>${MessageRenderer.escapeHtml(String(logsText).replace(/[ \t]+$/gm, ''))}</code></pre></details>`
+        : '';
+
+      const rawAll = `<details class="dehum-subdetails"><summary>Raw JSON</summary><pre class="dehum-tool-raw"><code>${MessageRenderer.escapeHtml(JSON.stringify(items, null, 2))}</code></pre></details>`;
+
+      return `
+        ${toolName ? `<div class="dehum-tool-title">${MessageRenderer.escapeHtml(toolName)}</div>` : ''}
+        ${blocks}
+        ${progressHtml}
+        ${rawAll}
+      `;
+    },
+
+
+
+    /**
+     * Build assistant message HTML combining tool details (top) and main content
+     */
+    buildAssistantHtml(mainContent, toolContent) {
+      const hasTools = !!toolContent;
+      const safeMain = mainContent ? MarkdownRenderer.parse(mainContent) : '';
+      let toolHtml = '';
+      if (hasTools) {
+        if (typeof toolContent === 'object' && (toolContent.structured || toolContent.logs)) {
+          toolHtml = this.buildToolStructuredHtml(toolContent.structured || '[]', toolContent.logs || '');
+        } else {
+          toolHtml = this.formatToolDetails(String(toolContent));
+        }
+      }
+      // Always a fixed label
+      const label = hasTools ? 'Checking...' : '';
+      const detailsHtml = hasTools
+        ? `
+          <details class="dehum-tool-details">
+            <summary aria-label="Show tool call details">${MessageRenderer.escapeHtml(label)}</summary>
+            <div class="dehum-tool-content">${toolHtml}</div>
+          </details>
+        `
+        : '';
+      // Place tool details at the top of the bubble
+      return `${detailsHtml}${safeMain}`;
+    },
+
+    // Product capacity bars with target line
+    buildProductBarsSVG(products, targetLpd) {
+      const width = 460, height = 220, padding = 16, barW = 26, gap = 10;
+      const colors = this.plotColors();
+      const n = Math.min(products.length, 8);
+      const items = products.slice(0, n);
+      const maxCap = Math.max(targetLpd || 0, ...items.map(p => p.capacity_lpd || 0)) * 1.1 + 1;
+      const chartLeft = padding + 120;
+      const chartWidth = width - chartLeft - padding;
+      const originY = height - padding - 20;
+      const scaleX = v => chartLeft + (Math.max(0, v) / maxCap) * chartWidth;
+
+      // Bars
+      let y = originY - (barW + gap) * (n - 1);
+      const bars = items.map(p => {
+        const x0 = chartLeft;
+        const x1 = scaleX(p.capacity_lpd || 0);
+        const w = Math.max(0, x1 - x0);
+        const label = (p.name || p.sku || '').toString().slice(0, 18);
+        const url = p.url ? ` data-url="${MessageRenderer.escapeHtml(p.url)}"` : '';
+        const rect = `<rect class="dehum-bar" x="${x0}" y="${y}" width="${w}" height="${barW}" fill="#2563EB" rx="3"${url}></rect>`;
+        const text = `<text x="${padding}" y="${y + barW - 8}" font-size="12" fill="#111827">${MessageRenderer.escapeHtml(label)}</text>`;
+        const val = `<text x="${x1 + 6}" y="${y + barW - 8}" font-size="12" fill="#111827">${(p.capacity_lpd || 0).toFixed(0)} L/d</text>`;
+        y += barW + gap;
+        return text + rect + val;
+      }).join('');
+
+      // Target line
+      const tx = scaleX(targetLpd || 0);
+      const tline = `<line x1="${tx}" y1="${originY - (barW + gap) * (n - 1) - 6}" x2="${tx}" y2="${originY + 6}" stroke="#DC2626" stroke-width="2" stroke-dasharray="4,3"/>` +
+        `<text x="${tx + 6}" y="${originY - (barW + gap) * (n - 1) - 10}" font-size="12" fill="#DC2626">Target ${Math.round(targetLpd || 0)} L/d</text>`;
+
+      // Axis
+      const axis = `<line x1="${chartLeft}" y1="${originY + 1}" x2="${width - padding}" y2="${originY + 1}" stroke="#9CA3AF"/>`;
+
+      return `
+        <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="img" aria-label="Product capacities vs target load">
+          <rect x="0" y="0" width="${width}" height="${height}" fill="white" />
+          ${axis}
+          ${tline}
+          ${bars}
+        </svg>
+      `;
+    },
+
+    renderProductsChart(plotData) {
+      return null;
+    },
+
     maxLen: parseInt(dehumMVP.maxLen || 1200, 10),
 
     // State
@@ -1033,10 +1316,12 @@
         };
 
         let summaryElement = null;
-        let recsElement = null;
+        let recsElement = null; // We will not render a second bubble; kept for compatibility
         let currentContent = '';
         let recsContent = '';
         let toolContent = '';
+        let toolLogs = '';
+        let toolStructured = '';
         let isThinking = false;
         let currentMessageIndex = -1;
         let currentPhase = null;
@@ -1130,16 +1415,19 @@
                       summaryElement = this.addMessage('assistant', '', true);
                       currentMessageIndex = this.conversation.length - 1;
                     }
-                    toolContent += (toolContent ? '\n' : '') + data.message;
-                    this.updateMessage(summaryElement, toolContent);
+                    if (data.metadata?.status === 'tool_details_json') {
+                      toolStructured = data.message;
+                    } else if (!data.metadata?.char_streaming) {
+                      toolLogs += (toolLogs ? '\n' : '') + data.message;
+                    }
+                    const toolPayload = toolStructured ? { structured: toolStructured, logs: toolLogs } : toolLogs;
+                    this.updateMessage(summaryElement, { main: currentContent, tool: toolPayload });
                     currentPhase = phase;
                   } else {
-                    if (phase !== currentPhase || (phase === 'initial_summary' && !summaryElement) || (phase === 'recommendations' && !recsElement)) {
+                    if (phase !== currentPhase || (phase === 'initial_summary' && !summaryElement)) {
                       this.hideTypingIndicator();
-                      if (phase === 'initial_summary') {
+                      if (phase === 'initial_summary' && !summaryElement) {
                         summaryElement = this.addMessage('assistant', '', true);
-                      } else if (phase === 'recommendations') {
-                        recsElement = this.addMessage('assistant', '', true);
                       }
                       currentMessageIndex = this.conversation.length - 1;
                       currentPhase = phase;
@@ -1147,15 +1435,16 @@
 
                     if (phase === 'initial_summary') {
                       currentContent += data.message;
-                      const displayContent = toolContent ? toolContent + '\n\n' + currentContent : currentContent;
-                      this.updateMessage(summaryElement, displayContent);
+                      const toolPayload = toolStructured ? { structured: toolStructured, logs: toolLogs } : toolLogs;
+                      this.updateMessage(summaryElement, { main: currentContent, tool: toolPayload });
                     } else if (phase === 'recommendations') {
                       if (isThinking) {
                         this.hideThinkingIndicator();
                         isThinking = false;
                       }
                       recsContent += data.message;
-                      this.updateMessage(recsElement, recsContent);
+                      const toolPayload = toolStructured ? { structured: toolStructured, logs: toolLogs } : toolLogs;
+                      this.updateMessage(summaryElement, { main: (currentContent || '') + (recsContent ? '\n\n' + recsContent : ''), tool: toolPayload });
                     }
 
                     // Save state
@@ -1181,7 +1470,7 @@
 
                   if (!summaryElement) {
                     this.hideTypingIndicator();
-                    summaryElement = this.addMessage('assistant', currentContent, true);
+                    summaryElement = this.addMessage('assistant', '', true);
                     currentMessageIndex = this.conversation.length - 1;
                   }
 
@@ -1196,6 +1485,10 @@
                   if (recsContent) {
                     finalContent += (finalContent ? '\n\n' : '') + recsContent;
                   }
+
+                  // Update the combined bubble with dropdown tool details
+                  const toolPayload = toolStructured ? { structured: toolStructured, logs: toolLogs } : toolLogs;
+                  this.updateMessage(summaryElement, { main: (currentContent || '') + (recsContent ? '\n\n' + recsContent : ''), tool: toolPayload });
 
                   // Mark as complete in conversation history
                   if (currentMessageIndex >= 0 && currentMessageIndex < this.conversation.length) {
@@ -1228,10 +1521,11 @@
                 } else {
                   if (data.metadata?.char_streaming) {
                     return;
-                  } else if (!summaryElement) {
+                  }
+
+                  if (!summaryElement) {
                     this.hideTypingIndicator();
-                    summaryElement = this.addMessage('assistant', data.message || '', true);
-                    currentContent = data.message || '';
+                    summaryElement = this.addMessage('assistant', '', true);
                     currentMessageIndex = this.conversation.length - 1;
 
                     if (currentMessageIndex >= 0) {
@@ -1241,6 +1535,9 @@
                     }
                   }
 
+                  currentContent += (data.message || '');
+                  const toolPayload = toolStructured ? { structured: toolStructured, logs: toolLogs } : toolLogs;
+                  this.updateMessage(summaryElement, { main: currentContent, tool: toolPayload });
                   setTimeout(() => this.scrollToBottom(), 0);
                 }
               } catch (e) {
@@ -1435,19 +1732,13 @@
      * Render a message from history
      */
     renderMessage(message) {
-      if (message.type === 'assistant' && message.toolContent && message.mainContent) {
-        // Render tool content first
-        const $toolMessage = MessageRenderer.render('assistant', message.toolContent, {
+      if (message.type === 'assistant' && (message.toolContent || message.mainContent)) {
+        const combinedHtml = this.buildAssistantHtml(message.mainContent || message.content || '', message.toolContent || '');
+        const $msg = MessageRenderer.render('assistant', combinedHtml, {
           timestamp: message.timestamp,
-          enableCopyButton: false
+          rawHtml: true
         });
-        $(this.selectors.messages).append($toolMessage);
-
-        // Then render main content with copy button
-        const $mainMessage = MessageRenderer.render('assistant', message.mainContent, {
-          timestamp: message.timestamp
-        });
-        $(this.selectors.messages).append($mainMessage);
+        $(this.selectors.messages).append($msg);
       } else {
         // Render as single message
         const $message = MessageRenderer.render(message.type, message.content, {
@@ -1533,11 +1824,23 @@
       const contentDiv = messageElement.find('.dehum-message__bubble');
       if (contentDiv.length) {
         const isAssistantMessage = messageElement.hasClass('dehum-message--assistant');
-        const copyButton = isAssistantMessage && newContent.trim()
-          ? MessageRenderer.renderCopyButton()
-          : '';
+        let html = '';
+        if (isAssistantMessage && typeof newContent === 'object' && (newContent.main || newContent.mainContent || newContent.tool || newContent.toolContent)) {
+          const main = newContent.main ?? newContent.mainContent ?? '';
+          const tools = newContent.tool ?? newContent.toolContent ?? '';
+          const toolNames = Array.isArray(newContent.toolNames) ? newContent.toolNames : undefined;
+          html = this.buildAssistantHtml(main, tools, toolNames);
+        } else {
+          const text = typeof newContent === 'string' ? newContent : '';
+          html = MarkdownRenderer.parse(text);
+        }
 
-        contentDiv.html(MarkdownRenderer.parse(newContent) + copyButton);
+        const hasCopyable = (typeof newContent === 'object')
+          ? !!(newContent.main || newContent.mainContent)
+          : !!(typeof newContent === 'string' && newContent.trim());
+        const copyButton = isAssistantMessage && hasCopyable ? MessageRenderer.renderCopyButton() : '';
+
+        contentDiv.html(html + copyButton);
 
         // Rebind image handlers for new content
         if (isAssistantMessage) {
