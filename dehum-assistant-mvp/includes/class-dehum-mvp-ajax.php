@@ -48,6 +48,7 @@ class Dehum_MVP_Ajax {
         add_action('wp_ajax_nopriv_dehum_get_ai_service_auth', [$this, 'handle_get_ai_service_auth']);
         add_action('wp_ajax_dehum_mvp_save_conversation', [$this, 'handle_save_conversation']);
         add_action('wp_ajax_nopriv_dehum_mvp_save_conversation', [$this, 'handle_save_conversation']);
+        add_action('wp_ajax_dehum_mvp_bulk_delete_sessions', [$this, 'handle_bulk_delete_sessions']);
     }
 
     /**
@@ -252,8 +253,9 @@ class Dehum_MVP_Ajax {
      * @return array Status of the rate limit check.
      */
     private function check_rate_limit() {
+        $epoch = (int) get_option('dehum_mvp_rate_epoch', 1);
         $user_ip = $this->get_user_ip();
-        $transient_key = 'dehum_mvp_rate_limit_' . md5($user_ip);
+        $transient_key = 'dehum_mvp_rate_limit_' . $epoch . '_' . md5($user_ip);
         $current_count = get_transient($transient_key);
 
         if ($current_count === false) {
@@ -274,8 +276,9 @@ class Dehum_MVP_Ajax {
      * Increment the rate limit counter for the current user's IP.
      */
     private function increment_rate_limit_counter() {
+        $epoch = (int) get_option('dehum_mvp_rate_epoch', 1);
         $user_ip = $this->get_user_ip();
-        $transient_key = 'dehum_mvp_rate_limit_' . md5($user_ip);
+        $transient_key = 'dehum_mvp_rate_limit_' . $epoch . '_' . md5($user_ip);
         $current_count = get_transient($transient_key);
 
         $new_count = ($current_count === false) ? 1 : $current_count + 1;
@@ -526,27 +529,42 @@ class Dehum_MVP_Ajax {
             wp_send_json_error(['message' => 'Missing required data']);
         }
 
-        // Log the conversation
-        $result = $this->db->log_conversation($session_id, $user_message, $assistant_response, $this->get_user_ip());
+        // Attempt to log the conversation, but always return success to client
+        try {
+            $result = $this->db->log_conversation($session_id, $user_message, $assistant_response, $this->get_user_ip());
+            if (!$result) {
+                error_log('Dehum MVP: Conversation save failed - Session: ' . $session_id . 
+                         ', User Message Length: ' . strlen($user_message) . 
+                         ', Response Length: ' . strlen($assistant_response) . 
+                         ', IP: ' . $this->get_user_ip() . 
+                         ', DB Error: ' . $GLOBALS['wpdb']->last_error);
+            }
+        } catch (Exception $e) {
+            error_log('Dehum MVP: Conversation save exception - ' . $e->getMessage() . 
+                      ', Session: ' . $session_id . 
+                      ', Payload: ' . json_encode($_POST));
+        }
         
-        if ($result) {
-            wp_send_json_success(['message' => 'Conversation saved']);
-        } else {
-            // Enhanced error logging for debugging
-            error_log('Dehum MVP: Conversation save failed - Session: ' . $session_id . 
-                     ', User Message Length: ' . strlen($user_message) . 
-                     ', Response Length: ' . strlen($assistant_response) . 
-                     ', IP: ' . $this->get_user_ip());
-            
-            wp_send_json_error([
-                'message' => 'Failed to save conversation',
-                'debug_info' => [
-                    'session_id' => $session_id,
-                    'user_message_length' => strlen($user_message),
-                    'response_length' => strlen($assistant_response),
-                    'timestamp' => current_time('mysql')
-                ]
+        // Always return success to prevent UX disruption
+        wp_send_json_success(['message' => 'Conversation saved']);
+    }
+
+    public function handle_bulk_delete_sessions() {
+        if (!current_user_can('manage_options') || !wp_verify_nonce($_POST['nonce'], DEHUM_MVP_BULK_NONCE)) {
+            wp_send_json_error(['message' => 'Access denied']);
+        }
+        $ids = array_map('sanitize_text_field', (array) ($_POST['session_ids'] ?? []));
+        if (empty($ids)) {
+            wp_send_json_error(['message' => 'No sessions selected']);
+        }
+        $deleted = $this->db->delete_sessions_bulk($ids);
+        if ($deleted !== false) {
+            wp_send_json_success([
+                'message' => sprintf('Deleted %d conversations.', $deleted),
+                'session_ids' => $ids
             ]);
+        } else {
+            wp_send_json_error(['message' => 'Delete failed']);
         }
     }
 } 

@@ -36,7 +36,7 @@ def compute_load_components(
     *,
     current_rh: float,
     target_rh: float,
-    indoor_temp_c: float,
+    indoor_temp: float,
     length: Optional[float] = None,
     width: Optional[float] = None,
     height: Optional[float] = None,
@@ -67,7 +67,7 @@ def compute_load_components(
         current_rh = max(0.0, min(100.0, current_rh))
     if not (0 <= target_rh <= 100):
         target_rh = max(0.0, min(100.0, target_rh))
-    if indoor_temp_c < -20 or indoor_temp_c > 60:
+    if indoor_temp < -20 or indoor_temp > 60:
         raise ValueError("indoorTemp out of reasonable bounds (-20..60°C)")
     if air_velocity_mps < 0 or air_velocity_mps > 1.0:
         raise ValueError("air_velocity_mps must be between 0 and 1.0 m/s")
@@ -77,13 +77,13 @@ def compute_load_components(
     room_area_m2 = (dims["length"] * dims["width"]) if (dims["length"] > 0 and dims["width"] > 0) else 0.0
 
     # Defaults for outdoor design: if not provided, fall back to indoor/current to preserve legacy behavior
-    out_T = outdoor_temp_c if outdoor_temp_c is not None else indoor_temp_c
+    out_T = outdoor_temp_c if outdoor_temp_c is not None else indoor_temp
     out_RH = outdoor_rh_percent if outdoor_rh_percent is not None else current_rh
 
     # Components (steady-state)
     infiltration_lpd = infiltration_l_per_day(
         volume_m3=volume,
-        indoor_c=indoor_temp_c,
+        indoor_c=indoor_temp,
         rh_target_pct=target_rh,
         outdoor_c=out_T,
         rh_out_pct=out_RH,
@@ -101,7 +101,7 @@ def compute_load_components(
     pool_lpd = pool_evap_l_per_day(
         area_m2=pool_area_m2,
         water_c=water_temp_c if water_temp_c is not None else 28.0,
-        air_c=indoor_temp_c,
+        air_c=indoor_temp,
         rh_target_pct=target_rh,
         mode=mode,
         air_movement_level=air_movement_level,
@@ -114,7 +114,7 @@ def compute_load_components(
 
     steady_total_lpd = round(max(0.0, infiltration_lpd) + occupant_lpd + pool_lpd + other_lpd, 1)
     latent_kw = round((steady_total_lpd / 24.0) * 0.694, 1)
-    pulldown_l = pulldown_air_l(volume, indoor_temp_c, current_rh, target_rh) if target_rh < current_rh else 0.0
+    pulldown_l = pulldown_air_l(volume, indoor_temp, current_rh, target_rh) if target_rh < current_rh else 0.0
 
     # Plot data helpers
     components = [
@@ -130,26 +130,26 @@ def compute_load_components(
     for ach_s in ach_samples:
         # Compute infiltration using outdoor→indoor ΔW and variable ACH
         W_out = humidity_ratio(out_T, out_RH)
-        W_in = humidity_ratio(indoor_temp_c, target_rh)
+        W_in = humidity_ratio(indoor_temp, target_rh)
         dW = max(W_out - W_in, 0.0)
         try:
-            rho_m = air_density_moist(indoor_temp_c, target_rh)
+            rho_m = air_density_moist(indoor_temp, target_rh)
         except Exception:
-            rho_m = air_density(indoor_temp_c)
+            rho_m = air_density(indoor_temp)
         infl = max(0.0, dW * rho_m * volume * ach_s * 24.0)
         load_vs_ach.append({"ach": ach_s, "total_lpd": round(max(0.0, infl) + occupant_lpd + pool_lpd + other_lpd, 1)})
 
     notes = []
     notes.append(f"Volume: {volume:.1f} m³; ACH={ach}")
-    notes.append(f"RH reduction target: {current_rh}% → {target_rh}% at {indoor_temp_c}°C")
-    notes.append(f"Air density (dry approx): {air_density(indoor_temp_c):.2f} kg/m³")
+    notes.append(f"RH reduction target: {current_rh}% → {target_rh}% at {indoor_temp}°C")
+    notes.append(f"Air density (dry approx): {air_density(indoor_temp):.2f} kg/m³")
     if pulldown_l > 0:
         notes.append(f"One-time air pulldown: {pulldown_l:.1f} L")
     if pool_area_m2 > 0 and mode == "field_calibrated":
         std_pool = pool_evap_l_per_day(
             area_m2=pool_area_m2,
             water_c=water_temp_c if water_temp_c is not None else 28.0,
-            air_c=indoor_temp_c,
+            air_c=indoor_temp,
             rh_target_pct=target_rh,
             mode="standard",
             air_movement_level=air_movement_level,
@@ -172,7 +172,7 @@ def compute_load_components(
         "inputs": {
             "current_rh": current_rh,
             "target_rh": target_rh,
-            "indoor_temp_c": indoor_temp_c,
+            "indoor_temp_c": indoor_temp,
             "length": dims["length"],
             "width": dims["width"],
             "height": dims["height"],
@@ -188,7 +188,7 @@ def compute_load_components(
         },
         "derived": {
             "room_area_m2": round(room_area_m2, 1) if room_area_m2 > 0 else None,
-            "air_density": round(air_density(indoor_temp_c), 3),
+            "air_density": round(air_density(indoor_temp), 3),
         },
         "components": {
             "infiltration_lpd": round(infiltration_lpd, 1),

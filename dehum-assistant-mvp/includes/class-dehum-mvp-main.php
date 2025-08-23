@@ -4,6 +4,10 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+if (!extension_loaded('curl') || !extension_loaded('openssl')) {
+    set_transient('dehum_admin_error', 'Missing extensions: Install cURL/OpenSSL for full function.', 30);
+}
+
 /**
  * Main Controller Class for Dehumidifier Assistant MVP.
  *
