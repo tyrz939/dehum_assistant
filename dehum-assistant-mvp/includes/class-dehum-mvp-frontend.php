@@ -53,9 +53,9 @@ class Dehum_MVP_Frontend {
   public function render_chat_widget() {
     if (is_admin() || (get_option('dehum_mvp_chat_logged_in_only') && !is_user_logged_in())) return;
 
-    $title = apply_filters('dehum_mvp_title', 'Dehumidifier Assistant (ALPHA TEST) v0.5');
+    $title = apply_filters('dehum_mvp_title', 'Dehumidifiers Australia Assistant');
     $placeholder = apply_filters('dehum_mvp_placeholder', 'Ask about dehumidifier sizing...');
-    $disclaimer = apply_filters('dehum_mvp_disclaimer', 'Disclaimer: AI can be wrong. Please verify important information.');
+    $disclaimer = apply_filters('dehum_mvp_disclaimer', 'BETA TEST  v0.5: AI can be wrong. Please verify important information.');
     $maxLen = defined('DEHUM_MVP_MESSAGE_MAX_LENGTH') ? DEHUM_MVP_MESSAGE_MAX_LENGTH : 500;
 
     echo <<<HTML
