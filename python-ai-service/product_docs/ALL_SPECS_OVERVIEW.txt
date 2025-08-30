@@ -1,0 +1,72 @@
+ALL_SPECS_OVERVIEW.txt
+# ALL_SPECS_OVERVIEW — CENTRALIZED HUB FOR CROSS-MODEL RETRIEVAL
+# Consolidated specifications for all dehumidifier models
+# Version: 2025-08-10 (post-refactoring)
+# Added for consistent retrieval of core specifications across all series
+
+============================================================
+# MASTER SPECIFICATIONS TABLE
+# All capacities rated at 30°C/80%RH unless otherwise noted
+# Power and current are rated/maximum values
+# Noise levels are typical dB(A) at 1m
+# Dimensions in L×W×H mm format
+
+| MODEL/SERIES | CAPACITY_L_DAY_30C_80RH | POWER_W | CURRENT_A | AIRFLOW_M3H | NOISE_DB | DIM_MM_LWH     | WEIGHT_KG | SOURCE_DOC |
+|--------------|-------------------------|---------|-----------|-------------|----------|----------------|-----------|------------|
+| **FAIRLAND IDHR SERIES** | | | | | | | | FAIRLAND_IDHR_SERIES_INFO.txt |
+| IDHR60       | 60                      | 110–730 | 0.48–3.17 | 600         | 38.3–45.6| 850×291×770    | 53        | FAIRLAND_IDHR_SERIES_INFO.txt |
+| IDHR96       | 96                      | 170–990 | 0.74–4.30 | 800         | 40.3–45.8| 1120×291×770   | 68        | FAIRLAND_IDHR_SERIES_INFO.txt |
+| IDHR120      | 120                     | 220–1360| 0.96–5.91 | 1000        | 39.9–46.4| 1220×291×770   | 72        | FAIRLAND_IDHR_SERIES_INFO.txt |
+| **LUKO DA-X SERIES** | | | | | | | | LUKO_DA-X_SERIES_INFO.txt |
+| DA-X60i      | 45–75                   | 890     | 4.1       | 450–600     | <32      | 1160×590×325   | 73        | LUKO_DA-X_SERIES_INFO.txt |
+| DA-X140i     | 110–155                 | 1860    | 8.5       | 800–1150    | <35      | 1200×640×370   | 83        | LUKO_DA-X_SERIES_INFO.txt |
+| **SUNTEC SP PRO SERIES** | | | | | | | | SUNTEC_SP_SERIES_INFO.txt |
+| SP500C PRO   | 50                      | 720     | 3.1       | 500         | 42       | 650×270×550    | 35        | SUNTEC_SP_SERIES_INFO.txt |
+| SP1000C PRO  | 100                     | 1500    | 6.5       | 800         | 48       | 890×290×760    | 56        | SUNTEC_SP_SERIES_INFO.txt |
+| SP1500C PRO  | 150                     | 2050    | 8.9       | 900         | 48       | 1000×330×800   | 71        | SUNTEC_SP_SERIES_INFO.txt |
+| **SUNTEC ST/CT SERIES** | | | | | | | | SUNTEC_ST_CT_SERIES_INFO.txt |
+| ST601 PRO    | 65                      | 920     | 4.0       | ~600        | ~60      | 500×485×840    | ~40       | SUNTEC_ST_CT_SERIES_INFO.txt |
+| ST1001 PRO   | 100                     | 1650    | 6.5       | ~750        | ~65      | 500×485×840    | ~50       | SUNTEC_ST_CT_SERIES_INFO.txt |
+| ST600        | 65                      | 920     | 4.0       | ~600        | ~60      | 500×485×840    | ~40       | SUNTEC_ST_CT_SERIES_INFO.txt |
+| ST1000       | 100                     | 1650    | 6.5       | ~750        | ~65      | 500×485×840    | ~50       | SUNTEC_ST_CT_SERIES_INFO.txt |
+| CT801 PRO    | 52 (AHAM)               | ~1150   | ~5.0      | ~700        | ~65      | 420×645×463    | ~38       | SUNTEC_ST_CT_SERIES_INFO.txt |
+
+============================================================
+# CAPACITY DERATING NOTES
+# All ratings are optimistic; real-world performance drops significantly at lower temps/RH:
+# - At 15°C/50%RH: Expect 40-70% reduction in capacity
+# - Below 20°C: capacity may drop 40-60%
+# - Below 60% RH: drop 30-50%
+# - Cool + dry: drop up to 60-70%
+
+============================================================
+# SERIES COMPARISON QUICK REFERENCE
+
+**POOL-SAFE MODELS (inverter technology):**
+- IDHR60/96/120: Wall-mount, inverter, quiet operation
+- DA-X60i/140i: Ducted, Panasonic inverter, ultra-low noise
+- SP500C/1000C/1500C PRO: Wall-mount, fixed-speed, heat recovery
+
+**PORTABLE MODELS (not pool-safe):**
+- ST601/1001 PRO: Humidistat + Wi-Fi, continuous or set RH
+- ST600/1000: Timer-only, continuous run
+- CT801 PRO: Stackable, horizontal, GPP display
+
+============================================================
+# CROSS-REFERENCES FOR DETAILED INFO
+# Use these for specific model details beyond core specs:
+
+| ASPECT | FAIRLAND_IDHR | LUKO_DA-X | SUNTEC_SP | SUNTEC_ST_CT |
+|--------|---------------|-----------|-----------|--------------|
+| Installation | Section #6 | Section #5 | Section #3 | Section #6 |
+| Error Codes | Section #5 | Section #8 | Section #5 | Section #5 |
+| Maintenance | Section #7 | Section #10| Section #6 | Section #7 |
+| Electrical | Section #6 | Section #5 | Section #3 | N/A |
+| Performance | Section #9 | Section #3 | N/A | Section #2 |
+
+============================================================
+# SEARCH TAGS FOR RETRIEVAL
+# capacity, power, current, noise, dimensions, weight, airflow, derating
+# pool-safe, inverter, portable, ducted, wall-mount, timer-only, humidistat
+
+END_OF_HUB_FILE

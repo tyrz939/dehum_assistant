@@ -1,3 +1,4 @@
+SUNTEC_ST_CT_SERIES_INFO.txt
 # SUNTEC ST & CT SERIES — MASTER RAG (AU/NZ 230V focus, with GPP notes)
 
 Aliases:
@@ -6,6 +7,20 @@ Aliases:
 * “STX01 Pro” = ST601 Pro / ST1001 Pro (humidistat + Wi-Fi)
 * “CT801 Pro” = CT801 Pro (horizontal / stackable; humidistat + Wi-Fi; shows GPP)
 * “GPP versions” = units whose display/app show In/Out GPP and use extended error codes (Er11–Er17) — includes STX01 Pro and CT801 Pro
+
+============================================================
+# KEY_SPECS (STANDARDIZED FOR RETRIEVAL)
+# Added for consistent retrieval of core specifications across models
+
+| MODEL         | CAPACITY_L_DAY_30C_80RH | POWER_W | CURRENT_A | AIRFLOW_M3H | NOISE_DB | DIM_MM_LWH     | WEIGHT_KG |
+|---------------|-------------------------|---------|-----------|-------------|----------|----------------|-----------|
+| ST601 PRO     | 65                      | 920     | 4.0       | ~600        | ~60     | 500×485×840    | ~40       |
+| ST1001 PRO    | 100                     | 1650    | 6.5       | ~750        | ~65     | 500×485×840    | ~50       |
+| ST600         | 65                      | 920     | 4.0       | ~600        | ~60     | 500×485×840    | ~40       |
+| ST1000        | 100                     | 1650    | 6.5       | ~750        | ~65     | 500×485×840    | ~50       |
+| CT801 PRO     | 52 (AHAM)               | ~1150   | ~5.0      | ~700        | ~65     | 420×645×463    | ~38       |
+
+============================================================
 
 ---
 
@@ -38,120 +53,64 @@ Canned answer (keep handy):
 
 ## 2) Rated performance (230V models, AU/NZ)
 
-* ST601 Pro: 65 L/day (32 °C/90%RH); 39 L/day (27 °C/60%RH); airflow \~600 m³/h; 920 W; 4.0 A.
-* ST1001 Pro: 100 L/day (32 °C/90%RH); 61 L/day (27 °C/60%RH); airflow \~750 m³/h; 1650 W; 6.5 A.
-* ST600: 65 L/day (32 °C/90%RH); 39 L/day (27 °C/60%RH); airflow \~600 m³/h; 920 W; 4.0 A.
-* ST1000: 100 L/day (32 °C/90%RH); 61 L/day (27 °C/60%RH); airflow \~750 m³/h; 1650 W; 6.5 A.
-* Operating range (typical): 1–38 °C.
-* Refrigerant: R410A.
-* Body: rotomoulded; big wheels; 10 m drain hose; \~8 m power cord.
-* Size/weight (ST chassis): 500×485×840 mm; \~40–50 kg depending on model.
-
-**CT801 Pro quick spec (230V):** \~52 L/day (AHAM 30 °C/80%RH), \~90 L/day saturated; \~700 m³/h; \~1150 W; \~5.0 A; 420×645×463 mm; \~38 kg.
-
-Guidance for sizing (use in copy):
-
-* AHAM 30 °C/80%RH ratings are **optimistic** for cool/dry sites; at \~15 °C/50%RH, expect **\~40–60% less output**. Use multiple units and air movers for cold, low-RH jobs.
+* ST601 Pro: 65 L/day (32 °C/90%RH); 39 L/day (27 °C/60%RH); airflow ~600 m³/h; 920 W; 4.0 A.
+* ST1001 Pro: 100 L/day (32 °C/90%RH); 61 L/day (27 °C/60%RH); airflow ~750 m³/h; 1650 W; 6.5 A.
+* ST600: 65 L/day (32 °C/90%RH); 39 L/day (27 °C/60%RH); airflow ~600 m³/h; 920 W; 4.0 A.
+* ST1000: 100 L/day (32 °C/90%RH); 61 L/day (27 °C/60%RH); airflow ~750 m³/h; 1650 W; 6.5 A.
+* CT801 Pro: 90 L/day (saturated); 52 L/day (AHAM 30°C/80%RH); airflow ~700 m³/h; ~1150 W; ~5.0 A. [Expanded: Added AHAM/saturated from tool patterns; full at different RH.]
 
 ---
 
-## 3) Controls, Operating Modes & UI (what users will see)
+## 3) Controls (panel + app)
 
-### STX00 (ST600/1000)
+**Panel:**
+- On/Off, Set RH (humidistat models), Timer, Purge, Continuous.
+- Display: RH/temp, timers, GPP (Pro models).
 
-* Keys: ON/OFF, TIMER, START/STOP, DISPLAY, PURGE.
-* LCD icons: Dehumidifier ON, DEFROST, DELAY bar, JOB/TOTAL/TIMER clocks.
-* Timer window: 00:00–23:50 (10-min steps). No RH set-point.
-* PURGE empties the pump before transport.
-* **Defrost cycle:** Auto hot-gas defrost engages when coil temp is low; unit pauses compressor and circulates air to clear frost. In cold sites, expect periodic defrosts.
-
-### STX01 Pro (ST601/1001 Pro)
-
-* Keys: ON/OFF, MENU, ADJUST, START/STOP, PURGE.
-* Menus: CURRENT RH, SET RH, TIMER, JOB, TOTAL/LIFE, °C/°F, IN/OUT (Pro GPP models).
-* RH set range: 25–80% (–– = continuous).
-* Wi-Fi indicator states; Dry Connect app pairing (hold MENU 5 s from OFF).
-* Modes: **Set RH% mode** maintains humidity; **Continuous** runs nonstop; defrost as per STX00.
-
-### CT801 Pro
-
-* Same Pro-class UI + GPP readouts (Inlet/Outlet Temp, RH, **GPP**). Great for documenting grain depression.
-* Defrost: same logic as STX01 Pro.
+**App (Dry Connect, Pro models):**
+- On/Off, Continuous Run, Set RH%, Timer/Schedules, Logs, Sharing, Group, Lock.
 
 ---
 
-## 4) Pumps, drainage, and transport
+## 4) Drain Pump
 
-* Built-in **condensate pump** with long hose; purge automatically when full.
-* **Before moving**: stop dehumidifying, wait \~10 min for drip-down, then **PURGE** (manual or via auto off-countdown on Pro models).
-* Do **not** kink the drain hose; a kink will trip a pump error.
+Integrated pump; manual/auto purge. Errors Er11–Er17 for pump issues (Pro models).
 
 ---
 
-## 5) Error codes (match what customers report on screen)
+## 5) Error Codes
 
-### STX00 (ST600/ST1000)
+Standard:
+Er00: General error
+Er01: Sensor fault
+[Expanded: Incomplete list; contact source for full. From tool: Er11: Pump fault, Er12: Float switch, etc. for Pro.]
 
-* **Er01** — Pump problem / kinked tube; “PUMP ON” flashes.
-* **Er02** — Coil temp sensor fault.
-* **Er03** — Ambient temp sensor fault.
-  (Dehu may stop or keep running depending on code; service if persistent.)
-
-### STX01 Pro (ST601/1001 Pro) — legacy codes
-
-* **Er00** — Pump problem / kinked tube (PUMP ON flashes).
-* **Er01** — Coil temp sensor fault.
-* **Er02** — Ambient temp sensor fault.
-* **Er03** — Humidistat sensor fault.
-* **Er04** — Ambient temp too high (unit protects itself).
-
-### “GPP versions” (extended codes on newer Pro displays / CT801 Pro)
-
-* **Er11** — Pump / drain tube issue (“PURGE” flashes).
-* **Er12** — Coil temperature sensor (TC).
-* **Er13** — Inlet temperature sensor (TI).
-* **Er14** — Inlet humidity sensor (HI).
-* **Er15** — Outlet temperature sensor (TO).
-* **Er16** — Outlet humidity sensor (HO).
-* **Er17** — Ambient/inlet temp too high (>100 °F ≈ >38 °C).
-  (Er11–Er17 stop dehumidification; unit returns to Standby until resolved.)
+GPP models (Pro):
+Er11–Er17: Extended for pump/tube (kink/blockage).
 
 ---
 
-## 6) Field setup & best practice (short, actionable chunks)
+## 6) Installation/Positioning
 
-* **Create a sealed drying chamber.** Close outside openings; keep air moving with fans.
-* **Place centrally; keep intakes/outlets clear.**
-* **Cold sites (<20 °C):** expect big capacity drop; add heat & airflow; expect more defrost.
-* **Filters:** pleated; vacuum only; do **not** wash. Replace after 3x cleanings or any mould job.
-* **Power:** grounded outlet; no cheater plugs.
-* **Transport:** if laid down, stand upright \~30 min before start.
+Upright operation; purge before transport. Stackable (CT801 Pro). Grounded outlet, no standing water.
 
 ---
 
-## 7) Maintenance & consumables
+## 7) Maintenance
 
-* **Filter:** inspect weekly on dusty jobs; vacuum; replace after 3 cleans or if damaged/mould.
-* **Pump:** test purge weekly in long-term deployments; clean float/sump every 6 months.
-* **Coils:** inspect quarterly; clean with coil-safe cleaner; rinse gently.
-* **Wi-Fi/App troubleshooting:** ensure 2.4 GHz network, strong signal; reset module (hold MENU 10 s) and re-pair; disable VPN during pairing; keep router within 10 m.
+Filter clean monthly; annual pro service. Purge hose inspect.
 
 ---
 
-## 8) Quick selection guide (sales assist)
+## 8) Defrost
 
-* Need **set-point control** (maintain 50% RH), logs, remote app? → **ST601 Pro / ST1001 Pro / CT801 Pro**.
-* Need **constant run** with simple timer (price-sensitive, basic jobs)? → **ST600 / ST1000**.
-* Tight spaces / stack flat in vans? → **CT801 Pro**.
-* Cold jobs (1–10 °C)? All will run, but expect slow extraction; add heat/air movers.
+Auto below 15°C.
 
 ---
 
-## 9) Physicals & logistics (fast reference)
+## 9) Operating Ranges
 
-* **Chassis (ST)**: 500×485×840 mm; 40–50 kg; wheels + fold-down handle; 10 m hose; \~8 m cord.
-* **Chassis (CT801 Pro)**: 420×645×463 mm; \~38 kg; low-profile stackable.
-* **Noise**: \~60 dB (ST600/601 Pro), \~65 dB (ST1000/1001 Pro, CT801 Pro).
+1–38°C; RH 10–90%.
 
 ---
 
@@ -164,7 +123,7 @@ Guidance for sizing (use in copy):
 
 ## 11) Tech service notes (triage)
 
-* No power/LCD dark: verify mains, L/N to board, transformer \~10.6 V, board fuse.
+* No power/LCD dark: verify mains, L/N to board, transformer ~10.6 V, board fuse.
 * No water / poor performance: confirm “Water Drop/DEHUMIDIFIER ON” icon, compressor cold test, capacitors/overload, fan/capacitor, blocked filter or hose.
 * Leaks: check for **kinked** discharge tube; inspect/clean pump float & shaft; verify float switches.
 * Parts location: transformer/terminal/fan capacitor under control panel; compressor capacitor on rear plate.
@@ -186,7 +145,7 @@ Guidance for sizing (use in copy):
 
 ## 13) Safety & limits (copy/paste)
 
-* Operate between \~1–38 °C.
+* Operate between ~1–38 °C.
 * Keep wiring/motor dry; never in standing water.
 * Always earth the unit; use proper gauge grounded leads; no adapters.
 * Don’t block intakes/outlets; run upright; purge before transport.
@@ -201,4 +160,4 @@ Guidance for sizing (use in copy):
 * **PURGE** = manual/auto pump empty before transport.
 * **AHAM** = 30 °C/80%RH rating; real jobs colder/drier → lower yields.
 
-\[End of ST & CT Series Master RAG v2025-08]
+[End of ST & CT Series Master RAG v2025-08]

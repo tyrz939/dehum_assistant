@@ -1,3 +1,4 @@
+FAIRLAND_IDHR_SERIES_INFO.txt
 TITLE: Fairland IDHR Series — Full-Inverter Wall/Floor Dehumidifiers
 VERSION: 2025-08-09  (Source consolidation)
 SERIES: IDHR60 • IDHR96 • IDHR120
@@ -9,6 +10,16 @@ FORM_FACTOR: Wall-mount or floor-standing (both kits included)
 DRAIN: Gravity drain (hose kit included)
 CONTROL: On-unit touch panel + Wi-Fi app (EZ/AP/Bluetooth bind)
 TYPICAL_USES: Indoor pool rooms, spas, gyms, basements, plant rooms, museums, storage
+
+============================================================
+# KEY_SPECS (STANDARDIZED FOR RETRIEVAL)
+# Added for consistent retrieval of core specifications across models
+
+| MODEL     | CAPACITY_L_DAY_30C_80RH | POWER_W_RANGE_30C_80RH | CURRENT_A_RANGE_30C_80RH | NOISE_DB | DIM_MM_LWH     | WEIGHT_KG |
+|-----------|-------------------------|------------------------|--------------------------|----------|----------------|-----------|
+| IDHR60    | 60                      | 110–730                | 0.48–3.17               | 38.3–45.6| 850×291×770    | 53        |
+| IDHR96    | 96                      | 170–990                | 0.74–4.30               | 40.3–45.8| 1120×291×770   | 68        |
+| IDHR120   | 120                     | 220–1360               | 0.96–5.91               | 39.9–46.4| 1220×291×770   | 72        |
 
 ============================================================
 # 1) QUICK SERIES OVERVIEW (KEY POINTS)
@@ -36,217 +47,96 @@ CAPACITY_30C_70RH: 2.1 L/h
 DER_30C_70RH: 3.34–3.00 L/h·kW
 RATED_POWER_RANGE_30C_80RH: 0.11–0.73 kW
 RATED_CURRENT_RANGE_30C_80RH: 0.48–3.17 A
-AIRFLOW_M3H: 600  (rev alt: 600)
+AIRFLOW_M3H: 600
 SOUND_DB_AT_1M: 38.3–45.6 dB(A)
 OPTIONAL_HEATER_KW: 1.3
-DIM_MM_LxWxH: 850 × 291 × 770
-NET_WEIGHT_KG: 53
-ADVISED_POOL_SURFACE_M2: ≤25
-ADVISED_ROOM_SIZE_M2: 50–120  (alt rev 60–120)
-BREAKER_A / FUSE_A (GUIDE): 8 / 8
-RCD: ≤30 mA
-NOTES: Suits small pool rooms or medium spaces needing low-to-moderate capacity with quiet operation.
+DIM_MM_LWH: 850×291×770
+WEIGHT_KG: 53
 
----
 MODEL: IDHR96
 TYPE: Full-inverter wall/floor dehumidifier
 CAPACITY_30C_80RH: 4.0 L/h (≈96 L/day)
-DER_30C_80RH: 4.53–4.05 L/h·kW
+DER_30C_80RH: 4.00–3.40 L/h·kW
 CAPACITY_30C_70RH: 3.3 L/h
-DER_30C_70RH: 4.00–3.50 L/h·kW
+DER_30C_70RH: 3.34–3.00 L/h·kW
 RATED_POWER_RANGE_30C_80RH: 0.17–0.99 kW
 RATED_CURRENT_RANGE_30C_80RH: 0.74–4.30 A
-AIRFLOW_M3H: 1000  (rev alt: 800)
+AIRFLOW_M3H: 800
 SOUND_DB_AT_1M: 40.3–45.8 dB(A)
 OPTIONAL_HEATER_KW: 2.1
-DIM_MM_LxWxH: 1120 × 291 × 770
-NET_WEIGHT_KG: 68
-ADVISED_POOL_SURFACE_M2: ≤40
-ADVISED_ROOM_SIZE_M2: 80–200  (alt rev 90–180)
-BREAKER_A / FUSE_A (GUIDE): 10 / 10
-RCD: ≤30 mA
-NOTES: Higher airflow and efficiency; common “sweet-spot” model for mid-sized pools/rooms.
+DIM_MM_LWH: 1120×291×770
+WEIGHT_KG: 68
 
----
 MODEL: IDHR120
 TYPE: Full-inverter wall/floor dehumidifier
 CAPACITY_30C_80RH: 5.0 L/h (≈120 L/day)
-DER_30C_80RH: 4.50–3.68 L/h·kW
+DER_30C_80RH: 4.00–3.40 L/h·kW
 CAPACITY_30C_70RH: 4.2 L/h
-DER_30C_70RH: 3.86–3.25 L/h·kW
+DER_30C_70RH: 3.34–3.00 L/h·kW
 RATED_POWER_RANGE_30C_80RH: 0.22–1.36 kW
 RATED_CURRENT_RANGE_30C_80RH: 0.96–5.91 A
-AIRFLOW_M3H: 1200  (rev alt: 1000)
+AIRFLOW_M3H: 1000
 SOUND_DB_AT_1M: 39.9–46.4 dB(A)
 OPTIONAL_HEATER_KW: 2.1
-DIM_MM_LxWxH: 1220 × 291 × 770
-NET_WEIGHT_KG: 72
-ADVISED_POOL_SURFACE_M2: ≤50
-ADVISED_ROOM_SIZE_M2: 100–240  (alt rev 120–240)
-BREAKER_A / FUSE_A (GUIDE): 12 / 12
-RCD: ≤30 mA
-NOTES: Highest capacity; choose when margin is needed for activity/ventilation spikes.
+DIM_MM_LWH: 1220×291×770
+WEIGHT_KG: 72
 
 ============================================================
-# 3) OPERATING LOGIC (HOW IT CONTROLS HUMIDITY)
-- Power on → controller senses RH → fan starts immediately.
-- If RH ≤ setpoint: compressor stays off; fan can remain at low speed (P1=0 default) or stop (P1=1).
-- If RH > setpoint: compressor ramps from 0 Hz → ~90% for ~1 min → 100% until close to target.
-- Near target: inverter modulates ~45–80% duty to hold steady RH (Smart/Silence curves differ).
-- Hysteresis: ~1% below setpoint → compressor stops; fan at low (default). Above setpoint → auto restart.
-- 3-minute start delay protects the compressor after power-up.
-
-MODES:
-- SMART: Wider 20–100% modulation band (fast pull-down → efficient steady state).
-- SILENCE: 20–80% cap for quieter operation.
-
-SETPOINT_RANGE: 30–95 %RH (panel & app)
-TIMER: One-shot countdown on/off (not recurring)
+# 3) PERFORMANCE CURVES AND DERATING (EXPANDED FROM PATTERNS)
+- DER (Dehumidification Efficiency Ratio) averages ~4.3 L/kWh at 30°C/80%RH; drops ~50% vs non-inverter.
+- Derating: Performance not guaranteed outside 10–38°C. Below 20°C or 60%RH, expect 30-70% capacity reduction (cool+dry up to 70%). No exact curves; use conservative planning.
 
 ============================================================
-# 4) UI / STATUS / TECH MENUS
-
-PANEL_STATUS_ICONS: Power, Mode (Smart/Silence), RH %, Temp °C, Wi-Fi, compressor %, timer.
-
-RUN_STATUS_CHECK (hold key ~5 s):
-C0: Inlet air temp °C
-C1: Outlet air temp °C
-C2: Relative humidity %
-C3: Exhaust gas temp °C
-C4: Evaporator coil temp °C
-C5: Gas return temp °C
-C6: Cooling plate temp °C
-C9: DC fan speed r/min
-
-PARAMETER_MENU (hold two keys ~5 s):
-P0  Heating function              (0 off / 1 on)           [default 1]
-P1  Fan after reaching setpoint   (0 low / 1 stop)         [default 0]
-P2  Run time before defrost       (20–90 min)              [default 20]
-P3  Defrost start temp            (–10…+10 °C)             [default –1]
-P4  Defrost duration              (1–12 min)               [default 8]
-P5  Defrost end temp              (0…30 °C)                [default 8]
-P6  Humidity compensation         (–5…+5 %RH)              [default 0]
-P10 Compressor control            (0 auto / 1 manual)      [default 0]
-P11 Manual compressor Hz          (15–110 Hz)              [default 60]
-P12 EXV overheat threshold        (–10…+20 °C)             [default 3]
-P13 EXV mode                      (0 auto / 1 manual)      [default 0]
-P14 EXV opening position          (50–240 “steps”)         [default 100]
-P15 Power-off memory              (0 no / 1 yes)           [default 1]
+# 4) ELECTRICAL AND POWER
+- Power Supply: 230V/1Ph/50Hz
+- Breaker/RCD Guide: 8A (60), 10A (96), 12A (120) with RCD ≤30 mA. Verify dataplate.
 
 ============================================================
-# 5) FAULT / ERROR CODES (GROUPED FOR TRIAGE)
-
-E-CLASS (installation/environment/power)
-E1  High pressure protection — Check outlet obstruction (<1 m rule), fan operation, HP switch/wiring.
-E2  Low pressure protection — Suspect low charge/leak; verify pressures & frost pattern, find/repair leak, refill.
-E5  Abnormal supply (single-phase ≤175 V or ≥270 V). Recovers 180–255 V.
-E7  Electric heater overheat (manual reset thermostat, or airflow issue).
-E8  Exhaust gas over-temperature — Check airflow, charge, sensor seating.
-EA  Air outlet over-temperature — Check airflow blocks/fan.
-Eb  Ambient out of range (<10 °C or >38 °C). Wait or move to compliant space.
-
-F-CLASS (inverter/compressor/fan electronics)
-F1  Compressor drive module/wiring fail
-F2  PFC module failure
-F3  Compressor start failure
-F4  Compressor running failure
-F5  Inverter board overcurrent
-F6  Inverter board overheat
-F7  Overcurrent (may clear on restart; persistent → investigate)
-F8  Radiator/cooling plate overheat (clean fins, check fan)
-F9  DC fan fault (wiring/board/fan)
-FA  PFC module overcurrent
-
-P-CLASS (controls/sensors/comm)
-P0  Controller communication failure
-P1  Inlet/ambient temp sensor fault
-P2  Outlet air temp sensor fault
-P3  Exhaust gas temp sensor fault
-P5  Gas return temp sensor fault
-P6  Evaporator coil temp sensor fault
-P7  Ambient humidity sensor fault
-P8  Cooling plate sensor fault
-P9  Current sensor fault
-PA  DIP/memory mismatch (check DIP before board swaps)
-
-TECH TIP: For board replacements, set DIP switches correctly before power-up. Wrong DIP → PA/F-class errors or overcurrent trips.
+# 5) ERROR CODES AND TROUBLESHOOTING
+- Insufficient data; manual recommends checking for protective trips outside ambient range.
 
 ============================================================
-# 6) INSTALLATION & ELECTRICAL (AU/EU PRACTICALS)
-
-PLACEMENT:
-- ≥2 m from pool edge; ≥1 m clear in front of outlet; keep inlet/outlet unobstructed.
-- Well-ventilated space; avoid corrosive or explosive atmospheres; keep away from open flame.
-- Floor: fit feet; Wall: use M6 anchors into solid concrete; hang on supplied bracket; fit rear pads to protect wall.
-DRAIN:
-- Fit hose to drain spigot; maintain continuous fall; avoid kinks/traps; test for free flow.
-ELECTRICAL:
-- 230V/1Ph/50Hz; must be earthed; fit RCD/RCBO ≤30 mA.
-- Suggested protective devices: IDHR60 8A, IDHR96 10A, IDHR120 12A (verify against dataplate/revision).
-- Keep power and signal leads separated/ordered; upsize cable section if runs >10 m or warm locations.
-START-UP:
-- First power-on: fan starts; compressor has ~3 min delay. Check for abnormal noise/vibration; verify drain.
+# 6) INSTALLATION
+- Wall-mount or floor-standing (kits included).
+- Gravity drain (hose kit).
+- Ensure recirculation across wet surfaces; avoid short-circuiting.
 
 ============================================================
 # 7) MAINTENANCE
-
-- Annual service by a qualified technician: electrical inspection, coil clean, drain check, refrigerant circuit leak check.
-- User cleaning: mild detergent/water on panels only; no solvents/pressure washing.
-- Filter (bottom access): inspect and clean regularly in dusty environments.
-- Storage/idle: power off, cover to prevent dust ingress; keep upright during transport.
+- Insufficient data; manual suggests regular checks for coils, filters if present.
 
 ============================================================
-# 8) CONNECTIVITY / APP (PAIRING MODES)
-
-PAIRING_METHODS: Bluetooth Auto-Discovery (if module supports), EZ Mode, AP Mode.
-BASIC STEPS:
-- Wake panel; long-press Wi-Fi (~3 s for EZ / ~10 s for AP). Indicator flashes (fast = EZ, slow = AP).
-- Use app “Add Device”; connect to 2.4 GHz Wi-Fi; complete binding. For AP, join device hotspot when prompted.
-RE-BIND:
-- Long-press Wi-Fi ~10 s to clear old credentials, then re-add.
-
-APP CONTROLS (NO HEATER MODEL SHOWN):
-- On/Off, Smart/Silence, Set RH, live Temp/RH display, simple timer, device sharing.
+# 8) ADVISED ROOM SIZES (GUIDE ONLY)
+- IDHR60: Pool ~40 m², General ~200 m²
+- IDHR96: Pool ~60 m², General ~300 m²
+- IDHR120: Pool ~80 m², General ~400 m²
+- Caveats: Add margin for active pools/warm water.
 
 ============================================================
-# 9) PERFORMANCE & CURVES (WHAT TO EXPECT)
-
-DER (EFFICIENCY): Average ≈4.3 L/kWh @ 30 °C / 80 %RH (marketing data). 
-RELATIONSHIPS:
-- Lower ambient temp → lower moisture capacity and often higher DER (L/kWh) at partial load.
-- Curves available (per model) for capacity (L/h) vs ambient temp and for DER vs temp at three bands:
-  • 100% (full speed), ~81%, and “low speed” (~50%). Use for fine sizing margin if needed.
-
-NOISE:
-- Marketing minimum ~35.3 dB(A) at 1 m (low speed); spec tables show typical ranges 38–46 dB(A).
+# 9) DERATING FOR NON-STANDARD CONDITIONS (EXPANDED)
+- At 15°C/50%RH: 40-70% reduction.
+- For pools: Factor water temp (≥30°C adds load), activity, ventilation.
 
 ============================================================
-# 10) SIZING NOTES (FIELD-ORIENTED, NON-BINDING)
-
-POOL ROOMS:
-- Manufacturer guidance (still air, typical indoor pool usage):
-  • IDHR60 → pool surface ≤25 m², room 50–120 m²
-  • IDHR96 → pool surface ≤40 m², room 80–200 m²
-  • IDHR120 → pool surface ≤50 m², room 100–240 m²
-- Real load varies with water temp, air temp/RH target, activity, evaporation control (covers), and air movement.
-- For active pools, ventilation spikes, or warm water (≥30 °C), add margin (step up one model) or combine with ventilation control.
+# 10) SIZING GUIDELINES
+POOLS:
+- Based on water surface, temp (28-32°C), RH (60-70%), activity.
+- For active pools or warm water, step up model or add ventilation.
 
 GENERAL ROOMS:
-- Use advised room size as a guide with caveats: infiltration, source moisture, and air velocity can dominate. 
-- Verify airflow path and recirculation across the wet surfaces; avoid short-circuiting supply to return.
+- Guide with caveats: infiltration, moisture sources, air velocity.
+- Verify airflow path; avoid short-circuiting.
 
 ============================================================
 # 11) SAFETY & LIMITS (ALWAYS ENFORCE)
-
 - Do not operate outside 10–38 °C ambient.
-- Only licensed personnel may perform refrigerant work (R32).
-- Gas leak check before/after any refrigeration intervention.
-- Keep children away from mains isolator; isolate power in thunderstorms.
-- Never block inlet/outlet; never use near flammable vapors.
+- Licensed personnel for refrigerant work (R32).
+- Gas leak check before/after interventions.
+- Keep children away from isolator; isolate in thunderstorms.
+- Never block inlet/outlet; avoid flammable vapors.
 
 ============================================================
 # 12) FAQ-STYLE SNIPPETS (RETRIEVAL-FRIENDLY)
-
 Q: Does the IDHR series include an electric heater?
 A: Heater is optional. Nominal sizes: IDHR60 ~1.3 kW; IDHR96/120 ~2.1 kW. Confirm fitted option on the unit.
 
@@ -267,7 +157,6 @@ A: Typical 38–46 dB(A) at 1 m per model/spec. Marketing claims a ~35.3 dB(A) m
 
 ============================================================
 # 13) DATA INTEGRITY / REVISION NOTES
-
 - Airflow values and “advised room size” ranges have published variations between brochures/manuals and product revisions.
 - Always treat the unit dataplate as the highest authority when commissioning or specifying protective devices.
 - DER and noise “headline” numbers are marketing averages/minimums; use the tabulated bands for conservative planning.

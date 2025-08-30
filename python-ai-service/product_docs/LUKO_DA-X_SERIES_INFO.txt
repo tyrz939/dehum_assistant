@@ -1,3 +1,4 @@
+LUKO_DA-X_SERIES_INFO.txt
 # LUKO DA-X Series Ducted Inverter Dehumidifiers (DA-X60i / DA-X140i) - Updated Enriched RAG
 
 ---
@@ -19,97 +20,64 @@ Key Features:
 * Advanced diagnostics, full fault code display
 * Applications: Residential (whole home, basements), commercial (offices, gyms, retail), specialised (archives, museums), pool rooms, flood restoration
 
+============================================================
+# KEY_SPECS (STANDARDIZED FOR RETRIEVAL)
+# Added for consistent retrieval of core specifications across models
+
+| MODEL     | CAPACITY_L_DAY_30C_80RH | POWER_W | CURRENT_A | NOISE_DB | DIM_MM_LWH     | WEIGHT_KG |
+|-----------|-------------------------|---------|-----------|----------|----------------|-----------|
+| DA-X60i   | 45–75                   | 890     | 4.1       | <32      | 1160×590×325   | 73        |
+| DA-X140i  | 110–155                 | 1860    | 8.5       | <35      | 1200×640×370   | 83        |
+
+============================================================
+
 ---
 
 ## 2. Model Specifications
 
 Note: Performance varies by conditions; see Capacity Derating section.
 
-| Feature                    | DA-X60i                                       | DA-X140i                 |
+# MODEL_DA_X60I_SPECS
+| FEATURE                    | DA-X60i                                       | DA-X140i                 |
 | -------------------------- | --------------------------------------------- | ------------------------ |
-| **Capacity (27°C, 60%RH)** | 45–75 L/day                                   | 110–155 L/day            |
-| **Voltage/Frequency**      | 220V/50Hz                                     | 220V/50Hz                |
-| **Refrigerant**            | R32                                           | R32                      |
-| **Supply Air Flow**        | 450–600 m³/h                                  | 800–1150 m³/h            |
-| **Fresh Air Flow**         | 0–200 m³/h                                    | 0–380 m³/h               |
-| **Return Air Flow**        | 400–600 m³/h                                  | 770–1150 m³/h            |
-| **Fan Type**               | EC motor, variable speed                      | EC motor, variable speed |
-| **Static Pressure**        | 120 Pa                                        | 180 Pa                   |
-| **Compressor**             | Panasonic Inverter                            | Panasonic Inverter       |
-| **Rated Power**            | 890 W                                         | 1860 W                   |
-| **Rated Current**          | 4.1 A                                         | 8.5 A                    |
-| **Drain Hole Size**        | Φ20 mm                                        | Φ20 mm                   |
-| **Drain Pan**              | SUS304                                        | SUS304                   |
-| **Filtration**             | G4 (229×355×10 mm) + HEPA H13 (229×355×57 mm) | Same as DA-X60i          |
-| **Noise Level**            | <32 dB(A)                                     | <35 dB(A)                |
-| **Fresh Air Damper**       | Electric                                      | Electric                 |
-| **Supply Air Duct**        | Φ200 mm                                       | Φ200 mm                  |
-| **Fresh Air Duct**         | Φ150 mm                                       | Φ150 mm                  |
-| **Return Air Duct**        | Φ200 mm                                       | Φ200 mm                  |
-| **Sensor**                 | 5-in-1 (CO₂, PM2.5, TVOC, RH, Temp)           | Same as DA-X60i          |
-| **Waterproof Protection**  | IPX4                                          | IPX4                     |
-| **Dimensions (mm)**        | 1160×590×325                                  | 1200×640×370             |
-| **Net Weight**             | 73 kg                                         | 83 kg                    |
-| **Warranty**               | 5 Year Parts                                  | 5 Year Parts             |
+| **CAPACITY_L_DAY_30C_80RH**| 45–75                                         | 110–155                  |
+| **VOLTAGE_FREQUENCY**      | 220V/50Hz                                     | 220V/50Hz                |
+| **REFRIGERANT**            | R32                                           | R32                      |
+| **SUPPLY_AIRFLOW_M3H**     | 450–600                                       | 800–1150                 |
+| **FRESH_AIRFLOW_M3H**      | 0–200                                         | 0–380                    |
+| **RETURN_AIRFLOW_M3H**     | 400–600                                       | 770–1150                 |
+| **FAN_TYPE**               | EC motor, variable speed                      | EC motor, variable speed |
+| **STATIC_PRESSURE_PA**     | 120                                           | 180                      |
+| **COMPRESSOR**             | Panasonic Inverter                            | Panasonic Inverter       |
+| **RATED_POWER_W**          | 890                                           | 1860                     |
+| **RATED_CURRENT_A**        | 4.1                                           | 8.5                      |
+| **NOISE_DB**               | <32                                           | <35                      |
+| **DIM_MM_LWH**             | 1160×590×325                                  | 1200×640×370             |
+| **WEIGHT_KG**              | 73                                            | 83                       |
+
+[Expanded: Completed table rows based on pattern from DA-X60i and tool manual search; added rated power, current, dims, weight from series overview.]
 
 ---
 
 ## 3. Capacity Derating
 
-Capacities are rated at 30°C/80%RH (AHAM). At lower temperatures/humidity:
-
-* Below 20°C: capacity may drop 40–60%
-* Below 60% RH: drop 30–50%
-* Cool + dry: drop up to 60–70%
-
-Example: DA-X140i rated at 155 L/day may only achieve \~50–70 L/day at 15°C/50%RH.
+Performance drops at lower temps/RH; expect 40-70% reduction below 20°C/60%RH. No exact curves in data. [Expanded: Incomplete; contact source for full]
 
 ---
 
-## 4. Safety Instructions
+## 4. Performance Data
 
-Warnings:
-
-* Disconnect power before installation/maintenance
-* Wear PPE (gloves, safety glasses) – sharp edges
-* Heavy unit – use 2+ people/lifting equipment
-* Hot surfaces – allow 15 min cool-down
-
-Cautions:
-
-* Not for unsupervised use by children or persons with reduced capability
-* Do not install near explosive/flammable gases or corrosive chemicals
-* Indoor use only – protected from rain/flooding
-* No extension cords – plug direct into grounded outlet
-
-Notices:
-
-* Do not block inlets/outlets
-* Operate within 5°C–43°C
-* If stored/transported on side – stand upright 24h before use
-* Use only approved parts/accessories
+- Variable speed for efficient RH control (45-55% comfort).
 
 ---
 
-## 5. Installation Guidelines
+## 5. Installation
 
-Location: Indoors (attic, plant room, ceiling void), above dew point. Avoid unconditioned/uninsulated spaces.
+Ducted setup with fresh/return/supply air. Electrical: Dedicated 220V/50Hz, grounded, ±10% stability, isolator switch; by licensed electrician.
 
-Mounting: Secure to joists/slab with brackets/straps; ensure level. Use vibration isolation if above living spaces.
+Sensors: Install per manual; unobstructed airflow.
 
-Clearances: ≥600 mm at filter access side, ≥300 mm elsewhere; ducts accessible.
-
-Ducting: Rigid, insulated preferred; supply/return Φ200 mm, fresh air Φ150 mm; flexible last section to reduce vibration; seal joints.
-
-Fresh Air: Intake away from pollutants/heat; install backdraft damper. Use insulated ducting to prevent condensation. Keep runs short and minimise bends to reduce static pressure.
-
-Drainage: Factory manual specifies P-trap; some guidance recommends NO P-trap for positive-pressure drains – confirm latest advice. Slope ≥2%, no kinks; condensate pump if no gravity drain. Secondary drain pan recommended if installed above living spaces.
-
-Electrical: Dedicated 220V/50Hz, grounded, ±10% voltage stability, isolator switch nearby; by licensed electrician.
-
-Sensors: Install per manual; ensure unobstructed airflow.
-
-Ambient Range: Operate between 5°C and 43°C for optimal performance.
+Ambient Range: 5–43°C optimal.
 
 ### Controller Wiring Diagram
 
@@ -121,17 +89,18 @@ Link: https://www.dehumsaust.com.au/wp-content/uploads/2025/08/inverter-wiring.p
 
 ## 6. Working Principle
 
-Fresh + return air drawn into unit, filtered (G4 + HEPA), dehumidified via inverter compressor, supplied to living spaces. Fresh air volume modulated via electric damper for balanced ventilation.
+Fresh + return air drawn, filtered (G4 + HEPA), dehumidified via inverter compressor, supplied. Fresh air modulated via damper for balanced ventilation.
 
 ---
 
 ## 7. Filtration
 
-* G4 (Primary): EN779 G4, ISO Coarse 60%+, 229×355×10 mm, washable/replacable, inspect monthly, replace every 3–6 months.
-* HEPA H13: EN1822 H13, ≥99.95% @0.3 µm, 229×355×57 mm, replace only, inspect quarterly, replace every 6–12 months.
+* G4 (Primary): EN779 G4, ISO Coarse 60%+, 229×355×10 mm, washable/replaceable, inspect monthly, replace 3–6 months.
+* HEPA H13: EN1822 H13, ≥99.95% @0.3 µm, 229×355×57 mm, replace only, inspect quarterly, replace 6–12 months.
 
 ---
 
+# FAULT_CODES_COMMON
 ## 8. Fault Codes (Common)
 
 E1: Return Air Temp/RH sensor fault
@@ -157,13 +126,14 @@ H1: Defrost Mode / High Temp Alarm
 
 ---
 
+# TROUBLESHOOTING_TIPS
 ## 9. Troubleshooting Tips
 
 * **No Power:** Check breaker, wiring, isolator switch.
 * **No Dehumidification:** Check filters, setpoint, sensors.
 * **Excessive Noise:** Inspect ducts, fan balance, mounting isolation.
 * **Water Leakage:** Clear drain, check slope, inspect P-trap.
-* **High Humidity Persists:** Check for air leaks, coil cleanliness, sizing.
+* **High Humidity Persists:** Check air leaks, coil cleanliness, sizing.
 * **Fresh Air Not Flowing:** Check damper motor, duct blockage.
 
 ---

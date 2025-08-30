@@ -120,7 +120,7 @@
       "performance_factor": 1,
       "capacity_lpd": 65,
       "drying_only": true,
-      "url": "https://www.dehumsaust.com.au/"
+      "url": "https://www.dehumsaust.com.au/product/65l-day-lgr-st600-stackable-mobile-dehumidifier/"
     },
     {
       "sku": "ST_1001_PRO",
@@ -145,7 +145,7 @@
       "performance_factor": 1,
       "capacity_lpd": 100,
       "drying_only": true,
-      "url": "https://www.dehumsaust.com.au/"
+      "url": "https://www.dehumsaust.com.au/product/100l-day-lgr-st1000-stackable-mobile-dehumidifier/"
     },
     {
       "sku": "CT_801_PRO",
@@ -169,7 +169,7 @@
       "price_aud": 330,
       "performance_factor": 0,
       "capacity_lpd": 0,
-      "url": "https://www.dehumsaust.com.au/"
+      "url": "https://www.dehumsaust.com.au/product/suntec-sp-series-condensate-pump/"
     }
   ]
 }

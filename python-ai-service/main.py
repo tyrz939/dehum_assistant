@@ -19,6 +19,7 @@ from langchain_community.vectorstores import FAISS
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import TextLoader, PyMuPDFLoader
 from langchain.schema import Document
+import tiktoken
 
 # Load env
 load_dotenv()
@@ -82,10 +83,13 @@ async def chat(request: Dict, auth: str = Depends(check_api_key)):
     message = request["message"]
     session = await get_or_create_session(session_id)
     session["history"].append({"role": "user", "content": message, "timestamp": datetime.now().isoformat()})
+    last_user = session["history"][-1]["content"]
     messages = prepare_messages(session)
-    response = await get_ai_response(messages, session)
+    response = await get_ai_response(messages, session, last_user)
     session["history"].append({"role": "assistant", "content": response["content"], "timestamp": datetime.now().isoformat()})
     update_session(session)
+    if "_turn_calls" in session:
+        del session["_turn_calls"]
     return {"message": response["content"], "session_id": session_id, "timestamp": datetime.now(), "function_calls": response.get("function_calls", [])}
 
 @app.post("/chat/stream")
@@ -95,9 +99,10 @@ async def chat_stream(request: Dict, auth: str = Depends(check_api_key)):
         message = request["message"]
         session = await get_or_create_session(session_id)
         session["history"].append({"role": "user", "content": message, "timestamp": datetime.now().isoformat()})
+        last_user = session["history"][-1]["content"]
         messages = prepare_messages_streaming(session)
         try:
-            async for chunk in process_chat_streaming(messages, session, session_id):
+            async for chunk in process_chat_streaming(messages, session, session_id, last_user):
                 yield f"data: {json.dumps(chunk)}\n\n"
             yield "data: [DONE]\n\n"
         except asyncio.CancelledError:
@@ -111,6 +116,8 @@ async def chat_stream(request: Dict, auth: str = Depends(check_api_key)):
                 pass
         finally:
             update_session(session)
+            if "_turn_calls" in session:
+                del session["_turn_calls"]
 
     return StreamingResponse(generate_stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "Connection": "keep-alive"})
 
@@ -141,7 +148,7 @@ async def get_or_create_session(session_id: str) -> Dict:
         if wp_session:
             sessions[session_id] = wp_session
             return wp_session
-        new_session = {"id": session_id, "history": [], "cache": {}, "last_activity": datetime.now()}
+        new_session = {"id": session_id, "history": [], "cache": {}, "state": {}, "last_activity": datetime.now()}
         sessions[session_id] = new_session
         return new_session
 
@@ -151,11 +158,19 @@ def update_session(session: Dict):
 
 def prepare_messages(session: Dict) -> List[Dict]:
     messages = [{"role": "system", "content": get_system_prompt()}]
-    if session["cache"]:
-        context = build_context_from_cache(session["cache"])
-        if context:
-            messages.append({"role": "system", "content": f"PREVIOUS SESSION DATA:\n{context}"})
-    messages.extend([{"role": h["role"], "content": h["content"]} for h in session["history"]])
+    # Light state: <100 tokens
+    state = session.get("state", {})
+    if state:
+        compact = f"Last Sizing: Load={state.get('last_load_lpd', 'N/A')} L/day | Inputs={state.get('last_inputs_summary', 'N/A')}"
+        messages.append({"role": "system", "content": compact})
+    # Trim history with token safety
+    history = session["history"][-6:]
+    enc = tiktoken.encoding_for_model("gpt-4")  # Fallback for gpt-5.
+    total_tokens = sum(len(enc.encode(m.get("content", ""))) for m in messages + history)
+    while total_tokens > 80000 and len(history) > 2:
+        history = history[1:]
+        total_tokens = sum(len(enc.encode(m.get("content", ""))) for m in messages + history)
+    messages.extend({"role": h["role"], "content": h["content"]} for h in history)
     return messages
 
 def prepare_messages_streaming(session: Dict) -> List[Dict]:
@@ -163,14 +178,14 @@ def prepare_messages_streaming(session: Dict) -> List[Dict]:
     # Do not pre-append catalog here; only add after tools when needed
     return messages
 
-async def process_chat_streaming(messages: List[Dict], session: Dict, session_id: str) -> AsyncGenerator[Dict, None]:
+async def process_chat_streaming(messages: List[Dict], session: Dict, session_id: str, last_user: str) -> AsyncGenerator[Dict, None]:
     current_phase = "initial_summary"
     tool_results = []
     accumulated_content = ""
 
     while current_phase != "final":
         if current_phase == "initial_summary":
-            tools = get_tool_definitions()
+            tools = get_tools_for()
             stream = await completion(messages, 16000, tools=tools, tool_choice="auto", stream=True)
             tool_call_dicts = {}
             async for chunk in stream:
@@ -181,79 +196,97 @@ async def process_chat_streaming(messages: List[Dict], session: Dict, session_id
                 if delta.tool_calls:
                     for tc_delta in delta.tool_calls:
                         index = tc_delta.index
-                        if index not in tool_call_dicts:
-                            tool_call_dicts[index] = {"id": tc_delta.id, "type": tc_delta.type, "function": {"name": tc_delta.function.name, "arguments": tc_delta.function.arguments}}
-                        else:
-                            tool_call_dicts[index]["function"]["name"] += tc_delta.function.name or ""
-                            tool_call_dicts[index]["function"]["arguments"] += tc_delta.function.arguments or ""
+                        rec = tool_call_dicts.setdefault(index, {"id": tc_delta.id, "type": tc_delta.type, "function": {"name": "", "arguments": ""}})
+                        if tc_delta.function and tc_delta.function.name:
+                            rec["function"]["name"] = tc_delta.function.name
+                        if tc_delta.function and tc_delta.function.arguments:
+                            rec["function"]["arguments"] += tc_delta.function.arguments
             tool_calls = finalize_tool_calls(tool_call_dicts)
             messages.append({"role": "assistant", "content": accumulated_content, "tool_calls": tool_calls})
-            current_phase = "tools" if tool_calls else "final"
-        
+            current_phase = "tools" if tool_calls else ("recommendations" if "recommend" in last_user.lower() else "final")
+
         elif current_phase == "tools":
-            async for response in stream_tools_phase(tool_calls, messages, session, session_id):
+            async for response in stream_tools_phase(tool_calls, messages, session, session_id, last_user):
                 if isinstance(response, list):
                     tool_results = response
                 else:
                     yield response
             current_phase = "recommendations"
-        
+
         elif current_phase == "recommendations":
-            stream = await completion(messages, 16000, stream=True)
+            tools = get_tools_for()
+            stream = await completion(messages, 16000, tools=tools, tool_choice="auto", stream=True)
             async for chunk in stream:
                 if chunk.choices[0].delta.content:
                     yield {"type": "response", "content": chunk.choices[0].delta.content, "session_id": session_id, "timestamp": datetime.now().isoformat(), "is_streaming_chunk": True, "metadata": {"phase": "recommendations"}}
             current_phase = "final"
-    
+
     yield {"message": "", "is_final": True, "function_calls": tool_results}
 
-async def get_ai_response(messages: List[Dict], session: Dict) -> Dict:
-    initial_response = await get_initial_completion(messages)
+async def get_ai_response(messages: List[Dict], session: Dict, last_user: str) -> Dict:
+    initial_response = await get_initial_completion(messages, last_user)
     content = initial_response["content"]
     tool_calls = initial_response["tool_calls"]
-    
+
+    if not tool_calls and "recommend" in last_user.lower():
+        messages.append({"role": "assistant", "content": content})
+        new_content = ""
+        tools = get_tools_for()
+        gen = await completion(messages, 16000, tools=tools, tool_choice="auto", stream=True)
+        async for chunk in gen:
+            if chunk.choices[0].delta.content:
+                new_content += chunk.choices[0].delta.content
+        return {"content": new_content, "tool_calls": []}
+
     tool_results = []
     if tool_calls:
         messages.append({"role": "assistant", "content": content, "tool_calls": tool_calls})
-        tool_results, follow_up_gen = await process_tool_calls(tool_calls, messages, session)
+        tool_results, follow_up_gen = await process_tool_calls(tool_calls, messages, session, last_user)
         new_content = ""
         async for token in follow_up_gen:
             new_content += token
         content = new_content or content
+    if "_turn_calls" in session:
+        del session["_turn_calls"]
     return {"content": content, "tool_calls": tool_results}
 
-async def stream_tools_phase(tool_calls: List[Dict], messages: List[Dict], session: Dict, session_id: str) -> AsyncGenerator:
+async def stream_tools_phase(tool_calls: List[Dict], messages: List[Dict], session: Dict, session_id: str, last_user: str) -> AsyncGenerator:
     tool_results = []
-    
+
     yield {"type": "tool_start", "total_tools": len(tool_calls), "session_id": session_id, "timestamp": datetime.now().isoformat(), "metadata": {"phase": "tools", "status": "starting_tools"}}
-    
+
     for i, tc in enumerate(tool_calls):
         func_name = tc["function"]["name"]
         func_args = json.loads(tc["function"]["arguments"])
-        
+
         yield {"type": "tool_progress", "tool_index": i + 1, "tool_name": func_name, "message": f"Executing tool {i+1}/{len(tool_calls)}: {func_name}", "session_id": session_id, "timestamp": datetime.now().isoformat(), "metadata": {"phase": "tools", "status": "executing_tool"}}
-        
+
         result = invoke_tool(func_name, func_args, session)
         tool_results.append({"name": func_name, "args": func_args, "output": result})
-        
+
         content = json.dumps(result) if func_name != "retrieve_relevant_docs" else (result.get("formatted_docs") if "formatted_docs" in result else json.dumps(result))
         messages.append({"role": "tool", "tool_call_id": tc["id"], "name": func_name, "content": content})
-        
+
         yield {"type": "tool_result", "tool_index": i + 1, "tool_name": func_name, "data": result, "session_id": session_id, "timestamp": datetime.now().isoformat(), "metadata": {"phase": "tools", "status": "tool_completed"}}
-    
+
+        if func_name == "calculate_dehum_load":
+            session["state"]["last_load_lpd"] = result["total_lpd"]
+            session["state"]["last_inputs_summary"] = f"Vol={result['derived']['volume']}m³, Temp={func_args['indoor_temp']}°C, RH={func_args['target_rh']}%"
+            update_session(session)
+
     yield {"type": "tool_end", "tool_results": tool_results, "session_id": session_id, "timestamp": datetime.now().isoformat(), "metadata": {"phase": "tools", "status": "tools_completed"}}
-    
+
     load_info = get_latest_load_info(session)
     if load_info:
-        preferred_types = detect_preferred_types(" ".join([m["content"] for m in session["history"] if m["role"] == "user"]))
+        preferred_types = detect_preferred_types(last_user)
         catalog_message = prepare_catalog_message(load_info, preferred_types)
         messages.append(catalog_message)
         product_count = len(json.loads(catalog_message["content"].split("AVAILABLE_PRODUCT_CATALOG_JSON = ", 1)[1].split("\n", 1)[0])["catalog"])
         yield {"type": "tool_progress", "message": f"Prepared catalog with {product_count} products", "session_id": session_id, "timestamp": datetime.now().isoformat(), "metadata": {"phase": "tools", "status": "catalog_prepared"}}
-    
+
     yield tool_results  # Signal tools done (not SSE)
 
-async def process_tool_calls(tool_calls: List[Any], messages: List[Dict], session: Dict) -> tuple[List[Dict], AsyncGenerator[str, None]]:
+async def process_tool_calls(tool_calls: List[Any], messages: List[Dict], session: Dict, last_user: str) -> tuple[List[Dict], AsyncGenerator[str, None]]:
     tool_results = []
     for tc in tool_calls:
         func_name = tc.function.name
@@ -262,29 +295,42 @@ async def process_tool_calls(tool_calls: List[Any], messages: List[Dict], sessio
         tool_resu = {"name": func_name, "args": func_args, "output": result}
         tool_results.append(tool_resu)
         messages.append({"role": "tool", "tool_call_id": tc.id, "name": func_name, "content": json.dumps(result)})
-    
+
+        if func_name == "calculate_dehum_load":
+            session["state"]["last_load_lpd"] = result["total_lpd"]
+            session["state"]["last_inputs_summary"] = f"Vol={result['derived']['volume']}m³, Temp={func_args['indoor_temp']}°C, RH={func_args['target_rh']}%"
+            update_session(session)
+
     # Add catalog if load info (align with streaming)
     load_info = get_latest_load_info(session)
     if load_info:
-        preferred_types = detect_preferred_types(" ".join([m["content"] for m in session["history"] if m["role"] == "user"]))
+        preferred_types = detect_preferred_types(last_user)
         catalog_message = prepare_catalog_message(load_info, preferred_types)
         messages.append(catalog_message)
-    
-    follow_up_gen = await completion(messages, 16000, stream=True)
+
+    tools = get_tools_for()
+    follow_up_gen = await completion(messages, 16000, tools=tools, tool_choice="auto", stream=True)
     async def gen_content():
         async for chunk in follow_up_gen:
             if chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
     return tool_results, gen_content()
 
-async def get_initial_completion(messages: List[Dict]) -> Dict:
-    tools = get_tool_definitions()
-    response = await completion(messages, 16000, tools=tools, tool_choice="auto" if tools else None)
+async def get_initial_completion(messages: List[Dict], last_user: str) -> Dict:
+    tools = get_tools_for()
+    response = await completion(messages, 16000, tools=tools, tool_choice="auto")
     choice = response.choices[0].message
     return {"content": choice.content or "", "tool_calls": choice.tool_calls or []}
 
 def finalize_tool_calls(tool_call_dicts: Dict) -> List[Dict]:
-    return list(tool_call_dicts.values())
+    out = []
+    for rec in tool_call_dicts.values():
+        try:
+            json.loads(rec["function"]["arguments"] or "{}")
+            out.append(rec)
+        except json.JSONDecodeError:
+            continue
+    return out
 
 def get_system_prompt() -> str:
     """Load system prompt from file and fail fast if missing."""
@@ -292,7 +338,9 @@ def get_system_prompt() -> str:
     if not os.path.exists(prompt_path):
         raise FileNotFoundError(f"System prompt file not found: {prompt_path}")
     with open(prompt_path, 'r', encoding='utf-8') as f:
-        return f.read().strip()
+        prompt = f.read().strip()
+
+    return prompt
 
 def build_context_from_cache(cache: Dict) -> str:
     if not cache: return ""
@@ -318,6 +366,7 @@ def get_latest_load_info(session: Dict) -> Optional[Dict]:
                 "targetRH": args.get('target_rh', 60.0)
             }
     return None
+
 
 def detect_preferred_types(text: str) -> List[str]:
     text_lower = text.lower()
@@ -369,186 +418,117 @@ def get_catalog_with_effective_capacity(include_pool_safe_only: bool = False) ->
         })
     return catalog
 
-def derate_factor(temp: float, rh: float) -> float:
-    from psychrometrics import derate_factor  # Assuming it's in psychrometrics
-    return derate_factor(temp, rh)
+# Inline improved psychrometrics (from psychrometrics.py; enhanced with clamps, sources, consistency)
+ATM_KPA = 101.325  # Standard sea-level pressure (kPa)
 
-def get_tool_definitions() -> List[Dict]:
-    return [
-        {"type": "function", "function": {"name": "retrieve_relevant_docs", "description": "Retrieve relevant docs", "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "k": {"type": "integer", "default": 3}}, "required": ["query"]}}},
-        {"type": "function", "function": {"name": "calculate_dehum_load", "description": "Calculate dehum load", "parameters": {"type": "object", "properties": {"current_rh": {"type": "number"}, "target_rh": {"type": "number"}, "indoor_temp": {"type": "number"}, "length": {"type": "number"}, "width": {"type": "number"}, "height": {"type": "number"}, "volume_m3": {"type": "number"}, "ach": {"type": "number"}, "people_count": {"type": "integer"}, "pool_area_m2": {"type": "number"}, "water_temp_c": {"type": "number"}, "pool_activity": {"type": "string"}, "vent_factor": {"type": "number"}, "additional_loads_lpd": {"type": "number"}, "air_velocity_mps": {"type": "number"}, "outdoor_temp_c": {"type": "number"}, "outdoor_rh_percent": {"type": "number"}, "covered_hours_per_day": {"type": "number"}, "cover_reduction": {"type": "number"}, "air_movement_level": {"type": "string"}, "vent_level": {"type": "string"}, "mode": {"type": "string"}}, "required": ["current_rh", "target_rh", "indoor_temp"]}}},
-        {"type": "function", "function": {"name": "get_product_catalog", "description": "Get product catalog", "parameters": {"type": "object", "properties": {"capacity_min": {"type": "number"}, "capacity_max": {"type": "number"}, "product_type": {"type": "string"}, "pool_safe_only": {"type": "boolean"}, "price_range_max": {"type": "number"}}, "required": []}}},
-        {"type": "function", "function": {"name": "pulldown_air_l", "description": "Pulldown air load", "parameters": {"type": "object", "properties": {"volume_m3": {"type": "number"}, "temp_c": {"type": "number"}, "current_rh": {"type": "number"}, "target_rh": {"type": "number"}}, "required": ["volume_m3", "temp_c", "current_rh", "target_rh"]}}},
-        {"type": "function", "function": {"name": "pool_evap_l_per_day", "description": "Pool evaporation load", "parameters": {"type": "object", "properties": {"area_m2": {"type": "number"}, "water_c": {"type": "number"}, "air_c": {"type": "number"}, "rh_target_pct": {"type": "number"}, "mode": {"type": "string"}, "air_movement_level": {"type": "string"}, "activity": {"type": "string"}, "covered_h_per_day": {"type": "number"}, "cover_reduction": {"type": "number"}, "custom_params": {"type": "object"}}, "required": ["area_m2", "water_c", "air_c", "rh_target_pct"]}}},
-        {"type": "function", "function": {"name": "infiltration_l_per_day", "description": "Infiltration load", "parameters": {"type": "object", "properties": {"volume_m3": {"type": "number"}, "indoor_c": {"type": "number"}, "rh_target_pct": {"type": "number"}, "outdoor_c": {"type": "number"}, "rh_out_pct": {"type": "number"}, "vent_level": {"type": "string"}}, "required": ["volume_m3", "indoor_c", "rh_target_pct", "outdoor_c", "rh_out_pct"]}}}
-    ]
+def saturation_vp_kpa(temp_c: float) -> float:
+    """Saturation vapor pressure (kPa) - ASHRAE 2021 fundamentals."""
+    temp_c = max(-50.0, min(60.0, temp_c))  # Clamp realistic range
+    return 0.61078 * math.exp((17.2694 * temp_c) / (temp_c + 237.3))
 
-def invoke_tool(func_name: str, func_args: Dict, session: Dict) -> Dict:
-    tool_map = {
-        "retrieve_relevant_docs": retrieve_relevant_docs,
-        "calculate_dehum_load": compute_load_components,
-        "get_product_catalog": get_product_catalog,
-        "pulldown_air_l": pulldown_air_l,
-        "pool_evap_l_per_day": pool_evap_l_per_day,
-        "infiltration_l_per_day": infiltration_l_per_day,
-    }
-    func = tool_map.get(func_name)
-    if not func:
-        raise ValueError(f"Unknown tool: {func_name}")
-    cache_key = f"{func_name}|{json.dumps(func_args, sort_keys=True)}"
-    if cache_key in session["cache"]:
-        return session["cache"][cache_key]
-    result = func(**func_args)
-    session["cache"][cache_key] = result
-    return result
-
-# WP session helpers
-def wp_get_nonce() -> str:
-    try:
-        resp = requests.get(f"{WORDPRESS_URL}/wp-admin/admin-ajax.php?action=dehum_get_nonce", headers={"Authorization": f"Bearer {WP_API_KEY}"}, timeout=5)
-        if resp.status_code == 200 and resp.json().get("success"):
-            return resp.json()["data"]["nonce"]
-    except:
-        return "fallback_nonce"
-
-def wp_load_session(session_id: str) -> Dict | None:
-    nonce = wp_get_nonce()
-    try:
-        resp = requests.post(f"{WORDPRESS_URL}/wp-admin/admin-ajax.php", data={"action": "dehum_get_session", "session_id": session_id, "nonce": nonce}, headers={"Authorization": f"Bearer {WP_API_KEY}"}, timeout=5)
-        if resp.status_code == 200 and resp.json().get("success"):
-            history_data = resp.json()["data"]["history"]
-            return {"history": [{"role": "user" if m["message"] else "assistant", "content": m["message"] or m["response"], "timestamp": m["timestamp"]} for m in history_data], "cache": {}, "last_activity": datetime.now()}
-    except Exception as e:
-        logger.debug("WP load error: %s", e)
-    return None
-
-def wp_save_session(session: Dict) -> None:
-    nonce = wp_get_nonce()
-    wp_history = [{"message": h["content"] if h["role"] == "user" else "", "response": h["content"] if h["role"] == "assistant" else "", "user_ip": "", "timestamp": h["timestamp"]} for h in session["history"]]
-    try:
-        requests.post(f"{WORDPRESS_URL}/wp-admin/admin-ajax.php", data={"action": "dehum_save_session", "session_id": session["id"], "history": json.dumps(wp_history), "nonce": nonce}, headers={"Authorization": f"Bearer {WP_API_KEY}"}, timeout=5)
-    except Exception as e:
-        logger.debug("WP save error: %s", e)
-
-# RAG (from rag_pipeline.py; simplified to functions)
-def load_documents() -> List[Document]:
-    docs_dir = os.path.join(os.path.dirname(__file__), "product_docs")
-    documents = []
-    for file_path in os.listdir(docs_dir):
-        path = os.path.join(docs_dir, file_path)
-        if file_path.endswith('.txt'):
-            loader = TextLoader(path, encoding='utf-8')
-        elif file_path.endswith('.pdf'):
-            loader = PyMuPDFLoader(path)
-        else:
-            continue
-        docs = loader.load()
-        for doc in docs:
-            doc.metadata['source'] = file_path
-        documents.extend(docs)
-    return documents
-
-def chunk_documents(documents: List[Document]) -> List[Document]:
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=RAG_CHUNK_SIZE, chunk_overlap=RAG_CHUNK_OVERLAP)
-    return text_splitter.split_documents(documents)
-
-def build_index():
-    embeddings = OpenAIEmbeddings(model="text-embedding-ada-002", openai_api_key=OPENAI_API_KEY)
-    documents = load_documents()
-    chunks = chunk_documents(documents)
-    vectorstore = FAISS.from_documents(chunks, embeddings)
-    vectorstore.save_local(os.path.join(os.path.dirname(__file__), "faiss_index"))
-
-def load_vectorstore() -> Any:
-    embeddings = OpenAIEmbeddings(model="text-embedding-ada-002", openai_api_key=OPENAI_API_KEY)
-    index_dir = os.path.join(os.path.dirname(__file__), "faiss_index")
-    if not os.path.exists(index_dir):
-        raise FileNotFoundError(f"FAISS index directory missing: {index_dir}. Build the index first.")
-    return FAISS.load_local(index_dir, embeddings, allow_dangerous_deserialization=True)
-
-# Psychrometrics (from psychrometrics.py; inline)
-ATM_KPA = 101.325
-
-def saturation_vp_kpa(t_c: float) -> float:
-    return 0.61078 * math.exp((17.2694 * t_c) / (t_c + 237.3))
-
-def humidity_ratio(t_c: float, rh_percent: float) -> float:
+def humidity_ratio(temp_c: float, rh_percent: float) -> float:
+    """Humidity ratio W (kg/kg dry air) at std pressure."""
+    temp_c = max(-50.0, min(60.0, temp_c))
     rh_clamped = max(0.0, min(100.0, rh_percent))
-    pws = saturation_vp_kpa(t_c)
+    pws = saturation_vp_kpa(temp_c)
     pw = (rh_clamped / 100.0) * pws
-    return 0.62198 * pw / max(101.325 - pw, 1e-9)
+    return 0.62198 * pw / max(ATM_KPA - pw, 1e-9)
 
-def air_density(t_c: float) -> float:
-    return 1.2 * (293.15 / (273.15 + t_c))  # Legacy dry approx
+def air_density(temp_c: float) -> float:
+    """Approximate dry-air density (kg/m³) - legacy formula."""
+    temp_c = max(-50.0, min(60.0, temp_c))
+    return 1.2 * (293.15 / (273.15 + temp_c))
 
 def evaporation_activity_coeff(activity: str) -> float:
+    """Coeff for pool evap - based on activity level (empirical)."""
     mapping = {"none": 0.05, "low": 0.065, "medium": 0.10, "high": 0.15}
     return mapping.get(activity.lower(), 0.05)
 
-def infiltration_l_per_day(volume_m3: float, indoor_c: float, rh_target_pct: float, outdoor_c: float, rh_out_pct: float, vent_level: str = "low") -> float:
+def infiltration_l_per_day(volume_m3: float, indoor_c: float, rh_target_pct: float, outdoor_c: float, rh_out_pct: float, vent_level: str = "low", ach_value: Optional[float] = None) -> float:
+    indoor_c = max(-50.0, min(60.0, indoor_c))
+    outdoor_c = max(-50.0, min(60.0, outdoor_c))
     if volume_m3 <= 0:
         return 0.0
     W_out = humidity_ratio(outdoor_c, rh_out_pct)
     W_in = humidity_ratio(indoor_c, rh_target_pct)
     dW = max(W_out - W_in, 0.0)
-    rho = air_density(indoor_c)  # Use legacy dry
-    ach = {"low": 0.5, "standard": 1.0}.get(vent_level, 0.5)
+    rho = air_density(indoor_c)
+    ach = ach_value if ach_value is not None else {"low": 0.5, "standard": 1.0}.get(vent_level.lower(), 0.5)
     return max(0.0, dW * rho * volume_m3 * ach * 24.0)
 
 def pool_evap_l_per_day(area_m2: float, water_c: float, air_c: float, rh_target_pct: float, mode: str = "field_calibrated", air_movement_level: str = "still", activity: str = "low", covered_h_per_day: float = 0.0, cover_reduction: float = 0.7, custom_params: Dict = None) -> float:
+    air_c = max(-50.0, min(60.0, air_c))
+    water_c = max(0.0, min(50.0, water_c))  # Realistic pool temp
     if area_m2 <= 0:
         return 0.0
     p_a = (rh_target_pct / 100.0) * saturation_vp_kpa(air_c)
     p_w = saturation_vp_kpa(water_c)
     delta_p = max(p_w - p_a, 0.0)
-    delta_p = min(delta_p, 2.5)
+    delta_p = min(delta_p, 2.5)  # Cap unrealistic rates (empirical)
     c_base = evaporation_activity_coeff(activity)
-    c = c_base + 0.3 * max({"still": 0.0, "low": 0.05, "medium": 0.1}.get(air_movement_level.lower(), 0.0), 0.0)
+    velocity_mps = max({"still": 0.0, "low": 0.05, "medium": 0.1}.get(air_movement_level.lower(), 0.0), 0.0)
+    c = c_base + 0.3 * velocity_mps
     temp_diff = max(water_c - air_c, 0.0)
     c *= (1.0 + 0.04 * temp_diff)
     w_kg_per_h = area_m2 * c * delta_p
     evap_lpd = max(0.0, w_kg_per_h) * 24.0
-    # Force standard: skip calibration
     covered_h = min(max(covered_h_per_day, 0.0), 24.0)
     evap_lpd *= (1.0 - (covered_h / 24.0) * min(max(cover_reduction, 0.0), 1.0))
     return round(evap_lpd, 1)
 
 def pulldown_air_l(volume_m3: float, temp_c: float, current_rh: float, target_rh: float) -> float:
+    temp_c = max(-50.0, min(60.0, temp_c))
     if volume_m3 <= 0 or target_rh >= current_rh:
         return 0.0
     dW = max(0.0, humidity_ratio(temp_c, current_rh) - humidity_ratio(temp_c, target_rh))
-    rho = air_density(temp_c)  # Switch to legacy dry
+    rho = air_density(temp_c)
     return dW * rho * volume_m3
 
-def get_product_catalog(capacity_min: float = None, capacity_max: float = None, product_type: str = None, pool_safe_only: bool = False, price_range_max: float = None) -> Dict:
-    catalog = []
-    for p in products:
-        if pool_safe_only and not p.get("pool_safe", False):
-            continue
-        if product_type and p.get("type") != product_type:
-            continue
-        if capacity_min and p.get("capacity_lpd", 0) < capacity_min:
-            continue
-        if capacity_max and p.get("capacity_lpd", 0) > capacity_max:
-            continue
-        if price_range_max and p.get("price_aud") and p.get("price_aud") > price_range_max:
-            continue
-        eff_cap = p["capacity_lpd"] * p.get("performance_factor", 1.0)
-        catalog.append({
-            "sku": p["sku"],
-            "name": p.get("name", p["sku"]),
-            "type": p.get("type"),
-            "series": p.get("series"),
-            "technology": p.get("technology"),
-            "capacity_lpd": p["capacity_lpd"],
-            "effective_capacity_lpd": eff_cap,
-            "performance_factor": p.get("performance_factor", 1.0),
-            "pool_safe": p.get("pool_safe", False),
-            "price_aud": p.get("price_aud"),
-            "url": p.get("url")
-        })
-    catalog.sort(key=lambda x: x["capacity_lpd"])
-    return {"catalog": catalog, "total_products": len(catalog)}
+def derate_factor(temp_c: float, rh_percent: float) -> float:
+    """Derating factor [0.1,1.0] based on dew point (inline dew_point calc)."""
+    temp_c = max(-50.0, min(60.0, temp_c))
+    rh_percent = max(0.0, min(100.0, rh_percent))
+    if rh_percent <= 0:
+        return 0.1  # Min derate for dry air
+    pv = (rh_percent / 100.0) * saturation_vp_kpa(temp_c)
+    if pv <= 0:
+        return 0.1
+    alpha = math.log(pv / 0.61078)  # ASHRAE inverse (consistent with saturation_vp_kpa)
+    td = 237.3 * alpha / (17.2694 - alpha)  # ASHRAE constants
+    td_norm = max(td, 0.0) / 26.0
+    return min(1.0, max(0.1, td_norm ** 1.5))  # Empirical curve; tune exponent if needed
+
+# Restored: Product catalog and manual functions
+# Comment out unused get_product_catalog
+# def get_product_catalog(capacity_min: float = None, capacity_max: float = None, product_type: str = None, pool_safe_only: bool = False, price_range_max: float = None) -> Dict:
+#     catalog = []
+#     for p in products:
+#         if pool_safe_only and not p.get("pool_safe", False):
+#             continue
+#         if product_type and p.get("type") != product_type:
+#             continue
+#         if capacity_min and p.get("capacity_lpd", 0) < capacity_min:
+#             continue
+#         if capacity_max and p.get("capacity_lpd", 0) > capacity_max:
+#             continue
+#         if price_range_max and p.get("price_aud") and p.get("price_aud") > price_range_max:
+#             continue
+#         eff_cap = p["capacity_lpd"] * p.get("performance_factor", 1.0)
+#         catalog.append({
+#             "sku": p["sku"],
+#             "name": p.get("name", p["sku"]),
+#             "type": p.get("type"),
+#             "series": p.get("series"),
+#             "technology": p.get("technology"),
+#             "capacity_lpd": p["capacity_lpd"],
+#             "effective_capacity_lpd": eff_cap,
+#             "performance_factor": p.get("performance_factor", 1.0),
+#             "pool_safe": p.get("pool_safe", False),
+#             "price_aud": p.get("price_aud"),
+#             "url": p.get("url")
+#         })
+#     catalog.sort(key=lambda x: x["capacity_lpd"])
+#     return {"catalog": catalog, "total_products": len(catalog)}
 
 def get_product_manual(sku: str, type: str = "manual") -> Dict:
     for p in products:
@@ -565,7 +545,7 @@ def get_product_manual(sku: str, type: str = "manual") -> Dict:
             return {"text": text_content, "sku": sku, "product_name": p.get("name", sku), "type": type}
     return {"error": "Product not found"}
 
-# Add _normalize_dimensions and calibrate_params from sizing.py
+# Restored: Sizing helpers
 def _normalize_dimensions(length: Optional[float], width: Optional[float], height: Optional[float], volume_m3: Optional[float]) -> Dict[str, float]:
     if volume_m3 is not None:
         volume = max(0.1, float(volume_m3))  # Clamp to min 0.1
@@ -582,8 +562,7 @@ def _normalize_dimensions(length: Optional[float], width: Optional[float], heigh
     return {"volume": length * width * height, "length": length, "width": width, "height": height}
 
 def calibrate_params(measured_data: list) -> Dict:
-    # Implement actual calibration logic from sizing.py or placeholder
-    # For example:
+    # Implement actual calibration logic or placeholder
     if not measured_data:
         return {}
     # Dummy implementation; replace with real
@@ -624,25 +603,23 @@ def compute_load_components(
         target_rh = max(0.0, min(100.0, target_rh))
     if indoor_temp < -20 or indoor_temp > 60:
         raise ValueError("indoor_temp out of bounds")
-    
+
     dims = _normalize_dimensions(length, width, height, volume_m3)
     volume = dims["volume"]
     room_area_m2 = (dims["length"] * dims["width"]) if dims["length"] > 0 and dims["width"] > 0 else None
-    
+
     out_T = outdoor_temp_c if outdoor_temp_c is not None else indoor_temp
     out_RH = outdoor_rh_percent if outdoor_rh_percent is not None else current_rh
-    
-    infiltration_lpd = infiltration_l_per_day(volume, indoor_temp, target_rh, out_T, out_RH, vent_level)
+
+    infiltration_lpd = infiltration_l_per_day(volume, indoor_temp, target_rh, out_T, out_RH, vent_level, ach_value=ach)
     occupant_lpd = max(0.0, people_count * 80.0 * 24.0 / 1000.0) if people_count > 0 else 0.0
     pool_lpd = pool_evap_l_per_day(pool_area_m2, water_temp_c or 28.0, indoor_temp, target_rh, mode="standard", air_movement_level=air_movement_level, activity=pool_activity, covered_h_per_day=covered_hours_per_day, cover_reduction=cover_reduction) if pool_area_m2 > 0 else 0.0
     other_lpd = max(0.0, additional_loads_lpd)
-    
+
     steady_total_lpd = round(infiltration_lpd + occupant_lpd + pool_lpd + other_lpd, 1)
     latent_kw = round((steady_total_lpd / 24.0) * 0.694, 1)
     pulldown_l = pulldown_air_l(volume, indoor_temp, current_rh, target_rh) if target_rh < current_rh else 0.0
-    
-    # Components and plot data... (keep as-is)
-    
+
     return {
         "inputs": {
             "current_rh": current_rh,
@@ -726,6 +703,105 @@ def retrieve_relevant_docs(query: str, k: int = 3) -> Dict:
     docs = vectorstore.similarity_search(query, k=k)
     formatted = "\n\n".join([f"[Source: {d.metadata.get('source', 'Unknown')}] {d.page_content}" for d in docs])
     return {"formatted_docs": formatted, "chunks": [d.page_content for d in docs]}
+
+def get_tool_definitions() -> List[Dict]:
+    return [
+        {"type": "function", "function": {"name": "retrieve_relevant_docs", "description": "Retrieve relevant docs", "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "k": {"type": "integer", "default": 3}}, "required": ["query"]}}},
+        {"type": "function", "function": {"name": "calculate_dehum_load", "description": "Calculate dehum load", "parameters": {"type": "object", "properties": {"current_rh": {"type": "number"}, "target_rh": {"type": "number"}, "indoor_temp": {"type": "number"}, "length": {"type": "number"}, "width": {"type": "number"}, "height": {"type": "number"}, "volume_m3": {"type": "number"}, "ach": {"type": "number"}, "people_count": {"type": "integer"}, "pool_area_m2": {"type": "number"}, "water_temp_c": {"type": "number"}, "pool_activity": {"type": "string"}, "vent_factor": {"type": "number"}, "additional_loads_lpd": {"type": "number"}, "air_velocity_mps": {"type": "number"}, "outdoor_temp_c": {"type": "number"}, "outdoor_rh_percent": {"type": "number"}, "covered_hours_per_day": {"type": "number"}, "cover_reduction": {"type": "number"}, "air_movement_level": {"type": "string"}, "vent_level": {"type": "string"}, "mode": {"type": "string"}}, "required": ["current_rh", "target_rh", "indoor_temp"]}}},
+        {"type": "function", "function": {"name": "pulldown_air_l", "description": "Pulldown air load", "parameters": {"type": "object", "properties": {"volume_m3": {"type": "number"}, "temp_c": {"type": "number"}, "current_rh": {"type": "number"}, "target_rh": {"type": "number"}}, "required": ["volume_m3", "temp_c", "current_rh", "target_rh"]}}},
+        {"type": "function", "function": {"name": "pool_evap_l_per_day", "description": "Pool evaporation load", "parameters": {"type": "object", "properties": {"area_m2": {"type": "number"}, "water_c": {"type": "number"}, "air_c": {"type": "number"}, "rh_target_pct": {"type": "number"}, "mode": {"type": "string"}, "air_movement_level": {"type": "string"}, "activity": {"type": "string"}, "covered_h_per_day": {"type": "number"}, "cover_reduction": {"type": "number"}, "custom_params": {"type": "object"}}, "required": ["area_m2", "water_c", "air_c", "rh_target_pct"]}}},
+        {"type": "function", "function": {"name": "infiltration_l_per_day", "description": "Infiltration load", "parameters": {"type": "object", "properties": {"volume_m3": {"type": "number"}, "indoor_c": {"type": "number"}, "rh_target_pct": {"type": "number"}, "outdoor_c": {"type": "number"}, "rh_out_pct": {"type": "number"}, "vent_level": {"type": "string"}, "ach_value": {"type": "number"}}, "required": ["volume_m3", "indoor_c", "rh_target_pct", "outdoor_c", "rh_out_pct"]}}}
+    ]
+
+def get_tools_for() -> List[Dict]:
+    """Expose all tools and let the LLM decide which to call."""
+    return get_tool_definitions()
+
+def invoke_tool(func_name: str, func_args: Dict, session: Dict) -> Dict:
+    session.setdefault("_turn_calls", set())
+    cache_key = f"{func_name}|{json.dumps(func_args, sort_keys=True)}"
+    if cache_key in session["_turn_calls"]:
+        return {"note": "skipped_duplicate"}
+    session["_turn_calls"].add(cache_key)
+    tool_map = {
+        "retrieve_relevant_docs": retrieve_relevant_docs,
+        "calculate_dehum_load": compute_load_components,
+        "pulldown_air_l": pulldown_air_l,
+        "pool_evap_l_per_day": pool_evap_l_per_day,
+        "infiltration_l_per_day": infiltration_l_per_day,
+    }
+    func = tool_map.get(func_name)
+    if not func:
+        raise ValueError(f"Unknown tool: {func_name}")
+    if cache_key in session["cache"]:
+        return session["cache"][cache_key]
+    result = func(**func_args)
+    session["cache"][cache_key] = result
+    return result
+
+# WP session helpers
+def wp_get_nonce() -> str:
+    try:
+        resp = requests.get(f"{WORDPRESS_URL}/wp-admin/admin-ajax.php?action=dehum_get_nonce", headers={"Authorization": f"Bearer {WP_API_KEY}"}, timeout=5)
+        if resp.status_code == 200 and resp.json().get("success"):
+            return resp.json()["data"]["nonce"]
+    except:
+        return "fallback_nonce"
+
+def wp_load_session(session_id: str) -> Dict | None:
+    nonce = wp_get_nonce()
+    try:
+        resp = requests.post(f"{WORDPRESS_URL}/wp-admin/admin-ajax.php", data={"action": "dehum_get_session", "session_id": session_id, "nonce": nonce}, headers={"Authorization": f"Bearer {WP_API_KEY}"}, timeout=5)
+        if resp.status_code == 200 and resp.json().get("success"):
+            history_data = resp.json()["data"]["history"]
+            return {"history": [{"role": "user" if m["message"] else "assistant", "content": m["message"] or m["response"], "timestamp": m["timestamp"]} for m in history_data], "cache": {}, "last_activity": datetime.now()}
+    except Exception as e:
+        logger.debug("WP load error: %s", e)
+    return None
+
+def wp_save_session(session: Dict) -> None:
+    nonce = wp_get_nonce()
+    wp_history = [{"message": h["content"] if h["role"] == "user" else "", "response": h["content"] if h["role"] == "assistant" else "", "user_ip": "", "timestamp": h["timestamp"]} for h in session["history"]]
+    try:
+        requests.post(f"{WORDPRESS_URL}/wp-admin/admin-ajax.php", data={"action": "dehum_save_session", "session_id": session["id"], "history": json.dumps(wp_history), "nonce": nonce}, headers={"Authorization": f"Bearer {WP_API_KEY}"}, timeout=5)
+    except Exception as e:
+        logger.debug("WP save error: %s", e)
+
+# RAG (from rag_pipeline.py; simplified to functions)
+def load_documents() -> List[Document]:
+    docs_dir = os.path.join(os.path.dirname(__file__), "product_docs")
+    documents = []
+    for file_path in os.listdir(docs_dir):
+        path = os.path.join(docs_dir, file_path)
+        if file_path.endswith('.txt'):
+            loader = TextLoader(path, encoding='utf-8')
+        elif file_path.endswith('.pdf'):
+            loader = PyMuPDFLoader(path)
+        else:
+            continue
+        docs = loader.load()
+        for doc in docs:
+            doc.metadata['source'] = file_path
+        documents.extend(docs)
+    return documents
+
+def chunk_documents(documents: List[Document]) -> List[Document]:
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=RAG_CHUNK_SIZE, chunk_overlap=RAG_CHUNK_OVERLAP)
+    return text_splitter.split_documents(documents)
+
+def build_index():
+    embeddings = OpenAIEmbeddings(model="text-embedding-ada-002", openai_api_key=OPENAI_API_KEY)
+    documents = load_documents()
+    chunks = chunk_documents(documents)
+    vectorstore = FAISS.from_documents(chunks, embeddings)
+    vectorstore.save_local(os.path.join(os.path.dirname(__file__), "faiss_index"))
+
+def load_vectorstore() -> Any:
+    embeddings = OpenAIEmbeddings(model="text-embedding-ada-002", openai_api_key=OPENAI_API_KEY)
+    index_dir = os.path.join(os.path.dirname(__file__), "faiss_index")
+    if not os.path.exists(index_dir):
+        raise FileNotFoundError(f"FAISS index directory missing: {index_dir}. Build the index first.")
+    return FAISS.load_local(index_dir, embeddings, allow_dangerous_deserialization=True)
 
 # LLM completion with retry (from engine.py; inlined)
 def is_retryable_error(error: Exception) -> bool:

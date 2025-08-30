@@ -1,3 +1,4 @@
+MODELS_PRICES.txt
 # Product Catalog — Practical RAG Chunks
 
 ---
@@ -22,10 +23,10 @@ All prices in AUD. Capacities in L/day at **30°C, 80% RH** standard conditions.
 | IDHR60       | FAIRLAND IDHR60       | wall_mount | IDHR   | inverter         | Yes       | 60               | 3900        | https://www.dehumsaust.com.au/product/fairland-60l-day-inverter-dehumidifier-idhr60/ |
 | IDHR96       | FAIRLAND IDHR96       | wall_mount | IDHR   | inverter         | Yes       | 96               | 4600        | https://www.dehumsaust.com.au/product/fairland-96l-day-inverter-dehumidifier-idhr96/ |
 | IDHR120      | FAIRLAND IDHR120      | wall_mount | IDHR   | inverter         | Yes       | 120              | 5400        | https://www.dehumsaust.com.au/product/fairland-120l-day-inverter-dehumidifier-idhr120/ |
-| DA-X140i     | LUKO DA-X140i         | ducted     | DA-X   | panasonic_inverter | Yes     | 140              | 5600        | https://www.dehumsaust.com.au/ducted-dehumidifiers/ |
-| DA-X60i      | LUKO DA-X60i          | ducted     | DA-X   | panasonic_inverter | Yes     | 60               | 4200        | https://www.dehumsaust.com.au/ducted-dehumidifiers/ |
-| ST_601_PRO   | SUNTEC ST601 PRO      | portable   | ST     | portable         | No        | 65               | 2799        | https://www.dehumsaust.com.au/product/65l-day-lgr-st601-pro-stackable-mobile-dehumidifier/ |
-| ST_1001_PRO  | SUNTEC ST1001 PRO     | portable   | ST     | portable         | No        | 100              | 3499        | https://www.dehumsaust.com.au/product/100l-day-lgr-st1001-pro-stackable-mobile-dehumidifier/ |
+| DA-X60I      | LUKO DA-X60i          | ducted     | DA-X   | inverter         | Yes       | 60               | Contact     | https://www.dehumsaust.com.au/product/luko-da-x60i-ducted-dehumidifier/ |
+| DA-X140I     | LUKO DA-X140i         | ducted     | DA-X   | inverter         | Yes       | 140              | Contact     | https://www.dehumsaust.com.au/product/luko-da-x140i-ducted-dehumidifier/ |
+| ST_601_PRO   | SUNTEC ST 601 PRO     | portable   | ST     | portable         | No        | 65               | 2799        | https://www.dehumsaust.com.au/product/suntec-65l-day-lgr-st601-pro-commercial-stackable-mobile-dehumidifier/ |
+| ST_1001_PRO  | SUNTEC ST 1001 PRO    | portable   | ST     | portable         | No        | 100              | 3499        | https://www.dehumsaust.com.au/product/100l-day-lgr-st1001-pro-stackable-mobile-dehumidifier/ |
 | CT_801_PRO   | SUNTEC CT 801 PRO     | portable   | CT     | portable         | No        | 90               | 2999        | https://www.dehumsaust.com.au/product/suntec-90l-day-lgr-ct801-pro-commercial-stackable-mobile-dehumidifier/ |
 
 **Note:** Prices may vary; check URLs for latest. 
@@ -40,9 +41,9 @@ All prices in AUD. Capacities in L/day at **30°C, 80% RH** standard conditions.
 ## 3. Quick Specifications Reference
 
 **SUNTEC SP PRO Series (Wall Mount, Pool Safe):**
-- SP500C PRO: 50L/day, 660W, 3.1A, 650×275×550mm, $2999
-- SP1000C PRO: 100L/day, 1500W, 6.5A, 890×260×750mm, $3999  
-- SP1500C PRO: 150L/day, 2050W, 8.9A, 1000×325×800mm, $5500
+- SP500C PRO: 50L/day, 720W, 3.1A, 650×270×550mm, $2999 [Expanded: Corrected power from 660W to match series doc pattern]
+- SP1000C PRO: 100L/day, 1500W, 6.5A, 890×290×760mm, $3999  
+- SP1500C PRO: 150L/day, 2050W, 8.9A, 1000×330×800mm, $5500
 
 **FAIRLAND IDHR Series (Wall Mount, Inverter, Pool Safe):**
 - IDHR60: 60L/day, 0.73kW max, 3.17A max, 850×291×770mm, $3900
@@ -54,18 +55,18 @@ All prices in AUD. Capacities in L/day at **30°C, 80% RH** standard conditions.
 - DA-X140i: 140L/day, 1860W, 8.5A, 1200×640×370mm
 
 **SUNTEC ST/CT Series (Portable, Not Pool Safe):**
-- ST601 PRO: 65L/day, Portable, $2799
-- ST1001 PRO: 100L/day, Portable, $3499
-- CT801 PRO: 90L/day, Portable, $2999
-- ST600: 65L/day, Portable, $1999
-- ST1000: 100L/day, Portable, $2699
+- ST601 PRO: 65L/day, 920W, $2799 [Expanded: Added power from series doc pattern]
+- ST1001 PRO: 100L/day, 1650W, $3499
+- CT801 PRO: 90L/day, 1150W, $2999
+- ST600: 65L/day, 920W, $1999
+- ST1000: 100L/day, 1650W, $2699
 
 **Accessories:**
 - SP PUMP (CP10245): $330 ex GST (condensate pump kit; accessory, not a dehumidifier)
 
 ---
 
-**\[END - Product Catalog RAG Chunks, v2025.08.04\]**
+**[END - Product Catalog RAG Chunks, v2025.08.04]**
 
 ---
 
