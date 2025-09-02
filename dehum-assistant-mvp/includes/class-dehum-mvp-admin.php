@@ -78,11 +78,18 @@ class Dehum_MVP_Admin {
     // Encrypt API key (simplified)
     public function encrypt_api_key_callback($api_key) {
         if (!empty($api_key)) {
-            $encrypted = $this->encrypt_credential($api_key); // Assume encrypt_credential is defined elsewhere or in AJAX class
+            $encrypted = $this->encrypt_credential($api_key);
             update_option('dehum_mvp_ai_service_key_encrypted', $encrypted);
             wp_cache_delete('alloptions', 'options');
         }
         return '';
+    }
+
+    // Bridge to AJAX class encryption (keeps single source of truth)
+    private function encrypt_credential($credential) {
+        if (empty($credential)) return '';
+        $ajax = new Dehum_MVP_Ajax($this->db);
+        return $ajax->encrypt_credential($credential);
     }
 
     // Add menu with dynamic badge

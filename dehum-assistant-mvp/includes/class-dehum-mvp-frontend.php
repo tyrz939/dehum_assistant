@@ -41,12 +41,16 @@ class Dehum_MVP_Frontend {
 
     $js_path = DEHUM_MVP_PLUGIN_PATH . 'assets/js/chat.js';
     wp_enqueue_script('dehum-chat', DEHUM_MVP_PLUGIN_URL . 'assets/js/chat.js', ['jquery'], filemtime($js_path) ?: DEHUM_MVP_VERSION, true);
+    $ai_url = rtrim((string) get_option('dehum_mvp_ai_service_url'), '/');
+    $auth = $this->get_decrypted_auth();
     wp_localize_script('dehum-chat', 'dehumMVP', [
       'ajaxUrl' => admin_url('admin-ajax.php'),
       'nonce' => wp_create_nonce(DEHUM_MVP_CHAT_NONCE),
       'saveNonce' => wp_create_nonce('dehum_mvp_save_conversation'),
       'maxLen' => DEHUM_MVP_MESSAGE_MAX_LENGTH ?? 500,
       'isLoggedIn' => is_user_logged_in() ? 1 : 0,
+      'aiUrl' => $ai_url,
+      'auth' => $auth,
     ]);
   }
 
@@ -55,7 +59,7 @@ class Dehum_MVP_Frontend {
 
     $title = apply_filters('dehum_mvp_title', 'Dehumidifiers Australia Assistant');
     $placeholder = apply_filters('dehum_mvp_placeholder', 'Ask about dehumidifier sizing...');
-    $disclaimer = apply_filters('dehum_mvp_disclaimer', 'BETA TEST  v0.5: AI can be wrong. Please verify important information.');
+    $disclaimer = apply_filters('dehum_mvp_disclaimer', 'BETA TEST  v0.6: AI can be wrong. Please verify important information.');
     $maxLen = defined('DEHUM_MVP_MESSAGE_MAX_LENGTH') ? DEHUM_MVP_MESSAGE_MAX_LENGTH : 500;
 
     echo <<<HTML

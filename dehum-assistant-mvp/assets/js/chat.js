@@ -22,6 +22,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let isRestoring = false;
   let isStreaming = false;
   let currentSource = null;
+  let ws = null;
+  let wsUrl = null;
+  const toolPanels = new WeakMap();
+  const thinkingMap = new WeakMap();
+  const fragmentsMap = new WeakMap(); // ordered [{ type: 'text', value }, { type: 'tool', html }]
 
   // Smooth auto-scroll helpers
   const NEAR_BOTTOM_THRESHOLD = 80; // px from bottom considered "near bottom"
@@ -82,6 +87,10 @@ document.addEventListener('DOMContentLoaded', () => {
       try { currentSource.close(); } catch (_) { }
       currentSource = null;
     }
+    if (ws) {
+      try { ws.close(); } catch (_) { }
+      ws = null;
+    }
     setStreamingUI(false);
   }
 
@@ -134,7 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target.closest('#dehum-mvp-chat-button')) {
       modal.classList.add('show');
       modal.setAttribute('aria-hidden', 'false');
-      if (!messages.innerHTML.trim()) {
+      if (messages.children.length === 0) {
         // Load persisted history
         fetch(dehumMVP.ajaxUrl, {
           method: 'POST',
@@ -246,76 +255,109 @@ document.addEventListener('DOMContentLoaded', () => {
     input.style.height = 'auto';
     charCount.textContent = `0/${dehumMVP.maxLen}`;
 
-    // Stream
-    const params = new URLSearchParams({
-      action: 'dehum_stream_response',
-      message: text,
-      session_id: sessionId,
-      nonce: dehumMVP.nonce
-    });
-    const source = new EventSource(`${dehumMVP.ajaxUrl}?${params.toString()}`);
-    currentSource = source;
-    setStreamingUI(true);
-
+    // Prefer WebSocket streaming; fallback to SSE proxy if needed
+    const tempDiv = addMessage('assistant', '');
+    toolPanels.set(tempDiv, []);
+    thinkingMap.set(tempDiv, false);
+    fragmentsMap.set(tempDiv, []);
     let responseText = '';
     let toolContent = '';
     let isDone = false;
-    const tempDiv = addMessage('assistant', ''); // Streaming placeholder
-    source.onmessage = (e) => {
-      if (e.data === '[DONE]') {
-        isDone = true;
-        try { source.close(); } catch (_) { }
-        saveConversationWithRetry(text, responseText + (toolContent ? '\n[Tool Results]\n' + toolContent : ''));
-        finalizeStream();
-        return;
-      }
+    setStreamingUI(true);
+
+    // Removed SSE fallback – WS only. Show a friendly error if WS cannot be used.
+
+    function wsUrlFor() {
       try {
-        const data = JSON.parse(e.data);
-        if (data.type === 'done') { // Or your final signal
-          isDone = true;
-          try { source.close(); } catch (_) { }
-          saveConversationWithRetry(text, responseText + (toolContent ? '\n[Tool Results]\n' + toolContent : ''));
-          finalizeStream();
-          return;
-        }
-        if (data.type === 'response') {
-          responseText += data.content || '';
-        } else if (data.type === 'tool_start') {
-          toolContent += `Starting ${data.total_tools} tool${data.total_tools > 1 ? 's' : ''}...\n`;
-        } else if (data.type === 'tool_progress') {
-          toolContent += `${data.message || `Executing tool ${data.tool_index}: ${data.tool_name}`}\n`;
-        } else if (data.type === 'tool_result') {
-          toolContent += `Result for ${data.tool_name}: ${JSON.stringify(data.data, null, 2)}\n\n`;
-        }
-        // Persist tool details if any exist
-        const hasTool = toolContent.trim().length > 0;
-        updateMessage(tempDiv, responseText, toolContent, hasTool);
-        smartScroll(tempDiv);
-      } catch (err) {
-        responseText += e.data;
-        updateMessage(tempDiv, responseText, '', false);
+        const u = new URL(dehumMVP.aiUrl);
+        u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
+        u.pathname = (u.pathname.replace(/\/$/, '')) + '/ws';
+        const auth = dehumMVP.auth ? `?auth=${encodeURIComponent(dehumMVP.auth)}` : '';
+        return u.toString() + auth;
+      } catch (_) {
+        return null;
       }
-    };
-    source.onopen = () => { };
-    source.onerror = (e) => {
-      try { source.close(); } catch (_) { }
-      if (isDone) return; // Normal closure
-      updateMessage(tempDiv, 'Stream failed. Please try again.', '', false);
+    }
+
+    function wireHandlers(api, source) {
+      if (source instanceof WebSocket) {
+        source.onmessage = (e) => {
+          try { api.onChunk(JSON.parse(e.data)); } catch { /* ignore */ }
+        };
+        source.onerror = () => { if (!isDone) api.onError(); };
+        source.onclose = () => { if (!isDone) api.onError(); };
+      }
+    }
+
+    function handleData(data) {
+      if (data.metadata && data.metadata.phase === 'tools') {
+        if (data.metadata.status === 'starting_tools') {
+          thinkingMap.set(tempDiv, true);
+        } else if (data.metadata.status === 'tools_completed') {
+          thinkingMap.set(tempDiv, false);
+        }
+      }
+      if (data.type === 'done') { isDone = true; finalize(); return; }
+      if (data.type === 'response') {
+        const textChunk = (data.content || '');
+        responseText += textChunk;
+        const frags = fragmentsMap.get(tempDiv) || [];
+        frags.push({ type: 'text', value: textChunk });
+        fragmentsMap.set(tempDiv, frags);
+      } else if (data.type === 'tool_result') {
+        const prettyStr = (() => { try { return JSON.stringify(data.data, null, 2); } catch (_) { return String(data.data || ''); } })();
+        const duration = data.metadata && typeof data.metadata.duration_ms === 'number' ? `${data.metadata.duration_ms} ms` : '';
+        const safe = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        let summary = data.tool_name;
+        try {
+          if (data.tool_name === 'retrieve_relevant_docs') {
+            const n = (data.data && (data.data.num_chunks || (data.data.chunks && data.data.chunks.length))) || 0;
+            if (n) summary += ` • ${n} chunk${n > 1 ? 's' : ''}`;
+          }
+          if (data.data && typeof data.data.total_lpd !== 'undefined') {
+            summary += ` • ${data.data.total_lpd} L/day`;
+          }
+        } catch (_) { }
+        if (duration) summary += ` • ${duration}`;
+        const panel = `<details class="dehum-tool-panel"><summary>${summary}</summary><pre class="dehum-tool-pre">${safe(prettyStr)}</pre></details>`;
+        const frags = fragmentsMap.get(tempDiv) || [];
+        frags.push({ type: 'tool', html: panel });
+        fragmentsMap.set(tempDiv, frags);
+      }
+      updateMessage(tempDiv, responseText);
+      smartScroll(tempDiv);
+    }
+
+    function finalize() {
+      try { if (ws) ws.close(); } catch (_) { }
+      try { if (currentSource) currentSource.close(); } catch (_) { }
+      if (responseText && responseText.trim().length > 0) {
+        saveConversationWithRetry(text, responseText);
+      }
       finalizeStream();
-      const retryBtn = document.createElement('button');
-      retryBtn.className = 'dehum-retry-btn';
-      retryBtn.textContent = 'Retry';
-      retryBtn.addEventListener('click', () => {
-        tempDiv.remove();
-        sendMessage();
-      });
-      tempDiv.querySelector('.dehum-message__bubble').appendChild(retryBtn);
-    };
-    source.addEventListener('final', () => {
-      try { source.close(); } catch (_) { }
-      saveConversationWithRetry(text, responseText + toolContent);
+    }
+
+    function fail() {
+      fragmentsMap.delete(tempDiv);
+      updateMessage(tempDiv, 'Connection failed. Please try again later.', '', false, false);
       finalizeStream();
-    });
+    }
+
+    wsUrl = wsUrlFor();
+    if (wsUrl) {
+      try {
+        ws = new WebSocket(wsUrl);
+        ws.onopen = () => {
+          ws.send(JSON.stringify({ session_id: sessionId, message: text }));
+        };
+        wireHandlers({ onChunk: handleData, onClose: finalize, onError: () => { try { ws.close(); } catch (_) { } fail(); } }, ws);
+      } catch (_) {
+        fail();
+      }
+    } else {
+      updateMessage(tempDiv, 'Chat service not configured. Please contact support.', '', false, false);
+      finalizeStream();
+    }
   }
 
   function parseResponse(text) {
@@ -363,41 +405,40 @@ document.addEventListener('DOMContentLoaded', () => {
     return div;
   }
 
-  function updateMessage(div, main, tool, hasTool) {
+  function updateMessage(div, main, tool, hasTool, persist = true) {
     const bubble = div.querySelector('.dehum-message__bubble');
-    let html = '';
-    if (hasTool) {
-      html += renderTool(tool);
+    // If we have fragments, render in order and persist text-only
+    const frags = fragmentsMap.get(div);
+    if (Array.isArray(frags) && frags.length > 0) {
+      let html = '';
+      let textOnly = '';
+      if (thinkingMap.get(div)) html += '<div class="dehum-tool-thinking">Working…</div>';
+      for (const frag of frags) {
+        if (frag.type === 'text') {
+          textOnly += frag.value || '';
+          html += parseMarkdown(frag.value || '');
+        } else if (frag.type === 'tool') {
+          html += frag.html || '';
+        }
+      }
+      bubble.innerHTML = html;
+      addCopyButton(bubble, textOnly.trim());
+      if (!isRestoring && persist) updateLastAssistant(textOnly);
+      return;
     }
+    // Fallback: legacy path
+    let html = '';
+    if (thinkingMap.get(div)) html += '<div class="dehum-tool-thinking">Working…</div>';
+    if (hasTool) html += renderTool(tool);
+    const panels = toolPanels.get(div) || [];
+    if (panels.length) html += panels.join('');
     html += parseMarkdown(main);
     bubble.innerHTML = html;
-    addCopyButton(bubble, main.trim());
-    if (!isRestoring) updateLastAssistant(main);
+    addCopyButton(bubble, main ? main.trim() : '');
+    if (!isRestoring && persist && main) updateLastAssistant(main);
   }
 
-  function renderTool(toolText) {
-    const safe = (s) => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    // Try to format lines into readable blocks
-    const lines = (toolText || '').trim().split(/\n+/).filter(Boolean);
-    const formatted = lines.map(line => {
-      // Highlight headings and tool names
-      if (/^Starting /i.test(line) || /^Result for /i.test(line) || /^Executing /i.test(line)) {
-        return `<div class="dehum-tool-line"><strong>${safe(line)}</strong></div>`;
-      }
-      // Pretty-print JSON blocks if present
-      const m = line.match(/^(Result for [^:]+: )(.+)$/);
-      if (m) {
-        let jsonPart = safe(m[2]);
-        return `<div class="dehum-tool-line"><em>${safe(m[1])}</em><pre class="dehum-tool-pre">${jsonPart}</pre></div>`;
-      }
-      return `<div class="dehum-tool-line">${safe(line)}</div>`;
-    }).join('');
-
-    return `<details class="dehum-tool-details">
-      <summary>Tool Use <span class="material-symbols-outlined">build</span></summary>
-      <div class="dehum-tool-content">${formatted}</div>
-    </details>`;
-  }
+  function renderTool(toolText) { return ''; }
 
   function addCopyButton(bubble, content) {
     if (!content) return;

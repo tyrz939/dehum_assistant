@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi import WebSocket, WebSocketDisconnect
 import requests
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential_jitter
 import math
@@ -43,6 +44,7 @@ RAG_CHUNK_OVERLAP = 100
 RAG_TOP_K = 7
 GPT5_REASONING_EFFORT = "minimal"
 GPT5_VERBOSITY = "low"
+MAX_TOOL_CALLS_PER_TURN = 4
 
 # Logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -120,6 +122,53 @@ async def chat_stream(request: Dict, auth: str = Depends(check_api_key)):
                 del session["_turn_calls"]
 
     return StreamingResponse(generate_stream(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "Connection": "keep-alive"})
+
+@app.websocket("/ws")
+async def websocket_chat(websocket: WebSocket):
+    # Simple auth via query param to support browsers
+    auth_q = websocket.query_params.get("auth", "")
+    if API_KEY and auth_q != f"Bearer {API_KEY}":
+        await websocket.close(code=1008)
+        return
+    await websocket.accept()
+    try:
+        while True:
+            raw = await websocket.receive_text()
+            try:
+                payload = json.loads(raw)
+            except Exception:
+                await websocket.send_text(json.dumps({"type": "error", "message": "invalid_json"}))
+                continue
+            session_id = payload.get("session_id")
+            message = payload.get("message")
+            if not session_id or not isinstance(message, str) or not message:
+                await websocket.send_text(json.dumps({"type": "error", "message": "invalid_payload"}))
+                continue
+            session = await get_or_create_session(session_id)
+            session["history"].append({"role": "user", "content": message, "timestamp": datetime.now().isoformat()})
+            messages = prepare_messages_streaming(session)
+            last_user = session["history"][-1]["content"]
+            try:
+                async for chunk in process_chat_streaming(messages, session, session_id, last_user):
+                    await websocket.send_text(json.dumps(chunk))
+                await websocket.send_text(json.dumps({"type": "done"}))
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                logger.exception("WS streaming error: %s", e)
+                try:
+                    await websocket.send_text(json.dumps({"type": "error", "message": "streaming_error"}))
+                except Exception:
+                    pass
+            finally:
+                update_session(session)
+                if "_turn_calls" in session:
+                    try:
+                        del session["_turn_calls"]
+                    except Exception:
+                        pass
+    except WebSocketDisconnect:
+        return
 
 @app.post("/clear_session")
 async def clear_session(request: Dict, auth: str = Depends(check_api_key)):
@@ -215,7 +264,7 @@ async def process_chat_streaming(messages: List[Dict], session: Dict, session_id
 
         elif current_phase == "recommendations":
             tools = get_tools_for()
-            stream = await completion(messages, 16000, tools=tools, tool_choice="auto", stream=True)
+            stream = await completion(messages, 16000, tools=tools, tool_choice="none", stream=True)
             async for chunk in stream:
                 if chunk.choices[0].delta.content:
                     yield {"type": "response", "content": chunk.choices[0].delta.content, "session_id": session_id, "timestamp": datetime.now().isoformat(), "is_streaming_chunk": True, "metadata": {"phase": "recommendations"}}
@@ -232,7 +281,7 @@ async def get_ai_response(messages: List[Dict], session: Dict, last_user: str) -
         messages.append({"role": "assistant", "content": content})
         new_content = ""
         tools = get_tools_for()
-        gen = await completion(messages, 16000, tools=tools, tool_choice="auto", stream=True)
+        gen = await completion(messages, 16000, tools=tools, tool_choice="none", stream=True)
         async for chunk in gen:
             if chunk.choices[0].delta.content:
                 new_content += chunk.choices[0].delta.content
@@ -252,27 +301,53 @@ async def get_ai_response(messages: List[Dict], session: Dict, last_user: str) -
 
 async def stream_tools_phase(tool_calls: List[Dict], messages: List[Dict], session: Dict, session_id: str, last_user: str) -> AsyncGenerator:
     tool_results = []
+    total_calls = 0
 
-    yield {"type": "tool_start", "total_tools": len(tool_calls), "session_id": session_id, "timestamp": datetime.now().isoformat(), "metadata": {"phase": "tools", "status": "starting_tools"}}
+    def normalize_tool_calls(choice_msg) -> List[Dict]:
+        out = []
+        for tc in (choice_msg.tool_calls or []):
+            try:
+                out.append({
+                    "id": tc.id,
+                    "type": tc.type,
+                    "function": {"name": tc.function.name, "arguments": tc.function.arguments}
+                })
+            except Exception:
+                continue
+        return out
 
-    for i, tc in enumerate(tool_calls):
-        func_name = tc["function"]["name"]
-        func_args = json.loads(tc["function"]["arguments"])
-
-        yield {"type": "tool_progress", "tool_index": i + 1, "tool_name": func_name, "message": f"Executing tool {i+1}/{len(tool_calls)}: {func_name}", "session_id": session_id, "timestamp": datetime.now().isoformat(), "metadata": {"phase": "tools", "status": "executing_tool"}}
-
-        result = invoke_tool(func_name, func_args, session)
-        tool_results.append({"name": func_name, "args": func_args, "output": result})
-
-        content = json.dumps(result) if func_name != "retrieve_relevant_docs" else (result.get("formatted_docs") if "formatted_docs" in result else json.dumps(result))
-        messages.append({"role": "tool", "tool_call_id": tc["id"], "name": func_name, "content": content})
-
-        yield {"type": "tool_result", "tool_index": i + 1, "tool_name": func_name, "data": result, "session_id": session_id, "timestamp": datetime.now().isoformat(), "metadata": {"phase": "tools", "status": "tool_completed"}}
-
-        if func_name == "calculate_dehum_load":
-            session["state"]["last_load_lpd"] = result["total_lpd"]
-            session["state"]["last_inputs_summary"] = f"Vol={result['derived']['volume']}m³, Temp={func_args['indoor_temp']}°C, RH={func_args['target_rh']}%"
-            update_session(session)
+    current_batch = tool_calls
+    while current_batch and total_calls < MAX_TOOL_CALLS_PER_TURN:
+        yield {"type": "tool_start", "total_tools": len(current_batch), "session_id": session_id, "timestamp": datetime.now().isoformat(), "metadata": {"phase": "tools", "status": "starting_tools"}}
+        for i, tc in enumerate(current_batch):
+            if total_calls >= MAX_TOOL_CALLS_PER_TURN:
+                break
+            func_name = tc["function"]["name"]
+            func_args = json.loads(tc["function"]["arguments"])
+            t0 = datetime.now()
+            yield {"type": "tool_progress", "tool_index": i + 1, "tool_name": func_name, "message": f"Executing tool {i+1}/{len(current_batch)}: {func_name}", "session_id": session_id, "timestamp": datetime.now().isoformat(), "metadata": {"phase": "tools", "status": "executing_tool", "batch": total_calls // max(1, len(current_batch)) + 1}}
+            result = invoke_tool(func_name, func_args, session)
+            total_calls += 1
+            tool_results.append({"name": func_name, "args": func_args, "output": result})
+            content = json.dumps(result) if func_name != "retrieve_relevant_docs" else (result.get("formatted_docs") if "formatted_docs" in result else json.dumps(result))
+            messages.append({"role": "tool", "tool_call_id": tc["id"], "name": func_name, "content": content})
+            dt_ms = int((datetime.now() - t0).total_seconds() * 1000)
+            yield {"type": "tool_result", "tool_index": i + 1, "tool_name": func_name, "data": result, "session_id": session_id, "timestamp": datetime.now().isoformat(), "metadata": {"phase": "tools", "status": "tool_completed", "duration_ms": dt_ms}}
+            if func_name == "calculate_dehum_load":
+                session.setdefault("state", {})
+                session["state"]["last_load_lpd"] = result.get("total_lpd")
+                session["state"]["last_inputs_summary"] = f"Vol={result['derived']['volume']}m³, Temp={func_args['indoor_temp']}°C, RH={func_args['target_rh']}%"
+                update_session(session)
+        # Plan next batch if under cap
+        if total_calls >= MAX_TOOL_CALLS_PER_TURN:
+            break
+        planning = await completion(messages, 16000, tools=get_tool_definitions(), tool_choice="auto")
+        choice = planning.choices[0].message
+        next_calls = normalize_tool_calls(choice)
+        if not next_calls:
+            break
+        messages.append({"role": "assistant", "content": choice.content or "", "tool_calls": next_calls})
+        current_batch = next_calls
 
     yield {"type": "tool_end", "tool_results": tool_results, "session_id": session_id, "timestamp": datetime.now().isoformat(), "metadata": {"phase": "tools", "status": "tools_completed"}}
 
@@ -281,27 +356,49 @@ async def stream_tools_phase(tool_calls: List[Dict], messages: List[Dict], sessi
         preferred_types = detect_preferred_types(last_user)
         catalog_message = prepare_catalog_message(load_info, preferred_types)
         messages.append(catalog_message)
-        product_count = len(json.loads(catalog_message["content"].split("AVAILABLE_PRODUCT_CATALOG_JSON = ", 1)[1].split("\n", 1)[0])["catalog"])
-        yield {"type": "tool_progress", "message": f"Prepared catalog with {product_count} products", "session_id": session_id, "timestamp": datetime.now().isoformat(), "metadata": {"phase": "tools", "status": "catalog_prepared"}}
+        try:
+            product_count = len(json.loads(catalog_message["content"].split("AVAILABLE_PRODUCT_CATALOG_JSON = ", 1)[1].split("\n", 1)[0])["catalog"])
+            yield {"type": "tool_progress", "message": f"Prepared catalog with {product_count} products", "session_id": session_id, "timestamp": datetime.now().isoformat(), "metadata": {"phase": "tools", "status": "catalog_prepared"}}
+        except Exception:
+            pass
 
-    yield tool_results  # Signal tools done (not SSE)
+    yield tool_results
 
 async def process_tool_calls(tool_calls: List[Any], messages: List[Dict], session: Dict, last_user: str) -> tuple[List[Dict], AsyncGenerator[str, None]]:
-    tool_results = []
-    for tc in tool_calls:
-        func_name = tc.function.name
-        func_args = json.loads(tc.function.arguments)
-        result = invoke_tool(func_name, func_args, session)
-        tool_resu = {"name": func_name, "args": func_args, "output": result}
-        tool_results.append(tool_resu)
-        messages.append({"role": "tool", "tool_call_id": tc.id, "name": func_name, "content": json.dumps(result)})
+    tool_results: List[Dict] = []
+    total_calls = 0
 
-        if func_name == "calculate_dehum_load":
-            session["state"]["last_load_lpd"] = result["total_lpd"]
-            session["state"]["last_inputs_summary"] = f"Vol={result['derived']['volume']}m³, Temp={func_args['indoor_temp']}°C, RH={func_args['target_rh']}%"
-            update_session(session)
+    def run_batch(batch):
+        nonlocal total_calls
+        for tc in batch:
+            if total_calls >= MAX_TOOL_CALLS_PER_TURN:
+                break
+            func_name = tc.function.name
+            func_args = json.loads(tc.function.arguments)
+            result = invoke_tool(func_name, func_args, session)
+            tool_results.append({"name": func_name, "args": func_args, "output": result})
+            messages.append({"role": "tool", "tool_call_id": tc.id, "name": func_name, "content": json.dumps(result)})
+            total_calls += 1
+            if func_name == "calculate_dehum_load":
+                session.setdefault("state", {})
+                session["state"]["last_load_lpd"] = result.get("total_lpd")
+                session["state"]["last_inputs_summary"] = f"Vol={result['derived']['volume']}m³, Temp={func_args['indoor_temp']}°C, RH={func_args['target_rh']}%"
+                update_session(session)
 
-    # Add catalog if load info (align with streaming)
+    run_batch(tool_calls)
+
+    # plan up to cap
+    while total_calls < MAX_TOOL_CALLS_PER_TURN:
+        planning = await completion(messages, 16000, tools=get_tool_definitions(), tool_choice="auto")
+        choice = planning.choices[0].message
+        next_calls = choice.tool_calls or []
+        if not next_calls:
+            break
+        messages.append({"role": "assistant", "content": choice.content or "", "tool_calls": next_calls})
+        run_batch(next_calls)
+        if total_calls >= MAX_TOOL_CALLS_PER_TURN:
+            break
+
     load_info = get_latest_load_info(session)
     if load_info:
         preferred_types = detect_preferred_types(last_user)
@@ -309,7 +406,7 @@ async def process_tool_calls(tool_calls: List[Any], messages: List[Dict], sessio
         messages.append(catalog_message)
 
     tools = get_tools_for()
-    follow_up_gen = await completion(messages, 16000, tools=tools, tool_choice="auto", stream=True)
+    follow_up_gen = await completion(messages, 16000, tools=tools, tool_choice="none", stream=True)
     async def gen_content():
         async for chunk in follow_up_gen:
             if chunk.choices[0].delta.content:
@@ -348,17 +445,19 @@ def build_context_from_cache(cache: Dict) -> str:
     for key, result in cache.items():
         if 'calculate_dehum_load' in key:
             args = json.loads(key.split('|', 1)[1])
-            lines.append(f"Load Calc: Pool={args.get('pool_area_m2',0)}m², Load={result.get('latentLoad_L24h','N/A')}L/day")
+            lines.append(f"Load Calc: Pool={args.get('pool_area_m2',0)}m², Load={result.get('total_lpd','N/A')}L/day")
     return "\n".join(lines)
 
 def get_latest_load_info(session: Dict) -> Optional[Dict]:
-    for key, result in reversed(session["cache"].items()):
+    items = list(session.get("cache", {}).items())
+    for key, result in reversed(items):
         if 'calculate_dehum_load' in key:
             args = json.loads(key.split('|', 1)[1])
+            derived = result.get('derived', {}) if isinstance(result, dict) else {}
             return {
-                "latentLoad_L24h": result.get('latentLoad_L24h'),
-                "room_area_m2": result.get('room_area_m2'),
-                "volume": result.get('volume'),
+                "latentLoad_L24h": result.get('total_lpd'),
+                "room_area_m2": derived.get('room_area_m2'),
+                "volume": derived.get('volume'),
                 "pool_area_m2": args.get('pool_area_m2', 0),
                 "pool_required": args.get('pool_area_m2', 0) > 0,
                 "indoorTemp": args.get('indoor_temp', 30.0),
@@ -697,12 +796,46 @@ def compute_load_components(
 def calculate_dehum_load(**kwargs) -> Dict:
     return compute_load_components(**kwargs)
 
-def retrieve_relevant_docs(query: str, k: int = 3) -> Dict:
-    if not vectorstore:
+def retrieve_relevant_docs(query: str, k: int = 5) -> Dict:
+    vs = get_vectorstore()
+    if not vs:
         return {"formatted_docs": "RAG not available", "chunks": []}
-    docs = vectorstore.similarity_search(query, k=k)
-    formatted = "\n\n".join([f"[Source: {d.metadata.get('source', 'Unknown')}] {d.page_content}" for d in docs])
-    return {"formatted_docs": formatted, "chunks": [d.page_content for d in docs]}
+    # widen recall via Maximal Marginal Relevance and slight query expansion
+    q = query.strip()
+    expansions = [q]
+    if len(q.split()) <= 6 and ("spec" in q.lower() or "datasheet" in q.lower() or "manual" in q.lower()):
+        expansions.append(q + " full specifications table dimensions power airflow operating range refrigerant")
+    all_docs = []
+    for qx in expansions:
+        try:
+            docs = vs.max_marginal_relevance_search(qx, k=k, fetch_k=max(12, k * 3))
+        except Exception:
+            docs = vs.similarity_search(qx, k=k)
+        all_docs.extend(docs)
+    # dedupe by (source, content)
+    seen = set()
+    deduped = []
+    for d in all_docs:
+        key = (d.metadata.get('source', 'Unknown'), d.page_content[:256])
+        if key in seen: continue
+        seen.add(key)
+        deduped.append(d)
+        if len(deduped) >= k:
+            break
+    formatted = "\n\n".join([f"[Source: {d.metadata.get('source', 'Unknown')}] {d.page_content}" for d in deduped])
+    sources = []
+    sseen = set()
+    for d in deduped:
+        s = d.metadata.get('source', 'Unknown')
+        if s not in sseen:
+            sseen.add(s)
+            sources.append({"source": s})
+    return {
+        "formatted_docs": formatted,
+        "chunks": [d.page_content for d in deduped],
+        "num_chunks": len(deduped),
+        "sources": sources
+    }
 
 def get_tool_definitions() -> List[Dict]:
     return [
@@ -735,7 +868,11 @@ def invoke_tool(func_name: str, func_args: Dict, session: Dict) -> Dict:
         raise ValueError(f"Unknown tool: {func_name}")
     if cache_key in session["cache"]:
         return session["cache"][cache_key]
-    result = func(**func_args)
+    try:
+        result = func(**func_args)
+    except Exception as e:
+        logger.exception("Tool '%s' failed: %s", func_name, e)
+        result = {"error": str(e)}
     session["cache"][cache_key] = result
     return result
 
@@ -790,14 +927,14 @@ def chunk_documents(documents: List[Document]) -> List[Document]:
     return text_splitter.split_documents(documents)
 
 def build_index():
-    embeddings = OpenAIEmbeddings(model="text-embedding-ada-002", openai_api_key=OPENAI_API_KEY)
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-large", openai_api_key=OPENAI_API_KEY)
     documents = load_documents()
     chunks = chunk_documents(documents)
     vectorstore = FAISS.from_documents(chunks, embeddings)
     vectorstore.save_local(os.path.join(os.path.dirname(__file__), "faiss_index"))
 
 def load_vectorstore() -> Any:
-    embeddings = OpenAIEmbeddings(model="text-embedding-ada-002", openai_api_key=OPENAI_API_KEY)
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-large", openai_api_key=OPENAI_API_KEY)
     index_dir = os.path.join(os.path.dirname(__file__), "faiss_index")
     if not os.path.exists(index_dir):
         raise FileNotFoundError(f"FAISS index directory missing: {index_dir}. Build the index first.")
@@ -826,9 +963,19 @@ async def completion(messages: List[Dict], max_tokens: int, tools: Optional[List
 
 sessions: Dict[str, Dict] = {}
 products = load_product_database()
-vectorstore = load_vectorstore() if RAG_ENABLED else None
-if RAG_ENABLED and vectorstore is None:
-    raise RuntimeError("RAG is enabled but vectorstore failed to load.")
+_vectorstore_cache = None
+
+def get_vectorstore():
+    global _vectorstore_cache
+    if not RAG_ENABLED:
+        return None
+    if _vectorstore_cache is None:
+        try:
+            _vectorstore_cache = load_vectorstore()
+        except Exception as e:
+            logger.error("Failed to load vectorstore: %s", e)
+            _vectorstore_cache = None
+    return _vectorstore_cache
 
 # All features implemented - refactor complete
 
