@@ -5,6 +5,7 @@ import asyncio
 from datetime import datetime
 from typing import List, Dict, Any, AsyncGenerator, Optional
 from dotenv import load_dotenv
+from openai import AsyncOpenAI
 from fastapi import FastAPI, HTTPException, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -35,6 +36,10 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 WORDPRESS_URL = os.getenv("WORDPRESS_URL", "http://localhost")
 WP_API_KEY = API_KEY  # Use the same shared secret for WP callbacks
 STATE_MARKER = "[[DEHUM_STATE]]"
+
+# OpenAI client configuration (tunable for Render or slow networks)
+OPENAI_BASE_URL = (os.getenv("OPENAI_BASE_URL", "").strip() or None)
+OPENAI_TIMEOUT_S = float(os.getenv("OPENAI_TIMEOUT_S", "45"))
 
 # Fixed defaults (adjust in code if you truly need to change them across all envs)
 DEFAULT_MODEL = "gpt-5"
@@ -67,6 +72,9 @@ logger = logging.getLogger(__name__)
 # FastAPI app
 app = FastAPI(title="Dehumidifier AI", description="Lean AI for dehumidifier sizing", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
+# Reuse a single OpenAI async client (reduces DNS/connect overhead on Render)
+OPENAI_CLIENT = AsyncOpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL, timeout=OPENAI_TIMEOUT_S)
 
 def load_product_database() -> List[Dict]:
     """Load product database from JSON file"""
@@ -231,7 +239,11 @@ async def websocket_chat(websocket: WebSocket):
     await websocket.accept()
     try:
         while True:
-            raw = await websocket.receive_text()
+            try:
+                raw = await websocket.receive_text()
+            except (WebSocketDisconnect, RuntimeError):
+                # Client disconnected or socket no longer valid
+                break
             try:
                 payload = json.loads(raw)
             except Exception:
@@ -260,8 +272,11 @@ async def websocket_chat(websocket: WebSocket):
                 logger.exception("WS streaming error: %s", e)
                 try:
                     await websocket.send_text(json.dumps({"type": "error", "message": "streaming_error"}))
+                    await websocket.close(code=1011)
                 except Exception:
                     pass
+                # Exit receive loop after an unrecoverable streaming error
+                break
             finally:
                 update_session(session)
                 if "_turn_calls" in session:
@@ -1092,8 +1107,7 @@ async def completion(messages: List[Dict], max_tokens: int, tools: Optional[List
         params["tools"] = tools
     if tool_choice:
         params["tool_choice"] = tool_choice
-    from openai import AsyncOpenAI
-    client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+    client = OPENAI_CLIENT
     params["model"] = model
     params["max_completion_tokens"] = max_tokens
     params["reasoning_effort"] = GPT5_REASONING_EFFORT
