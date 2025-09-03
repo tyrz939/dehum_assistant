@@ -38,14 +38,20 @@ class Dehum_MVP_Ajax {
         add_action('wp_ajax_dehum_mvp_delete_session', [$this, 'handle_delete_session_ajax']);
         // New session sync handlers
         add_action('wp_ajax_dehum_get_session', [$this, 'handle_get_session']);
+        add_action('wp_ajax_nopriv_dehum_get_session', [$this, 'handle_get_session']);
         add_action('wp_ajax_dehum_save_session', [$this, 'handle_save_session']);
+        add_action('wp_ajax_nopriv_dehum_save_session', [$this, 'handle_save_session']);
         add_action('wp_ajax_dehum_get_nonce', [$this, 'handle_get_nonce']);
+        add_action('wp_ajax_nopriv_dehum_get_nonce', [$this, 'handle_get_nonce']);
         
         // New streaming support handlers
         add_action('wp_ajax_dehum_get_ai_service_url', [$this, 'handle_get_ai_service_url']);
         add_action('wp_ajax_nopriv_dehum_get_ai_service_url', [$this, 'handle_get_ai_service_url']);
         add_action('wp_ajax_dehum_get_ai_service_auth', [$this, 'handle_get_ai_service_auth']);
         add_action('wp_ajax_nopriv_dehum_get_ai_service_auth', [$this, 'handle_get_ai_service_auth']);
+        // Short-lived websocket token issuance
+        add_action('wp_ajax_dehum_get_ws_token', [$this, 'handle_get_ws_token']);
+        add_action('wp_ajax_nopriv_dehum_get_ws_token', [$this, 'handle_get_ws_token']);
         add_action('wp_ajax_dehum_mvp_save_conversation', [$this, 'handle_save_conversation']);
         add_action('wp_ajax_nopriv_dehum_mvp_save_conversation', [$this, 'handle_save_conversation']);
         add_action('wp_ajax_dehum_mvp_bulk_delete_sessions', [$this, 'handle_bulk_delete_sessions']);
@@ -419,17 +425,14 @@ class Dehum_MVP_Ajax {
     }
 
     public function handle_get_session() {
-        error_log('Dehum MVP: handle_get_session called');
         // Verify API key from headers
         $api_key = $this->decrypt_credential(get_option('dehum_mvp_ai_service_key_encrypted'));
-        error_log('Dehum MVP: Expected API key: ' . $api_key);
-        error_log('Dehum MVP: Received Authorization: ' . ($_SERVER['HTTP_AUTHORIZATION'] ?? 'none'));
         if (empty($_SERVER['HTTP_AUTHORIZATION']) || $_SERVER['HTTP_AUTHORIZATION'] !== 'Bearer ' . $api_key) {
             error_log('Dehum MVP: Authentication failed');
             wp_send_json_error(['message' => 'Authentication failed'], 403);
         }
         // Verify nonce and permissions
-        error_log('Dehum MVP: Received nonce: ' . ($_POST['nonce'] ?? 'none'));
+        //
         if (!wp_verify_nonce($_POST['nonce'], DEHUM_MVP_CHAT_NONCE)) {
             error_log('Dehum MVP: Nonce verification failed');
             wp_send_json_error(['message' => 'Security check failed'], 403);
@@ -442,17 +445,14 @@ class Dehum_MVP_Ajax {
         wp_send_json_success(['history' => $history]);
     }
     public function handle_save_session() {
-        error_log('Dehum MVP: handle_save_session called');
         // Verify API key from headers
         $api_key = $this->decrypt_credential(get_option('dehum_mvp_ai_service_key_encrypted'));
-        error_log('Dehum MVP: Expected API key: ' . $api_key);
-        error_log('Dehum MVP: Received Authorization: ' . ($_SERVER['HTTP_AUTHORIZATION'] ?? 'none'));
         if (empty($_SERVER['HTTP_AUTHORIZATION']) || $_SERVER['HTTP_AUTHORIZATION'] !== 'Bearer ' . $api_key) {
             error_log('Dehum MVP: Authentication failed');
             wp_send_json_error(['message' => 'Authentication failed'], 403);
         }
         // Verify nonce and permissions
-        error_log('Dehum MVP: Received nonce: ' . ($_POST['nonce'] ?? 'none'));
+        //
         if (!wp_verify_nonce($_POST['nonce'], DEHUM_MVP_CHAT_NONCE)) {
             error_log('Dehum MVP: Nonce verification failed');
             wp_send_json_error(['message' => 'Security check failed'], 403);
@@ -504,6 +504,40 @@ class Dehum_MVP_Ajax {
         }
         
         wp_send_json_success(['auth' => 'Bearer ' . $decrypted_key]);
+    }
+
+    /**
+     * Issue a short-lived, session-bound WS token without exposing the long-lived API key.
+     */
+    public function handle_get_ws_token() {
+        // Respect access control toggle
+        if (get_option('dehum_mvp_chat_logged_in_only') && !is_user_logged_in()) {
+            wp_send_json_error(['message' => 'Chat is currently restricted to logged-in users only.'], 403);
+        }
+        if (!wp_verify_nonce($_POST['nonce'] ?? '', DEHUM_MVP_CHAT_NONCE)) {
+            wp_send_json_error(['message' => 'Security check failed'], 403);
+        }
+        $session_id = sanitize_text_field($_POST['session_id'] ?? '');
+        if (empty($session_id)) {
+            wp_send_json_error(['message' => 'Missing session_id'], 400);
+        }
+
+        // Create an HMAC-signed token with expiry bound to this session and IP
+        $issued_at = time();
+        $expires_at = $issued_at + 300; // 5 minutes
+        // Do not bind token to client IP to avoid proxy/CDN mismatch issues
+        $payload = json_encode(['sid' => $session_id, 'iat' => $issued_at, 'exp' => $expires_at]);
+        // Use the AI service API key as shared secret
+        $api_key_encrypted = get_option('dehum_mvp_ai_service_key_encrypted');
+        $api_key = $this->decrypt_credential($api_key_encrypted);
+        if (empty($api_key)) {
+            wp_send_json_error(['message' => 'AI service not configured'], 500);
+        }
+        $b64 = rtrim(strtr(base64_encode($payload), '+/', '-_'), '=');
+        $sig = hash_hmac('sha256', $b64, $api_key);
+        $token = $b64 . '.' . $sig;
+
+        wp_send_json_success(['token' => $token, 'expires' => $expires_at]);
     }
 
     /**

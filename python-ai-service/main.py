@@ -4,16 +4,18 @@ import logging
 import asyncio
 from datetime import datetime
 from typing import List, Dict, Any, AsyncGenerator, Optional
-import litellm
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Depends, Header
+from fastapi import FastAPI, HTTPException, Depends, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi import WebSocket, WebSocketDisconnect
 import requests
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential_jitter
 import math
-import re
+import base64
+from urllib.parse import urlparse
+import time
+from collections import deque, defaultdict
 
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
@@ -32,12 +34,24 @@ if not API_KEY:
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 WORDPRESS_URL = os.getenv("WORDPRESS_URL", "http://localhost")
 WP_API_KEY = API_KEY  # Use the same shared secret for WP callbacks
+STATE_MARKER = "[[DEHUM_STATE]]"
 
 # Fixed defaults (adjust in code if you truly need to change them across all envs)
 DEFAULT_MODEL = "gpt-5"
 SERVICE_HOST = "0.0.0.0"
 SERVICE_PORT = 8000
-CORS_ORIGINS = ["*"]
+# Restrict CORS in production; set DEHUM_CORS_ORIGINS env to comma-separated domains
+_cors_env = os.getenv("DEHUM_CORS_ORIGINS", "")
+CORS_ORIGINS = [o.strip() for o in _cors_env.split(",") if o.strip()] or ["http://localhost", "https://localhost"]
+# Auto-include WordPress origin from WORDPRESS_URL
+try:
+    wp_parsed = urlparse(WORDPRESS_URL)
+    if wp_parsed.scheme and wp_parsed.netloc:
+        wp_origin = f"{wp_parsed.scheme}://{wp_parsed.netloc}"
+        if wp_origin not in CORS_ORIGINS:
+            CORS_ORIGINS.append(wp_origin)
+except Exception:
+    pass
 RAG_ENABLED = True
 RAG_CHUNK_SIZE = 700
 RAG_CHUNK_OVERLAP = 100
@@ -79,8 +93,52 @@ def check_api_key(authorization: str = Header(None)):
 async def root():
     return {"status": "healthy", "service": "dehumidifier-ai", "version": "1.0.0"}
 
+########################
+# Simple rate limiting  #
+########################
+RL_IP_PER_MIN = int(os.getenv("DEHUM_RL_IP_PER_MIN", "30"))
+RL_SESSION_PER_MIN = int(os.getenv("DEHUM_RL_SESSION_PER_MIN", "12"))
+WS_MAX_CONN_PER_IP = int(os.getenv("DEHUM_WS_MAX_CONN_PER_IP", "3"))
+WS_MAX_CONN_PER_SESSION = int(os.getenv("DEHUM_WS_MAX_CONN_PER_SESSION", "2"))
+_rl_ip: dict[str, deque] = defaultdict(deque)
+_rl_session: dict[str, deque] = defaultdict(deque)
+_ws_active_ip: dict[str, int] = defaultdict(int)
+_ws_active_session: dict[str, int] = defaultdict(int)
+_rl_lock = asyncio.Lock()
+
+def _now() -> float:
+    return time.time()
+
+async def _allow_http(ip: str, session_id: str) -> bool:
+    cutoff = _now() - 60.0
+    async with _rl_lock:
+        dq_ip = _rl_ip[ip]
+        while dq_ip and dq_ip[0] < cutoff:
+            dq_ip.popleft()
+        dq_s = _rl_session[session_id]
+        while dq_s and dq_s[0] < cutoff:
+            dq_s.popleft()
+        if len(dq_ip) >= RL_IP_PER_MIN or len(dq_s) >= RL_SESSION_PER_MIN:
+            return False
+        dq_ip.append(_now())
+        dq_s.append(_now())
+        return True
+
+def _client_ip_from_headers(headers: dict, fallback: str | None) -> str:
+    xfwd = headers.get("x-forwarded-for") or headers.get("X-Forwarded-For")
+    if xfwd:
+        return xfwd.split(",")[0].strip()
+    xreal = headers.get("x-real-ip") or headers.get("X-Real-IP")
+    if xreal:
+        return xreal.strip()
+    return fallback or "unknown"
+
 @app.post("/chat")
-async def chat(request: Dict, auth: str = Depends(check_api_key)):
+async def chat(request: Dict, req: Request, auth: str = Depends(check_api_key)):
+    ip = _client_ip_from_headers(req.headers, req.client.host if req.client else None)
+    session_id = request.get("session_id", "")
+    if not await _allow_http(ip, session_id or ip):
+        raise HTTPException(status_code=429, detail="rate_limited")
     session_id = request["session_id"]
     message = request["message"]
     session = await get_or_create_session(session_id)
@@ -95,10 +153,14 @@ async def chat(request: Dict, auth: str = Depends(check_api_key)):
     return {"message": response["content"], "session_id": session_id, "timestamp": datetime.now(), "function_calls": response.get("function_calls", [])}
 
 @app.post("/chat/stream")
-async def chat_stream(request: Dict, auth: str = Depends(check_api_key)):
+async def chat_stream(request: Dict, req: Request, auth: str = Depends(check_api_key)):
     async def generate_stream():
+        ip = _client_ip_from_headers(req.headers, req.client.host if req.client else None)
         session_id = request["session_id"]
         message = request["message"]
+        if not await _allow_http(ip, session_id or ip):
+            yield f"data: {json.dumps({'type':'error','message':'rate_limited'})}\n\n"
+            return
         session = await get_or_create_session(session_id)
         session["history"].append({"role": "user", "content": message, "timestamp": datetime.now().isoformat()})
         last_user = session["history"][-1]["content"]
@@ -125,11 +187,47 @@ async def chat_stream(request: Dict, auth: str = Depends(check_api_key)):
 
 @app.websocket("/ws")
 async def websocket_chat(websocket: WebSocket):
-    # Simple auth via query param to support browsers
-    auth_q = websocket.query_params.get("auth", "")
-    if API_KEY and auth_q != f"Bearer {API_KEY}":
+    # Validate Origin header against allowed CORS origins (best-effort) before accept
+    origin = websocket.headers.get("origin")
+    relax_origin = os.getenv("DEHUM_RELAX_WS_ORIGIN", "false").lower() == "true"
+    if not relax_origin and CORS_ORIGINS and origin and origin not in CORS_ORIGINS:
         await websocket.close(code=1008)
         return
+    # Validate short-lived token issued by WP (base64url(payload).hmacSHA256)
+    token = websocket.query_params.get("token", "")
+    if not token:
+        await websocket.close(code=1008)
+        return
+    session_id_from_token = None
+    try:
+        import hashlib, hmac
+        b64, sig = token.rsplit('.', 1)
+        expected = hmac.new((API_KEY or "").encode(), b64.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected, sig):
+            await websocket.close(code=1008)
+            return
+        # restore padding for base64url
+        pad = '=' * (-len(b64) % 4)
+        payload_bytes = base64.urlsafe_b64decode(b64 + pad)
+        data = json.loads(payload_bytes.decode('utf-8'))
+        now = int(datetime.now().timestamp())
+        if now >= int(data.get("exp", 0)):
+            await websocket.close(code=1008)
+            return
+        session_id = str(data.get("sid", ""))
+        session_id_from_token = session_id
+        ip = _client_ip_from_headers(dict(websocket.headers), websocket.client.host if websocket.client else None)
+        # WS connection limits
+        async with _rl_lock:
+            if _ws_active_ip[ip] >= WS_MAX_CONN_PER_IP or _ws_active_session[session_id] >= WS_MAX_CONN_PER_SESSION:
+                await websocket.close(code=1008)
+                return
+            _ws_active_ip[ip] += 1
+            _ws_active_session[session_id] += 1
+    except Exception:
+        await websocket.close(code=1008)
+        return
+    # Accept only after validation
     await websocket.accept()
     try:
         while True:
@@ -143,6 +241,10 @@ async def websocket_chat(websocket: WebSocket):
             message = payload.get("message")
             if not session_id or not isinstance(message, str) or not message:
                 await websocket.send_text(json.dumps({"type": "error", "message": "invalid_payload"}))
+                continue
+            # Enforce sid match with token sid
+            if session_id_from_token and session_id != session_id_from_token:
+                await websocket.send_text(json.dumps({"type": "error", "message": "sid_mismatch"}))
                 continue
             session = await get_or_create_session(session_id)
             session["history"].append({"role": "user", "content": message, "timestamp": datetime.now().isoformat()})
@@ -169,6 +271,18 @@ async def websocket_chat(websocket: WebSocket):
                         pass
     except WebSocketDisconnect:
         return
+    finally:
+        # Decrement active counters
+        try:
+            ip = _client_ip_from_headers(dict(websocket.headers), websocket.client.host if websocket.client else None)
+            async with _rl_lock:
+                if ip in _ws_active_ip and _ws_active_ip[ip] > 0:
+                    _ws_active_ip[ip] -= 1
+                sid = locals().get('session_id') if 'session_id' in locals() else None
+                if sid and sid in _ws_active_session and _ws_active_session[sid] > 0:
+                    _ws_active_session[sid] -= 1
+        except Exception:
+            pass
 
 @app.post("/clear_session")
 async def clear_session(request: Dict, auth: str = Depends(check_api_key)):
@@ -882,8 +996,11 @@ def wp_get_nonce() -> str:
         resp = requests.get(f"{WORDPRESS_URL}/wp-admin/admin-ajax.php?action=dehum_get_nonce", headers={"Authorization": f"Bearer {WP_API_KEY}"}, timeout=5)
         if resp.status_code == 200 and resp.json().get("success"):
             return resp.json()["data"]["nonce"]
-    except:
-        return "fallback_nonce"
+        # Fail fast: do not return a fake nonce
+        raise RuntimeError(f"wp_get_nonce failed with status {resp.status_code}")
+    except Exception as e:
+        logger.warning("wp_get_nonce error: %s", e)
+    return "fallback_nonce"
 
 def wp_load_session(session_id: str) -> Dict | None:
     nonce = wp_get_nonce()
@@ -891,7 +1008,23 @@ def wp_load_session(session_id: str) -> Dict | None:
         resp = requests.post(f"{WORDPRESS_URL}/wp-admin/admin-ajax.php", data={"action": "dehum_get_session", "session_id": session_id, "nonce": nonce}, headers={"Authorization": f"Bearer {WP_API_KEY}"}, timeout=5)
         if resp.status_code == 200 and resp.json().get("success"):
             history_data = resp.json()["data"]["history"]
-            return {"history": [{"role": "user" if m["message"] else "assistant", "content": m["message"] or m["response"], "timestamp": m["timestamp"]} for m in history_data], "cache": {}, "last_activity": datetime.now()}
+            hist: List[Dict] = []
+            state: Dict = {}
+            for m in history_data:
+                msg = m.get("message") or ""
+                resp_text = m.get("response") or ""
+                ts = m.get("timestamp")
+                if resp_text.startswith(STATE_MARKER):
+                    try:
+                        state = json.loads(resp_text[len(STATE_MARKER):]) or {}
+                    except Exception:
+                        state = {}
+                    continue
+                if msg:
+                    hist.append({"role": "user", "content": msg, "timestamp": ts})
+                elif resp_text:
+                    hist.append({"role": "assistant", "content": resp_text, "timestamp": ts})
+            return {"id": session_id, "history": hist, "cache": {}, "state": state, "last_activity": datetime.now()}
     except Exception as e:
         logger.debug("WP load error: %s", e)
     return None
@@ -899,6 +1032,12 @@ def wp_load_session(session_id: str) -> Dict | None:
 def wp_save_session(session: Dict) -> None:
     nonce = wp_get_nonce()
     wp_history = [{"message": h["content"] if h["role"] == "user" else "", "response": h["content"] if h["role"] == "assistant" else "", "user_ip": "", "timestamp": h["timestamp"]} for h in session["history"]]
+    # Append lightweight state marker for durability across restarts
+    try:
+        state_payload = json.dumps(session.get("state", {}), ensure_ascii=False)
+        wp_history.append({"message": "", "response": f"{STATE_MARKER}{state_payload}", "user_ip": "", "timestamp": datetime.now().isoformat()})
+    except Exception:
+        pass
     try:
         requests.post(f"{WORDPRESS_URL}/wp-admin/admin-ajax.php", data={"action": "dehum_save_session", "session_id": session["id"], "history": json.dumps(wp_history), "nonce": nonce}, headers={"Authorization": f"Bearer {WP_API_KEY}"}, timeout=5)
     except Exception as e:

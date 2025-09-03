@@ -267,13 +267,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Removed SSE fallback – WS only. Show a friendly error if WS cannot be used.
 
-    function wsUrlFor() {
+    async function fetchWSToken() {
+      try {
+        const res = await fetch(dehumMVP.ajaxUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: `action=dehum_get_ws_token&session_id=${encodeURIComponent(sessionId)}&nonce=${encodeURIComponent(dehumMVP.nonce)}`
+        });
+        const data = await res.json();
+        if (data && data.success && data.data && data.data.token) return data.data.token;
+      } catch (_) { }
+      return null;
+    }
+
+    function wsUrlFor(token) {
       try {
         const u = new URL(dehumMVP.aiUrl);
         u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
         u.pathname = (u.pathname.replace(/\/$/, '')) + '/ws';
-        const auth = dehumMVP.auth ? `?auth=${encodeURIComponent(dehumMVP.auth)}` : '';
-        return u.toString() + auth;
+        if (token) {
+          u.search = `?token=${encodeURIComponent(token)}`;
+        }
+        return u.toString();
       } catch (_) {
         return null;
       }
@@ -343,21 +358,24 @@ document.addEventListener('DOMContentLoaded', () => {
       finalizeStream();
     }
 
-    wsUrl = wsUrlFor();
-    if (wsUrl) {
-      try {
-        ws = new WebSocket(wsUrl);
-        ws.onopen = () => {
-          ws.send(JSON.stringify({ session_id: sessionId, message: text }));
-        };
-        wireHandlers({ onChunk: handleData, onClose: finalize, onError: () => { try { ws.close(); } catch (_) { } fail(); } }, ws);
-      } catch (_) {
-        fail();
+    (async () => {
+      const token = await fetchWSToken();
+      wsUrl = wsUrlFor(token);
+      if (wsUrl) {
+        try {
+          ws = new WebSocket(wsUrl);
+          ws.onopen = () => {
+            ws.send(JSON.stringify({ session_id: sessionId, message: text }));
+          };
+          wireHandlers({ onChunk: handleData, onClose: finalize, onError: () => { try { ws.close(); } catch (_) { } fail(); } }, ws);
+        } catch (_) {
+          fail();
+        }
+      } else {
+        updateMessage(tempDiv, 'Chat service not configured. Please contact support.', '', false, false);
+        finalizeStream();
       }
-    } else {
-      updateMessage(tempDiv, 'Chat service not configured. Please contact support.', '', false, false);
-      finalizeStream();
-    }
+    })();
   }
 
   function parseResponse(text) {
@@ -412,14 +430,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (Array.isArray(frags) && frags.length > 0) {
       let html = '';
       let textOnly = '';
+      let textBuffer = '';
       if (thinkingMap.get(div)) html += '<div class="dehum-tool-thinking">Working…</div>';
       for (const frag of frags) {
         if (frag.type === 'text') {
-          textOnly += frag.value || '';
-          html += parseMarkdown(frag.value || '');
+          const v = frag.value || '';
+          textOnly += v;
+          textBuffer += v;
         } else if (frag.type === 'tool') {
+          if (textBuffer) {
+            html += parseMarkdown(textBuffer);
+            textBuffer = '';
+          }
           html += frag.html || '';
         }
+      }
+      if (textBuffer) {
+        html += parseMarkdown(textBuffer);
+        textBuffer = '';
       }
       bubble.innerHTML = html;
       addCopyButton(bubble, textOnly.trim());

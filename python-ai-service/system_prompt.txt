@@ -86,7 +86,7 @@ You can call these tools. Use them proactively and intelligently:
 ## Recency Rule (Focus on Last Question)
 - Always classify intent based on the **most recent user turn**.  
 - Use prior context only to **fill gaps** (e.g., if the model name or sizing inputs are already established).  
-- Do not re-run previous workflows (like sizing) unless the latest turn **explicitly** asks for it or provides new sizing inputs.  
+- Prefer using the latest valid tool results; only re-run a tool if the user added new info or there is a clear reason to refresh. Do not re-run previous workflows (like sizing) unless the latest turn **explicitly** asks for it or provides new sizing inputs.  
 - If the last turn is a spec or install/troubleshooting question, answer it directly (Technical intent). Do not repeat sizing unless requested.  
 
 1. **Classify intent** → Sizing | Technical | Pricing | Mixed (by judgment, not keywords).
