@@ -15,6 +15,23 @@ All prices in AUD. Capacities in L/day at **30°C, 80% RH** standard conditions.
 
 ## 2. Product Comparison Table
 
+EXTRACTED_SPECS_JSON:
+{
+  "catalog": [
+    {"sku": "SP500C_PRO",  "name": "SUNTEC SP500C PRO",  "type": "wall_mount", "series": "SP-PRO", "pool_safe": true,  "capacity_lpd_30C_80RH": 50,  "power_w": 720,  "current_a": 3.1,  "airflow_m3h": 500,  "dims_mm_lwh": "650×270×550",  "weight_kg": 35,  "price_aud": 2999},
+    {"sku": "SP1000C_PRO", "name": "SUNTEC SP1000C PRO", "type": "wall_mount", "series": "SP-PRO", "pool_safe": true,  "capacity_lpd_30C_80RH": 100, "power_w": 1500, "current_a": 6.5,  "airflow_m3h": 800,  "dims_mm_lwh": "890×290×760",  "weight_kg": 56,  "price_aud": 3999},
+    {"sku": "SP1500C_PRO", "name": "SUNTEC SP1500C PRO", "type": "wall_mount", "series": "SP-PRO", "pool_safe": true,  "capacity_lpd_30C_80RH": 150, "power_w": 2050, "current_a": 8.9,  "airflow_m3h": 900,  "dims_mm_lwh": "1000×330×800", "weight_kg": 71,  "price_aud": 5500},
+    {"sku": "IDHR60",       "name": "FAIRLAND IDHR60",   "type": "wall_mount", "series": "IDHR",   "pool_safe": true,  "capacity_lpd_30C_80RH": 60,  "airflow_m3h": 600,  "price_aud": 3900},
+    {"sku": "IDHR96",       "name": "FAIRLAND IDHR96",   "type": "wall_mount", "series": "IDHR",   "pool_safe": true,  "capacity_lpd_30C_80RH": 96,  "airflow_m3h": 800,  "price_aud": 4600},
+    {"sku": "IDHR120",      "name": "FAIRLAND IDHR120",  "type": "wall_mount", "series": "IDHR",   "pool_safe": true,  "capacity_lpd_30C_80RH": 120, "airflow_m3h": 1000, "price_aud": 5400},
+    {"sku": "DA-X60I",      "name": "LUKO DA-X60i",      "type": "ducted",     "series": "DA-X",   "pool_safe": true,  "capacity_lpd_30C_80RH": 60,  "power_w": 890,  "current_a": 4.1,  "airflow_m3h": "450–600"},
+    {"sku": "DA-X140I",     "name": "LUKO DA-X140i",     "type": "ducted",     "series": "DA-X",   "pool_safe": true,  "capacity_lpd_30C_80RH": 140, "power_w": 1860, "current_a": 8.5,  "airflow_m3h": "800–1150"},
+    {"sku": "ST_601_PRO",   "name": "SUNTEC ST 601 PRO", "type": "portable",   "series": "ST",     "pool_safe": false, "capacity_lpd_30C_80RH": 65,  "power_w": 920,  "price_aud": 2799},
+    {"sku": "ST_1001_PRO",  "name": "SUNTEC ST 1001 PRO","type": "portable",   "series": "ST",     "pool_safe": false, "capacity_lpd_30C_80RH": 100, "power_w": 1650, "price_aud": 3499},
+    {"sku": "CT_801_PRO",   "name": "SUNTEC CT 801 PRO", "type": "portable",   "series": "CT",    "pool_safe": false, "capacity_lpd_30C_80RH": 90,  "power_w": 1150, "price_aud": 2999}
+  ]
+}
+
 | SKU          | Name                  | Type       | Series | Technology       | Pool Safe | Capacity (L/day) | Price (AUD) | URL |
 | ------------ | --------------------- | ---------- | ------ | ---------------- | --------- | ---------------- | ----------- | --- |
 | SP500C_PRO   | SUNTEC SP500C PRO     | wall_mount | SP-PRO | fixed_speed      | Yes       | 50               | 2999        | https://www.dehumsaust.com.au/product/lgr-sp500c-dehumidifier/ |

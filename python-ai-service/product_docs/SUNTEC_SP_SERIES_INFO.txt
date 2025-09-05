@@ -9,6 +9,16 @@ Aliases:
 # KEY_SPECS (STANDARDIZED FOR RETRIEVAL)
 # Added for consistent retrieval of core specifications across models
 
+EXTRACTED_SPECS_JSON:
+{
+  "series": "SUNTEC SP PRO",
+  "models": [
+    {"model": "SP500C PRO",  "capacity_lpd_30C_80RH": 50,  "power_w": 720,  "current_a": 3.1,  "airflow_m3h": 500,  "dims_mm_lwh": "650×270×550",  "weight_kg": 35},
+    {"model": "SP1000C PRO", "capacity_lpd_30C_80RH": 100, "power_w": 1500, "current_a": 6.5,  "airflow_m3h": 800,  "dims_mm_lwh": "890×290×760",  "weight_kg": 56},
+    {"model": "SP1500C PRO", "capacity_lpd_30C_80RH": 150, "power_w": 2050, "current_a": 8.9,  "airflow_m3h": 900,  "dims_mm_lwh": "1000×330×800", "weight_kg": 71}
+  ]
+}
+
 | MODEL        | CAPACITY_L_DAY_30C_80RH | POWER_W | CURRENT_A | NOISE_DB | DIM_MM_LWH     | WEIGHT_KG |
 |--------------|-------------------------|---------|-----------|----------|----------------|-----------|
 | SP500C PRO   | 50                      | 720     | 3.1       | 42       | 650×270×550    | 35        |

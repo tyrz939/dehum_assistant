@@ -15,6 +15,46 @@ TYPICAL_USES: Indoor pool rooms, spas, gyms, basements, plant rooms, museums, st
 # KEY_SPECS (STANDARDIZED FOR RETRIEVAL)
 # Added for consistent retrieval of core specifications across models
 
+EXTRACTED_SPECS_JSON:
+{
+  "series": "FAIRLAND IDHR",
+  "models": [
+    {
+      "model": "IDHR60",
+      "capacity_lpd_30C_80RH": 60,
+      "airflow_m3h": 600,
+      "power_w_range": "110–730",
+      "current_a_range": "0.48–3.17",
+      "dims_mm_lwh": "850×291×770",
+      "weight_kg": 53,
+      "refrigerant": "R32",
+      "voltage_frequency": "230V/1Ph/50Hz"
+    },
+    {
+      "model": "IDHR96",
+      "capacity_lpd_30C_80RH": 96,
+      "airflow_m3h": 800,
+      "power_w_range": "170–990",
+      "current_a_range": "0.74–4.30",
+      "dims_mm_lwh": "1120×291×770",
+      "weight_kg": 68,
+      "refrigerant": "R32",
+      "voltage_frequency": "230V/1Ph/50Hz"
+    },
+    {
+      "model": "IDHR120",
+      "capacity_lpd_30C_80RH": 120,
+      "airflow_m3h": 1000,
+      "power_w_range": "220–1360",
+      "current_a_range": "0.96–5.91",
+      "dims_mm_lwh": "1220×291×770",
+      "weight_kg": 72,
+      "refrigerant": "R32",
+      "voltage_frequency": "230V/1Ph/50Hz"
+    }
+  ]
+}
+
 | MODEL     | CAPACITY_L_DAY_30C_80RH | POWER_W_RANGE_30C_80RH | CURRENT_A_RANGE_30C_80RH | NOISE_DB | DIM_MM_LWH     | WEIGHT_KG |
 |-----------|-------------------------|------------------------|--------------------------|----------|----------------|-----------|
 | IDHR60    | 60                      | 110–730                | 0.48–3.17               | 38.3–45.6| 850×291×770    | 53        |

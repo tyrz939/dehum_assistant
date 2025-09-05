@@ -43,7 +43,7 @@ python build_rag_index.py
 This will:
 - Load all documents from `product_docs/`
 - Split them into semantic chunks
-- Create embeddings using OpenAI's `text-embedding-ada-002`
+- Create embeddings using OpenAI's `text-embedding-3-large` (must match `main.py`)
 - Build and save a FAISS index to `faiss_index/`
 
 ### 5. Start the Service
@@ -93,6 +93,57 @@ python main.py
 | `RAG_CHUNK_SIZE` | `500` | Size of document chunks (characters) |
 | `RAG_CHUNK_OVERLAP` | `50` | Overlap between chunks (characters) |
 | `RAG_TOP_K` | `3` | Number of relevant chunks to retrieve |
+
+## Spec Docs Structure and Retrieval Best Practices
+
+To ensure consistent, reliable retrieval (especially for model power/current), structure docs and the index as follows:
+
+- Add a normalized JSON block at the top of each series/model file:
+  - Key: `EXTRACTED_SPECS_JSON`
+  - Fields: `model`, `capacity_lpd_30C_80RH`, `airflow_m3h`, `power_w` (or `power_w_range`), `current_a` (or `current_a_range`), `dims_mm_lwh`, `weight_kg`, `refrigerant`, `voltage_frequency`
+  - Keep it compact and model‑scoped so retrieval can hit a single, high‑signal chunk
+
+- Keep tables intact; do not split model tables across chunks where possible:
+  - Use headings and section breaks so each model’s table stays together
+  - Move editorial notes (e.g., “Expanded/Incomplete”) to a separate `NOTES` section below the tables
+
+- Ensure exact model tokens appear with their specs:
+  - Include e.g. `DA-X60i` in the same chunk as `RATED_POWER_W`/`CURRENT_A`
+  - Avoid mixing generic overview text into the same chunk as the core specs
+
+- Retrieval/generation alignment:
+  - The pipeline passes tool results into the LLM context. When `retrieve_relevant_docs` returns data, the follow‑up generation should use it and avoid “unavailable” claims for that turn
+  - Prefer structured fields alongside formatted text to reduce model variance
+
+## Embedding Model Consistency
+
+Both the index builder and the runtime must use the same embedding model for best results:
+
+- Runtime (`main.py`): `text-embedding-3-large`
+- Builder (`rag_pipeline.py` / `build_rag_index.py`): `text-embedding-3-large`
+
+If these differ, retrieval quality degrades (mismatched vector spaces).
+
+## Rebuild & Reload Workflow
+
+When you change docs or structure:
+
+1. Rebuild the index
+   - `python build_rag_index.py`
+2. Restart the service so `get_vectorstore()` reloads from disk (it caches in memory)
+   - Local: Ctrl+C then `python main.py`
+   - Prod: trigger a restart/redeploy
+
+## Troubleshooting Retrieval
+
+- “Specs present in files but model says unavailable”
+  - Check that power/current are in the same chunk as the model token
+  - Confirm `EXTRACTED_SPECS_JSON` exists and is near the top
+  - Rebuild the index and restart the service
+
+- Poor recall for spec intents
+  - Keep `RAG_CHUNK_SIZE` large enough to preserve tables (e.g., 600–800)
+  - Ensure the query contains both the model token and the spec field term (e.g., “DA‑X60i power/current”)
 
 ### Customizing Retrieval
 

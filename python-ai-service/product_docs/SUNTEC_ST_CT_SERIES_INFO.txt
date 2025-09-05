@@ -12,6 +12,18 @@ Aliases:
 # KEY_SPECS (STANDARDIZED FOR RETRIEVAL)
 # Added for consistent retrieval of core specifications across models
 
+EXTRACTED_SPECS_JSON:
+{
+  "series": "SUNTEC ST/CT",
+  "models": [
+    {"model": "ST601 PRO",  "capacity_lpd_30C_80RH": 65,  "power_w": 920,  "current_a": 4.0,  "airflow_m3h": "~600",  "dims_mm_lwh": "500×485×840",  "weight_kg": "~40"},
+    {"model": "ST1001 PRO", "capacity_lpd_30C_80RH": 100, "power_w": 1650, "current_a": 6.5,  "airflow_m3h": "~750",  "dims_mm_lwh": "500×485×840",  "weight_kg": "~50"},
+    {"model": "ST600",      "capacity_lpd_30C_80RH": 65,  "power_w": 920,  "current_a": 4.0,  "airflow_m3h": "~600",  "dims_mm_lwh": "500×485×840",  "weight_kg": "~40"},
+    {"model": "ST1000",     "capacity_lpd_30C_80RH": 100, "power_w": 1650, "current_a": 6.5,  "airflow_m3h": "~750",  "dims_mm_lwh": "500×485×840",  "weight_kg": "~50"},
+    {"model": "CT801 PRO",  "capacity_lpd_30C_80RH": 52,  "power_w": "~1150",  "current_a": "~5.0", "airflow_m3h": "~700", "dims_mm_lwh": "420×645×463",  "weight_kg": "~38"}
+  ]
+}
+
 | MODEL         | CAPACITY_L_DAY_30C_80RH | POWER_W | CURRENT_A | AIRFLOW_M3H | NOISE_DB | DIM_MM_LWH     | WEIGHT_KG |
 |---------------|-------------------------|---------|-----------|-------------|----------|----------------|-----------|
 | ST601 PRO     | 65                      | 920     | 4.0       | ~600        | ~60     | 500×485×840    | ~40       |

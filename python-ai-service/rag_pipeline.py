@@ -51,7 +51,7 @@ class RAGPipeline:
         if config.RAG_ENABLED and config.OPENAI_API_KEY:
             try:
                 self.embeddings = OpenAIEmbeddings(
-                    model="text-embedding-ada-002",
+                    model="text-embedding-3-large",
                     openai_api_key=config.OPENAI_API_KEY
                 )
                 print("RAG Pipeline: OpenAI embeddings initialized")

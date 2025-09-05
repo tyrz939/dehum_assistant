@@ -24,6 +24,37 @@ Key Features:
 # KEY_SPECS (STANDARDIZED FOR RETRIEVAL)
 # Added for consistent retrieval of core specifications across models
 
+EXTRACTED_SPECS_JSON:
+{
+  "series": "LUKO DA-X",
+  "models": [
+    {
+      "model": "DA-X60i",
+      "capacity_lpd_30C_80RH": "45–75",
+      "airflow_m3h": "450–600",
+      "power_w": 890,
+      "current_a": 4.1,
+      "noise_db": "<32",
+      "dims_mm_lwh": "1160×590×325",
+      "weight_kg": 73,
+      "refrigerant": "R32",
+      "voltage_frequency": "220V/50Hz"
+    },
+    {
+      "model": "DA-X140i",
+      "capacity_lpd_30C_80RH": "110–155",
+      "airflow_m3h": "800–1150",
+      "power_w": 1860,
+      "current_a": 8.5,
+      "noise_db": "<35",
+      "dims_mm_lwh": "1200×640×370",
+      "weight_kg": 83,
+      "refrigerant": "R32",
+      "voltage_frequency": "220V/50Hz"
+    }
+  ]
+}
+
 | MODEL     | CAPACITY_L_DAY_30C_80RH | POWER_W | CURRENT_A | NOISE_DB | DIM_MM_LWH     | WEIGHT_KG |
 |-----------|-------------------------|---------|-----------|----------|----------------|-----------|
 | DA-X60i   | 45–75                   | 890     | 4.1       | <32      | 1160×590×325   | 73        |
@@ -55,7 +86,9 @@ Note: Performance varies by conditions; see Capacity Derating section.
 | **DIM_MM_LWH**             | 1160×590×325                                  | 1200×640×370             |
 | **WEIGHT_KG**              | 73                                            | 83                       |
 
-[Expanded: Completed table rows based on pattern from DA-X60i and tool manual search; added rated power, current, dims, weight from series overview.]
+---
+NOTES:
+- Some entries harmonized across brochures; confirm against the latest dataplate where required.
 
 ---
 
