@@ -49,6 +49,7 @@ class Dehum_MVP_Frontend {
       'maxLen' => DEHUM_MVP_MESSAGE_MAX_LENGTH ?? 500,
       'isLoggedIn' => is_user_logged_in() ? 1 : 0,
       'aiUrl' => $ai_url,
+      'welcome' => apply_filters('dehum_mvp_welcome_message', "**Dehumidifier Assistant**\n- **Sizing:** Room dimensions + humidity\n- **Technical:** Installation, troubleshooting\n- **Products:** Specs, comparisons, pricing\nPool room or regular space?"),
     ]);
   }
 
@@ -57,7 +58,7 @@ class Dehum_MVP_Frontend {
 
     $title = apply_filters('dehum_mvp_title', 'Dehumidifiers Australia Assistant');
     $placeholder = apply_filters('dehum_mvp_placeholder', 'Ask about dehumidifier sizing...');
-    $disclaimer = apply_filters('dehum_mvp_disclaimer', 'BETA TEST v0.7: AI can be wrong. Conversations may be stored for up to 90 days. Please verify important information.');
+    $disclaimer = apply_filters('dehum_mvp_disclaimer', 'BETA TEST v0.7.1: AI can be wrong. Conversations may be stored for up to 90 days. Please verify important information.');
     $maxLen = defined('DEHUM_MVP_MESSAGE_MAX_LENGTH') ? DEHUM_MVP_MESSAGE_MAX_LENGTH : 500;
 
     echo <<<HTML
@@ -221,21 +222,6 @@ HTML;
     if ($this->db) {
       $res = $this->db->delete_session($session);
       if ($res !== false) $deleted_rows = intval($res);
-    }
-
-    // Forward clear to Python backend (best-effort)
-    $base = rtrim(get_option('dehum_mvp_ai_service_url'), '/');
-    if (!empty($base)) {
-      $url = $base . '/clear_session';
-      $auth = $this->get_decrypted_auth();
-      $headers = ['Content-Type' => 'application/json'];
-      if ($auth) $headers['Authorization'] = $auth;
-      $response = wp_remote_post($url, [
-        'headers' => $headers,
-        'body'    => json_encode(['session_id' => $session]),
-        'timeout' => 10,
-      ]);
-      // Ignore errors; DB clear already done
     }
 
     wp_send_json_success(['cleared' => true, 'deleted_rows' => $deleted_rows]);

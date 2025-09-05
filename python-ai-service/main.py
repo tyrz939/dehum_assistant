@@ -73,6 +73,20 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="Dehumidifier AI", description="Lean AI for dehumidifier sizing", version="1.0.0")
 app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
+# Simple HTTP timing middleware (end-to-end request latency)
+@app.middleware("http")
+async def _timing_middleware(request: Request, call_next):
+    start = time.perf_counter()
+    try:
+        response = await call_next(request)
+        return response
+    finally:
+        try:
+            dt_ms = (time.perf_counter() - start) * 1000.0
+            logger.info("http.rtt_ms=%.1f method=%s path=%s", dt_ms, request.method, request.url.path)
+        except Exception:
+            pass
+
 # Reuse a single OpenAI async client (reduces DNS/connect overhead on Render)
 OPENAI_CLIENT = AsyncOpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL, timeout=OPENAI_TIMEOUT_S)
 
@@ -258,14 +272,43 @@ async def websocket_chat(websocket: WebSocket):
             if session_id_from_token and session_id != session_id_from_token:
                 await websocket.send_text(json.dumps({"type": "error", "message": "sid_mismatch"}))
                 continue
+            t_ws = time.perf_counter()
             session = await get_or_create_session(session_id)
             session["history"].append({"role": "user", "content": message, "timestamp": datetime.now().isoformat()})
             messages = prepare_messages_streaming(session)
             last_user = session["history"][-1]["content"]
             try:
+                # Immediately notify client to avoid idle timeouts on proxies
+                try:
+                    await websocket.send_text(json.dumps({"type": "status", "message": "processing", "ts": datetime.now().isoformat()}))
+                except Exception:
+                    pass
+
+                # Start lightweight keepalive pings during potentially long upstream waits
+                keepalive_running = True
+                async def _keepalive():
+                    while keepalive_running:
+                        await asyncio.sleep(20)
+                        try:
+                            await websocket.send_text(json.dumps({"type": "ping", "ts": datetime.now().isoformat()}))
+                        except Exception:
+                            break
+                keepalive_task = asyncio.create_task(_keepalive())
+
+                first_sent = False
                 async for chunk in process_chat_streaming(messages, session, session_id, last_user):
+                    if not first_sent and (chunk.get("type") in ("response", "tool_start", "tool_progress") or chunk.get("is_streaming_chunk")):
+                        try:
+                            logger.info("ws.first_token_ms=%.1f sid=%s", (time.perf_counter() - t_ws) * 1000.0, session_id)
+                        except Exception:
+                            pass
+                        first_sent = True
                     await websocket.send_text(json.dumps(chunk))
                 await websocket.send_text(json.dumps({"type": "done"}))
+                try:
+                    logger.info("ws.turn_total_ms=%.1f sid=%s", (time.perf_counter() - t_ws) * 1000.0, session_id)
+                except Exception:
+                    pass
             except asyncio.CancelledError:
                 raise
             except Exception as e:
@@ -278,6 +321,14 @@ async def websocket_chat(websocket: WebSocket):
                 # Exit receive loop after an unrecoverable streaming error
                 break
             finally:
+                # Stop keepalive
+                try:
+                    if 'keepalive_running' in locals():
+                        keepalive_running = False
+                    if 'keepalive_task' in locals() and keepalive_task and not keepalive_task.done():
+                        keepalive_task.cancel()
+                except Exception:
+                    pass
                 update_session(session)
                 if "_turn_calls" in session:
                     try:
@@ -304,7 +355,6 @@ async def clear_session(request: Dict, auth: str = Depends(check_api_key)):
     session_id = request["session_id"]
     if session_id in sessions:
         del sessions[session_id]
-    wp_clear_session(session_id)
     return {"success": True, "message": "Session cleared"}
 
 # Minimal WP clear helper
@@ -364,10 +414,18 @@ async def process_chat_streaming(messages: List[Dict], session: Dict, session_id
     while current_phase != "final":
         if current_phase == "initial_summary":
             tools = get_tools_for()
+            _t0 = time.perf_counter()
             stream = await completion(messages, 16000, tools=tools, tool_choice="auto", stream=True)
             tool_call_dicts = {}
+            _first_logged = False
             async for chunk in stream:
                 delta = chunk.choices[0].delta
+                if not _first_logged and (getattr(delta, "content", None) or getattr(delta, "tool_calls", None)):
+                    try:
+                        logger.info("openai.stream_ttfb_ms=%.1f phase=initial_summary", (time.perf_counter() - _t0) * 1000.0)
+                    except Exception:
+                        pass
+                    _first_logged = True
                 if delta.content:
                     accumulated_content += delta.content
                     yield {"type": "response", "content": delta.content, "is_streaming_chunk": True, "metadata": {"phase": "initial_summary"}}
@@ -393,8 +451,16 @@ async def process_chat_streaming(messages: List[Dict], session: Dict, session_id
 
         elif current_phase == "recommendations":
             tools = get_tools_for()
+            _t1 = time.perf_counter()
             stream = await completion(messages, 16000, tools=tools, tool_choice="none", stream=True)
+            _first_logged2 = False
             async for chunk in stream:
+                if not _first_logged2 and chunk.choices[0].delta.content:
+                    try:
+                        logger.info("openai.stream_ttfb_ms=%.1f phase=recommendations", (time.perf_counter() - _t1) * 1000.0)
+                    except Exception:
+                        pass
+                    _first_logged2 = True
                 if chunk.choices[0].delta.content:
                     yield {"type": "response", "content": chunk.choices[0].delta.content, "session_id": session_id, "timestamp": datetime.now().isoformat(), "is_streaming_chunk": True, "metadata": {"phase": "recommendations"}}
             current_phase = "final"
@@ -402,7 +468,12 @@ async def process_chat_streaming(messages: List[Dict], session: Dict, session_id
     yield {"message": "", "is_final": True, "function_calls": tool_results}
 
 async def get_ai_response(messages: List[Dict], session: Dict, last_user: str) -> Dict:
+    t0 = time.perf_counter()
     initial_response = await get_initial_completion(messages, last_user)
+    try:
+        logger.info("openai.rtt_ms=%.1f stage=initial_completion", (time.perf_counter() - t0) * 1000.0)
+    except Exception:
+        pass
     content = initial_response["content"]
     tool_calls = initial_response["tool_calls"]
 
@@ -419,10 +490,15 @@ async def get_ai_response(messages: List[Dict], session: Dict, last_user: str) -
     tool_results = []
     if tool_calls:
         messages.append({"role": "assistant", "content": content, "tool_calls": tool_calls})
+        t1 = time.perf_counter()
         tool_results, follow_up_gen = await process_tool_calls(tool_calls, messages, session, last_user)
         new_content = ""
         async for token in follow_up_gen:
             new_content += token
+        try:
+            logger.info("openai.rtt_ms=%.1f stage=follow_up_completion", (time.perf_counter() - t1) * 1000.0)
+        except Exception:
+            pass
         content = new_content or content
     if "_turn_calls" in session:
         del session["_turn_calls"]
@@ -535,10 +611,18 @@ async def process_tool_calls(tool_calls: List[Any], messages: List[Dict], sessio
         messages.append(catalog_message)
 
     tools = get_tools_for()
+    _t2 = time.perf_counter()
     follow_up_gen = await completion(messages, 16000, tools=tools, tool_choice="none", stream=True)
     async def gen_content():
+        _first = True
         async for chunk in follow_up_gen:
             if chunk.choices[0].delta.content:
+                if _first:
+                    try:
+                        logger.info("openai.stream_ttfb_ms=%.1f phase=follow_up", (time.perf_counter() - _t2) * 1000.0)
+                    except Exception:
+                        pass
+                    _first = False
                 yield chunk.choices[0].delta.content
     return tool_results, gen_content()
 
@@ -1008,7 +1092,12 @@ def invoke_tool(func_name: str, func_args: Dict, session: Dict) -> Dict:
 # WP session helpers
 def wp_get_nonce() -> str:
     try:
+        _t = time.perf_counter()
         resp = requests.get(f"{WORDPRESS_URL}/wp-admin/admin-ajax.php?action=dehum_get_nonce", headers={"Authorization": f"Bearer {WP_API_KEY}"}, timeout=5)
+        try:
+            logger.info("wp.get_nonce.rtt_ms=%.1f status=%s elapsed_ms=%.1f", (time.perf_counter()-_t)*1000.0, getattr(resp, 'status_code', 'NA'), getattr(resp, 'elapsed', 0).total_seconds()*1000.0 if hasattr(resp, 'elapsed') else -1.0)
+        except Exception:
+            pass
         if resp.status_code == 200 and resp.json().get("success"):
             return resp.json()["data"]["nonce"]
         # Fail fast: do not return a fake nonce
@@ -1020,7 +1109,12 @@ def wp_get_nonce() -> str:
 def wp_load_session(session_id: str) -> Dict | None:
     nonce = wp_get_nonce()
     try:
+        _t = time.perf_counter()
         resp = requests.post(f"{WORDPRESS_URL}/wp-admin/admin-ajax.php", data={"action": "dehum_get_session", "session_id": session_id, "nonce": nonce}, headers={"Authorization": f"Bearer {WP_API_KEY}"}, timeout=5)
+        try:
+            logger.info("wp.load_session.rtt_ms=%.1f status=%s elapsed_ms=%.1f", (time.perf_counter()-_t)*1000.0, getattr(resp, 'status_code', 'NA'), getattr(resp, 'elapsed', 0).total_seconds()*1000.0 if hasattr(resp, 'elapsed') else -1.0)
+        except Exception:
+            pass
         if resp.status_code == 200 and resp.json().get("success"):
             history_data = resp.json()["data"]["history"]
             hist: List[Dict] = []
@@ -1054,7 +1148,12 @@ def wp_save_session(session: Dict) -> None:
     except Exception:
         pass
     try:
-        requests.post(f"{WORDPRESS_URL}/wp-admin/admin-ajax.php", data={"action": "dehum_save_session", "session_id": session["id"], "history": json.dumps(wp_history), "nonce": nonce}, headers={"Authorization": f"Bearer {WP_API_KEY}"}, timeout=5)
+        _t = time.perf_counter()
+        resp = requests.post(f"{WORDPRESS_URL}/wp-admin/admin-ajax.php", data={"action": "dehum_save_session", "session_id": session["id"], "history": json.dumps(wp_history), "nonce": nonce}, headers={"Authorization": f"Bearer {WP_API_KEY}"}, timeout=5)
+        try:
+            logger.info("wp.save_session.rtt_ms=%.1f status=%s elapsed_ms=%.1f", (time.perf_counter()-_t)*1000.0, getattr(resp, 'status_code', 'NA'), getattr(resp, 'elapsed', 0).total_seconds()*1000.0 if hasattr(resp, 'elapsed') else -1.0)
+        except Exception:
+            pass
     except Exception as e:
         logger.debug("WP save error: %s", e)
 

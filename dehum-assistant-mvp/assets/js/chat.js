@@ -18,7 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let sessionId = localStorage.getItem('dehum_session') || (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2));
   localStorage.setItem('dehum_session', sessionId);
-  const storageKey = `dehum_history_${sessionId}`;
+  function storageKey() {
+    return `dehum_history_${sessionId}`;
+  }
   let isRestoring = false;
   let isStreaming = false;
   let currentSource = null;
@@ -100,7 +102,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getStoredHistory() {
     try {
-      const raw = localStorage.getItem(storageKey);
+      const raw = localStorage.getItem(storageKey());
       return raw ? JSON.parse(raw) : [];
     } catch (_) {
       return [];
@@ -108,7 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function setStoredHistory(history) {
-    try { localStorage.setItem(storageKey, JSON.stringify(history)); } catch (_) { }
+    try { localStorage.setItem(storageKey(), JSON.stringify(history)); } catch (_) { }
   }
 
   function pushHistory(role, content) {
@@ -181,36 +183,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Clear
   clearBtn.addEventListener('click', () => {
+    // Optimistic: wipe UI, generate fresh session, render welcome instantly
     messages.innerHTML = '';
-    // Clear backend session
-    fetch(dehumMVP.ajaxUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `action=dehum_clear_session&session_id=${sessionId}&nonce=${dehumMVP.nonce}`
-    })
-      .then(res => res.json())
-      .then(() => {
-        localStorage.removeItem(storageKey);
-        // Reload server-seeded history (will include welcome if empty)
-        fetch(dehumMVP.ajaxUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: `action=dehum_get_session_history&session_id=${sessionId}&nonce=${dehumMVP.nonce}`
-        })
-          .then(r => r.json())
-          .then(data => {
-            if (data.success && Array.isArray(data.data.history)) {
-              isRestoring = true;
-              data.data.history.forEach(item => addMessage(item.role === 'user' ? 'user' : 'assistant', item.content));
-              isRestoring = false;
-              setStoredHistory(data.data.history.map(h => ({ role: h.role, content: h.content, t: Date.now() })));
-            }
-          })
-          .catch(() => { });
-      })
-      .catch(() => {
-        localStorage.removeItem(storageKey);
-      });
+    const oldSessionId = sessionId;
+    const newSessionId = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substring(2));
+    sessionId = newSessionId;
+    localStorage.setItem('dehum_session', sessionId);
+    // reset storage key for new session
+    // Note: old session history is intentionally discarded
+    const welcome = (dehumMVP && dehumMVP.welcome) ? dehumMVP.welcome : '**Dehumidifier Assistant**\nPool room or regular space?';
+    isRestoring = true;
+    addMessage('assistant', welcome);
+    isRestoring = false;
+    setStoredHistory([{ role: 'assistant', content: welcome, t: Date.now() }]);
+
+    // Fire-and-forget server clear on old session, then seed server with welcome for new session
+    try {
+      // Clear old session on server
+      fetch(dehumMVP.ajaxUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `action=dehum_clear_session&session_id=${encodeURIComponent(oldSessionId)}&nonce=${encodeURIComponent(dehumMVP.nonce)}`
+      }).catch(() => { });
+    } catch (_) { }
   });
 
   // Send / Stop
